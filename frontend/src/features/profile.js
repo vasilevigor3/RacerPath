@@ -334,6 +334,7 @@ export const loadProfile = async () => {
     await loadLicenseProgress(driver);
     await loadActivityFeed(driver);
     await loadIncidents(driver);
+    scheduleRecommendationsRefetchAtMidnight();
   } catch (err) {
     setAuthVisibility(false);
     setOnboardingVisibility(false);
@@ -352,8 +353,34 @@ export const loadProfile = async () => {
   }
 };
 
+/** Refetch recommendations at next midnight UTC so "Race of the day" etc. update when the day changes. */
+let recommendationsMidnightTimer = null;
+function scheduleRecommendationsRefetchAtMidnight() {
+  if (recommendationsMidnightTimer) clearTimeout(recommendationsMidnightTimer);
+  const now = new Date();
+  const nextMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+  recommendationsMidnightTimer = setTimeout(async () => {
+    recommendationsMidnightTimer = null;
+    try {
+      const driver = await loadMyDriver();
+      if (driver) await loadDashboardRecommendations(driver);
+    } catch (_) {}
+    scheduleRecommendationsRefetchAtMidnight();
+  }, Math.max(msUntilMidnight, 60000));
+}
+
+/** When tab becomes visible, refetch recommendations so "Race of the day" and expiry state are up to date. */
+function onVisibilityChange() {
+  if (document.visibilityState !== 'visible') return;
+  loadMyDriver()
+    .then((driver) => driver && loadDashboardRecommendations(driver))
+    .catch(() => {});
+}
+
 export const initProfileForm = () => {
   if (!profileForm || !profileSaveStatus) return;
+  document.addEventListener('visibilitychange', onVisibilityChange);
   profileForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!getApiKey()) {

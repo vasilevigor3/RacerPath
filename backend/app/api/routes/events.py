@@ -63,17 +63,27 @@ def create_event(
     session.commit()
     session.refresh(event)
 
+    tier = (payload.event_tier and payload.event_tier.strip()) or "E2"
+    # One unique special event per tier per period (day/week/month/year)
+    if payload.special_event and event.start_time_utc:
+        if special_slot_tier_conflict(session, payload.special_event, event.start_time_utc, tier):
+            session.delete(event)
+            session.commit()
+            raise HTTPException(
+                409,
+                detail=f"Another event already exists for {payload.special_event} (tier {tier}) in this period. Only one per tier per day/week/month/year.",
+            )
+
     classification_payload = build_event_payload(event, infer_discipline(event))
     classification_data = classify_event(classification_payload)
-    if payload.event_tier is not None:
-        classification_data["event_tier"] = payload.event_tier
-        classification_data["tier_label"] = TIER_LABELS.get(payload.event_tier, payload.event_tier)
+    classification_data["event_tier"] = tier
+    classification_data["tier_label"] = TIER_LABELS.get(tier, tier)
 
     classification = Classification(event_id=event.id, **classification_data)
     session.add(classification)
     session.commit()
 
-    return EventRead.model_validate(event).model_copy(update={"event_tier": payload.event_tier})
+    return EventRead.model_validate(event).model_copy(update={"event_tier": tier})
 
 
 @router.get("", response_model=List[EventRead])
@@ -135,7 +145,26 @@ def list_events(
                 query.outerjoin(Classification, Event.id == Classification.event_id)
                 .filter(func.coalesce(Classification.event_tier, "E2") == driver_tier)
             )
-    return query.order_by(Event.created_at.desc()).all()
+    events = query.order_by(Event.created_at.desc()).all()
+    if not events:
+        return []
+    # Attach event_tier from Classification so list response shows tier (e.g. E2)
+    event_ids = [e.id for e in events]
+    classifications = (
+        session.query(Classification)
+        .filter(Classification.event_id.in_(event_ids))
+        .order_by(Classification.created_at.desc())
+        .all()
+    )
+    # latest classification per event
+    tier_by_event = {}
+    for c in classifications:
+        if c.event_id not in tier_by_event:
+            tier_by_event[c.event_id] = c.event_tier
+    return [
+        EventRead.model_validate(e).model_copy(update={"event_tier": tier_by_event.get(e.id) or "E2"})
+        for e in events
+    ]
 
 
 @router.get("/upcoming", response_model=List[EventRead])
@@ -246,7 +275,7 @@ def get_event(
         .order_by(Classification.created_at.desc())
         .first()
     )
-    event_tier = classification.event_tier if classification else None
+    event_tier = classification.event_tier if classification else "E2"
     return EventRead.model_validate(event).model_copy(update={"event_tier": event_tier})
 
 
@@ -291,9 +320,29 @@ def update_event(
                 inputs_snapshot={},
             )
             session.add(classification)
+    # One unique special event per tier per period
+    if event.special_event and event.start_time_utc:
+        if event_tier is not None:
+            effective_tier = event_tier
+        else:
+            cls = session.query(Classification).filter(Classification.event_id == event_id).order_by(Classification.created_at.desc()).first()
+            effective_tier = cls.event_tier if cls else "E2"
+        if special_slot_tier_conflict(session, event.special_event, event.start_time_utc, effective_tier, exclude_event_id=event_id):
+            session.rollback()
+            raise HTTPException(
+                409,
+                detail=f"Another event already exists for {event.special_event} (tier {effective_tier}) in this period. Only one per tier per day/week/month/year.",
+            )
     session.commit()
     session.refresh(event)
-    return event
+    classification = (
+        session.query(Classification)
+        .filter(Classification.event_id == event_id)
+        .order_by(Classification.created_at.desc())
+        .first()
+    )
+    event_tier = classification.event_tier if classification else "E2"
+    return EventRead.model_validate(event).model_copy(update={"event_tier": event_tier})
 
 
 @router.get("/{event_id}/classification", response_model=ClassificationRead)

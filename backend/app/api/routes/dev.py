@@ -75,6 +75,6 @@ def dev_recompute_driver(
     for disc in disciplines:
         crs = recompute_crs(session, driver_id, disc, trigger_participation_id)
         crs_list.append(crs)
-        rec = recompute_recommendations(session, driver_id, disc, trigger_participation_id)
-        rec_list.append(rec)
+        rec, special_events = recompute_recommendations(session, driver_id, disc, trigger_participation_id)
+        rec_list.append(RecommendationRead.model_validate(rec).model_copy(update={"special_events": special_events}))
     return {"crs": crs_list, "recommendations": rec_list}

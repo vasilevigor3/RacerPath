@@ -1,6 +1,6 @@
 import { apiFetch } from '../api/client.js';
-import { setList } from '../utils/dom.js';
-import { formatDateTime } from '../utils/format.js';
+import { setList, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
+import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { readinessState } from '../state/session.js';
 import { updateReadiness } from '../ui/readiness.js';
@@ -33,6 +33,7 @@ const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
 const licenseReqs = document.querySelector('[data-license-reqs]');
 const activityFeed = document.querySelector('[data-activity-feed]');
+let recommendationCountdownInterval = null;
 
 const getParticipationMinutes = (participation) => {
   if (!participation) return null;
@@ -233,6 +234,10 @@ const updateRecommendationCards = (data) => {
 
 export const loadDashboardRecommendations = async (driver) => {
   if (!recommendationList) return;
+  if (recommendationCountdownInterval) {
+    clearInterval(recommendationCountdownInterval);
+    recommendationCountdownInterval = null;
+  }
   if (!driver) {
     setList(recommendationList, ['Log in and create a driver profile to see next steps.'], '');
     updateRecommendationCards(null);
@@ -246,15 +251,36 @@ export const loadDashboardRecommendations = async (driver) => {
       updateRecommendationCards(null);
       return;
     }
-    const data = await res.json();
-    if (data) {
-      setList(recommendationList, data.items || [], 'No recommendations yet.');
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      setList(recommendationList, ['Unable to load recommendations (invalid response).'], '');
+      updateRecommendationCards(null);
+      return;
+    }
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      if (recommendationCountdownInterval) {
+        clearInterval(recommendationCountdownInterval);
+        recommendationCountdownInterval = null;
+      }
+      setRecommendationListWithCountdown(
+        recommendationList,
+        data.items || [],
+        data.special_events || [],
+        'No recommendations yet.',
+        formatCountdown
+      );
+      recommendationCountdownInterval = setInterval(() => {
+        tickRecommendationCountdowns(recommendationList, formatCountdown);
+      }, 1000);
       updateRecommendationCards(data);
     } else {
       setList(recommendationList, ['No recommendations yet. Compute one in Dashboards.'], '');
       updateRecommendationCards(null);
     }
   } catch (err) {
+    console.warn('loadDashboardRecommendations failed:', err);
     setList(recommendationList, ['Unable to load recommendations.'], '');
     updateRecommendationCards(null);
   }

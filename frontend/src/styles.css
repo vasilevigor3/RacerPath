@@ -1240,6 +1240,18 @@ input[type='range'] {
   gap: 8px;
 }
 
+.rec-item {
+  display: block;
+}
+
+.rec-countdown-wrap {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85em;
+  color: var(--accent);
+  font-weight: 500;
+}
+
 .path {
   background: linear-gradient(135deg, rgba(212, 87, 42, 0.08), rgba(15, 108, 115, 0.08));
 }

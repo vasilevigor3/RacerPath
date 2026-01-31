@@ -12,6 +12,9 @@ from app.models.enums.event_enums import (EventStatus,
 EVENT_TIERS = ("E0", "E1", "E2", "E3", "E4", "E5")
 EventTier = Literal["E0", "E1", "E2", "E3", "E4", "E5"]
 
+SPECIAL_EVENT_VALUES = ("race_of_day", "race_of_week", "race_of_month", "race_of_year")
+SpecialEvent = Literal["race_of_day", "race_of_week", "race_of_month", "race_of_year"]
+
 
 class EventCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
@@ -21,6 +24,7 @@ class EventCreate(BaseModel):
     city: Optional[str] = Field(default=None, max_length=80)
     start_time_utc: Optional[datetime] = None
     event_tier: Optional[EventTier] = Field(default=None, description="Override classification tier (E0–E5)")
+    special_event: Optional[SpecialEvent] = None
 
     event_status: EventStatus = EventStatus.scheduled
 
@@ -75,6 +79,7 @@ class EventUpdate(BaseModel):
     city: Optional[str] = Field(default=None, max_length=80)
     start_time_utc: Optional[datetime] = None
     event_tier: Optional[EventTier] = None
+    special_event: Optional[SpecialEvent] = None
 
     schedule_type: Optional[ScheduleType] = None
     event_type: Optional[EventType] = None

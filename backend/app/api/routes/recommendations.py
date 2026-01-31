@@ -26,7 +26,8 @@ def compute(
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    return compute_recommendation(session, driver_id, discipline)
+    rec, special_events = compute_recommendation(session, driver_id, discipline)
+    return RecommendationRead.model_validate(rec).model_copy(update={"special_events": special_events})
 
 
 @router.get("", response_model=List[RecommendationRead])
@@ -60,5 +61,5 @@ def latest(
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
     # Always recompute so "Race next" uses same driver.tier filter as /events/upcoming
-    recommendation = compute_recommendation(session, driver_id, discipline)
-    return recommendation
+    rec, special_events = compute_recommendation(session, driver_id, discipline)
+    return RecommendationRead.model_validate(rec).model_copy(update={"special_events": special_events})

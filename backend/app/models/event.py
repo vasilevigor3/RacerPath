@@ -17,6 +17,10 @@ class Event(Base):
         CheckConstraint("duration_minutes >= 0 AND duration_minutes <= 1440", name="ck_events_duration_0_1440"),
         CheckConstraint("grid_size_expected >= 0 AND grid_size_expected <= 100", name="ck_events_grid_0_100"),
         CheckConstraint("class_count >= 1 AND class_count <= 6", name="ck_events_class_1_6"),
+        CheckConstraint(
+            "special_event IS NULL OR special_event IN ('race_of_day', 'race_of_week', 'race_of_month', 'race_of_year')",
+            name="ck_events_special_event",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -29,6 +33,9 @@ class Event(Base):
     city: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
 
     start_time_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Race of the day / week / month / year — special featured event (more points)
+    special_event: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # в БД храним строку, в API валидируем Enum-ом
     schedule_type: Mapped[str] = mapped_column(String(20), nullable=False, default="weekly")

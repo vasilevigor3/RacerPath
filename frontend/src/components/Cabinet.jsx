@@ -236,12 +236,13 @@ const Cabinet = () => (
           <div className="grid-2">
             <div className="card">
               <p className="card-title">Recent events</p>
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <input type="checkbox" data-events-same-tier />
+                <span>Show only my lvl events</span>
+              </label>
               <ul className="list" data-dashboard-events>
                 <li>No events loaded.</li>
               </ul>
-              <button className="btn ghost" type="button" data-scroll-target="#classification">
-                Open event lab
-              </button>
             </div>
             <div className="card">
               <p className="card-title">Recent participations</p>

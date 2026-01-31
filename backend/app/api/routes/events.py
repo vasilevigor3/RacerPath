@@ -84,9 +84,12 @@ def list_events(
     date_from: str | None = None,
     date_to: str | None = None,
     driver_id: str | None = None,
+    same_tier: bool = False,
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
+    from sqlalchemy import func
+
     query = session.query(Event)
     if driver_id and user.role not in {"admin"}:
         driver = session.query(Driver).filter(Driver.id == driver_id).first()
@@ -126,6 +129,12 @@ def list_events(
             query = query.filter(Event.game.in_(expand_driver_games_for_event_match(driver.sim_games)))
         else:
             return []
+        if same_tier and driver:
+            driver_tier = getattr(driver, "tier", "E0") or "E0"
+            query = (
+                query.outerjoin(Classification, Event.id == Classification.event_id)
+                .filter(func.coalesce(Classification.event_tier, "E2") == driver_tier)
+            )
     return query.order_by(Event.created_at.desc()).all()
 
 

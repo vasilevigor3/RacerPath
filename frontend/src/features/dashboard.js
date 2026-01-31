@@ -319,12 +319,24 @@ export const loadActivityFeed = async (driver) => {
   }
 };
 
+let lastDriverForEvents = null;
+
 export const loadDashboardEvents = async (driver) => {
   if (!dashboardEventsList && !upcomingEventsList) return;
   if (!driver) {
+    lastDriverForEvents = null;
     if (dashboardEventsList) setList(dashboardEventsList, [], 'Log in to load events.');
     if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
     return;
+  }
+  lastDriverForEvents = driver;
+  const sameTierCheckbox = document.querySelector('[data-events-same-tier]');
+  const sameTier = sameTierCheckbox?.checked ?? false;
+  if (sameTierCheckbox && !sameTierCheckbox.dataset.listenerAttached) {
+    sameTierCheckbox.dataset.listenerAttached = '1';
+    sameTierCheckbox.addEventListener('change', () => {
+      if (lastDriverForEvents) loadDashboardEvents(lastDriverForEvents);
+    });
   }
   const formatEventItem = (event) => {
     const gameLabel = event.game ? ` / ${event.game}` : '';
@@ -332,16 +344,13 @@ export const loadDashboardEvents = async (driver) => {
     return `${event.title} - ${event.format_type}${gameLabel}${timeLabel}`;
   };
   try {
+    const eventsUrl = `/api/events?driver_id=${driver.id}&same_tier=${sameTier}`;
     const [eventsRes, upcomingRes] = await Promise.all([
-      apiFetch('/api/events'),
+      apiFetch(eventsUrl),
       apiFetch(`/api/events/upcoming?driver_id=${driver.id}&discipline=${driver.primary_discipline || 'gt'}`),
     ]);
     if (!eventsRes.ok) throw new Error('failed');
-    let events = await eventsRes.json();
-
-    if (driver.sim_games && driver.sim_games.length) {
-      events = events.filter((event) => eventGameMatchesDriverGames(event?.game, driver.sim_games));
-    }
+    const events = await eventsRes.json();
 
     const withStart = events
       .filter((event) => event.start_time_utc)

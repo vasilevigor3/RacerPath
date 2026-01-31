@@ -9,16 +9,44 @@ from app.db.session import get_session
 from app.models.driver import Driver
 from app.models.user import User
 from app.models.event import Event
+from app.models.classification import Classification
 from app.models.participation import Participation
 from app.models.user_profile import UserProfile
+from app.models.incident import Incident
+from app.models.driver_license import DriverLicense
+from app.models.crs_history import CRSHistory
+from app.models.recommendation import Recommendation
 from app.schemas.admin import (
+    AdminLookupRead,
+    AdminLookupUser,
+    AdminLookupDriver,
+    AdminLookupParticipationItem,
+    AdminLookupIncidentItem,
+    AdminLookupLicenseItem,
+    AdminLookupCrsItem,
+    AdminLookupRecommendationItem,
     AdminParticipationSearchRead,
     AdminParticipationSummary,
     AdminPlayerInspectRead,
     AdminUserRead,
     AdminUserSearchRead,
+    AdminEventDetailRead,
+    AdminEventParticipationItem,
+    AdminParticipationDetailRead,
+    AdminParticipationDriverRef,
+    AdminParticipationEventRef,
+    AdminParticipationIncidentItem,
+    AdminIncidentRead,
+    AdminIncidentDetailRead,
+    AdminIncidentParticipationRef,
+    AdminIncidentEventRef,
+    AdminIncidentDriverRef,
 )
 from app.schemas.driver import DriverRead
+from app.models.enums.event_enums import EventStatus
+from app.schemas.event import EventRead
+from app.schemas.classification import ClassificationRead
+from app.schemas.participation import ParticipationRead
 from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
 from app.services.tasks import ensure_task_completion
@@ -150,6 +178,140 @@ def _find_user_and_driver(session: Session, query: str) -> tuple[User | None, Dr
     return user, driver
 
 
+@router.get("/lookup", response_model=AdminLookupRead)
+def admin_lookup(
+    q: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Unified search by email or driver_id. Returns user, driver, participations, incidents, licenses, last CRS/recommendation."""
+    user, driver = _find_user_and_driver(session, q.strip())
+    if not driver:
+        raise HTTPException(status_code=404, detail="User or driver not found")
+
+    if not user:
+        user = session.query(User).filter(User.id == driver.user_id).first()
+
+    user_out = (
+        AdminLookupUser(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            role=user.role,
+            active=user.active,
+        )
+        if user
+        else None
+    )
+    driver_out = AdminLookupDriver(
+        id=driver.id,
+        name=driver.name,
+        primary_discipline=driver.primary_discipline or "",
+        sim_games=driver.sim_games or [],
+    )
+
+    participations = (
+        session.query(Participation, Event)
+        .join(Event, Participation.event_id == Event.id, isouter=True)
+        .filter(Participation.driver_id == driver.id)
+        .order_by(Participation.started_at.desc(), Participation.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    part_items = []
+    participation_ids = []
+    for part, event in participations:
+        participation_ids.append(part.id)
+        incidents_count = (
+            session.query(Incident).filter(Incident.participation_id == part.id).count()
+        )
+        part_items.append(
+            AdminLookupParticipationItem(
+                id=part.id,
+                event_id=part.event_id,
+                event_title=event.title if event else None,
+                event_game=event.game if event else None,
+                started_at=part.started_at,
+                status=part.status.value if hasattr(part.status, "value") else str(part.status),
+                incidents_count=incidents_count,
+            )
+        )
+
+    incidents = (
+        session.query(Incident)
+        .filter(Incident.participation_id.in_(participation_ids))
+        .order_by(Incident.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    incident_items = [
+        AdminLookupIncidentItem(
+            id=i.id,
+            participation_id=i.participation_id,
+            incident_type=i.incident_type,
+            severity=i.severity,
+            lap=i.lap,
+        )
+        for i in incidents
+    ]
+
+    licenses = (
+        session.query(DriverLicense)
+        .filter(DriverLicense.driver_id == driver.id)
+        .order_by(DriverLicense.awarded_at.desc())
+        .all()
+    )
+    license_items = [
+        AdminLookupLicenseItem(id=l.id, discipline=l.discipline, level_code=l.level_code, status=l.status)
+        for l in licenses
+    ]
+
+    last_crs = (
+        session.query(CRSHistory)
+        .filter(CRSHistory.driver_id == driver.id)
+        .order_by(CRSHistory.computed_at.desc())
+        .first()
+    )
+    crs_out = (
+        AdminLookupCrsItem(
+            id=last_crs.id,
+            discipline=last_crs.discipline,
+            score=last_crs.score,
+            computed_at=last_crs.computed_at,
+        )
+        if last_crs
+        else None
+    )
+
+    last_rec = (
+        session.query(Recommendation)
+        .filter(Recommendation.driver_id == driver.id)
+        .order_by(Recommendation.created_at.desc())
+        .first()
+    )
+    rec_out = (
+        AdminLookupRecommendationItem(
+            id=last_rec.id,
+            discipline=last_rec.discipline,
+            readiness_status=last_rec.readiness_status,
+            summary=last_rec.summary,
+            created_at=last_rec.created_at,
+        )
+        if last_rec
+        else None
+    )
+
+    return AdminLookupRead(
+        user=user_out,
+        driver=driver_out,
+        participations=part_items,
+        incidents=incident_items,
+        licenses=license_items,
+        last_crs=crs_out,
+        last_recommendation=rec_out,
+    )
+
+
 @router.get("/search/user", response_model=AdminUserSearchRead)
 def search_user_by_email(
     email: str,
@@ -225,4 +387,136 @@ def inspect_driver(
         primary_discipline=driver.primary_discipline,
         sim_games=driver.sim_games or [],
         participations=summary,
+    )
+
+
+@router.get("/events/{event_id}", response_model=AdminEventDetailRead)
+def get_event_detail(
+    event_id: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Event details + classification + participations list."""
+    event = session.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    classification = (
+        session.query(Classification).filter(Classification.event_id == event_id).first()
+    )
+    participations = (
+        session.query(Participation, Driver)
+        .join(Driver, Participation.driver_id == Driver.id, isouter=True)
+        .filter(Participation.event_id == event_id)
+        .order_by(Participation.started_at.desc(), Participation.created_at.desc())
+        .limit(200)
+        .all()
+    )
+    part_items = [
+        AdminEventParticipationItem(
+            id=p.id,
+            driver_id=p.driver_id,
+            driver_name=dr.name if dr else None,
+            status=p.status.value if hasattr(p.status, "value") else str(p.status),
+            position_overall=p.position_overall,
+            laps_completed=p.laps_completed,
+            incidents_count=p.incidents_count,
+            started_at=p.started_at,
+        )
+        for p, dr in participations
+    ]
+    event_data = {k: getattr(event, k) for k in EventRead.model_fields if hasattr(event, k)}
+    event_data.setdefault("event_status", EventStatus.scheduled)
+    return AdminEventDetailRead(
+        event=EventRead.model_validate(event_data),
+        classification=ClassificationRead.model_validate(classification) if classification else None,
+        participations=part_items,
+    )
+
+
+@router.get("/participations/{participation_id}", response_model=AdminParticipationDetailRead)
+def get_participation_detail(
+    participation_id: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Participation details + driver + event + incidents list."""
+    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    if not part:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    driver = session.query(Driver).filter(Driver.id == part.driver_id).first()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    event = session.query(Event).filter(Event.id == part.event_id).first()
+    incidents = (
+        session.query(Incident)
+        .filter(Incident.participation_id == participation_id)
+        .order_by(Incident.lap.asc().nulls_last(), Incident.created_at.asc())
+        .all()
+    )
+    part_data = {**ParticipationRead.model_validate(part).model_dump(), "game": event.game if event else None}
+    return AdminParticipationDetailRead(
+        participation=ParticipationAdminRead(**part_data),
+        driver=AdminParticipationDriverRef(
+            id=driver.id,
+            name=driver.name,
+            primary_discipline=driver.primary_discipline or "",
+            sim_games=driver.sim_games or [],
+        ),
+        event=AdminParticipationEventRef(
+            id=part.event_id,
+            title=event.title if event else "",
+            game=event.game if event else None,
+        ),
+        incidents=[
+            AdminParticipationIncidentItem(
+                id=i.id,
+                incident_type=i.incident_type,
+                severity=i.severity,
+                lap=i.lap,
+                description=i.description,
+                created_at=i.created_at,
+            )
+            for i in incidents
+        ],
+    )
+
+
+@router.get("/incidents/{incident_id}", response_model=AdminIncidentDetailRead)
+def get_incident_detail(
+    incident_id: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Incident details + participation + event + driver."""
+    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    part = (
+        session.query(Participation)
+        .filter(Participation.id == incident.participation_id)
+        .first()
+    )
+    if not part:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    event = session.query(Event).filter(Event.id == part.event_id).first()
+    driver = session.query(Driver).filter(Driver.id == part.driver_id).first()
+    return AdminIncidentDetailRead(
+        incident=AdminIncidentRead(
+            id=incident.id,
+            participation_id=incident.participation_id,
+            incident_type=incident.incident_type,
+            severity=incident.severity,
+            lap=incident.lap,
+            description=incident.description,
+            created_at=incident.created_at,
+        ),
+        participation=AdminIncidentParticipationRef(
+            id=part.id,
+            driver_id=part.driver_id,
+            event_id=part.event_id,
+            status=part.status.value if hasattr(part.status, "value") else str(part.status),
+            started_at=part.started_at,
+        ),
+        event=AdminIncidentEventRef(id=event.id, title=event.title, game=event.game) if event else None,
+        driver=AdminIncidentDriverRef(id=driver.id, name=driver.name) if driver else None,
     )

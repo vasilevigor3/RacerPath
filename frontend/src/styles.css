@@ -488,6 +488,254 @@ footer {
   margin-bottom: 8px;
 }
 
+.section-header-row--with-metrics {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.section-header-row--with-metrics .section-heading {
+  margin-bottom: 0;
+}
+
+.section-header-row--with-metrics .section-heading h2 {
+  margin-bottom: 0;
+}
+
+.section-header-row__heading-wrap,
+.section-header-row__metrics-wrap {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-metrics-board {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 8px 16px;
+  margin-bottom: 0;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-metrics-board--error {
+  color: var(--error, #c00);
+}
+
+.admin-metrics-board__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-metrics-board__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-metrics-board__term {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted, #666);
+}
+
+.admin-metrics-board__value {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .section-header-row__heading-wrap,
+  .section-header-row__metrics-wrap {
+    justify-content: center;
+  }
+  .admin-metrics-board {
+    justify-content: center;
+  }
+}
+
+.admin-console__body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.admin-lookup__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 400px;
+}
+
+.admin-lookup__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted, #666);
+}
+
+.admin-lookup__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-lookup__input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.admin-lookup__btn {
+  flex-shrink: 0;
+}
+
+.admin-lookup__error {
+  color: var(--error, #c00);
+  font-size: 0.875rem;
+  margin: 8px 0 0;
+}
+
+.admin-lookup-result {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-lookup-result__block {
+  margin: 0;
+}
+
+.admin-lookup-result__title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--muted, #666);
+}
+
+.admin-lookup-result__dl {
+  display: grid;
+  gap: 4px 16px;
+  grid-template-columns: auto 1fr;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.admin-lookup-result__dl dt {
+  margin: 0;
+  color: var(--muted, #666);
+}
+
+.admin-lookup-result__dl dd {
+  margin: 0;
+}
+
+.admin-lookup-result__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-lookup-result__list li {
+  margin-bottom: 4px;
+}
+
+.admin-lookup-result__link {
+  display: inline-block;
+  text-align: left;
+  width: 100%;
+  padding: 6px 0;
+  font-size: 0.875rem;
+  color: var(--link, #0066cc);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-lookup-result__link:hover {
+  color: var(--link-hover, #004499);
+}
+
+.admin-console__detail {
+  padding: 20px;
+}
+
+.admin-detail-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-detail-panel__back {
+  font-size: 0.875rem;
+  color: var(--muted, #666);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.admin-detail-panel__back:hover {
+  color: var(--link-hover, #004499);
+}
+
+.admin-detail-panel__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.admin-detail-panel__subtitle {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted, #666);
+}
+
+.admin-detail-panel__block {
+  margin-bottom: 16px;
+}
+
+.admin-detail-panel__block:last-child {
+  margin-bottom: 0;
+}
+
+.admin-detail-panel__error {
+  margin: 0;
+  color: var(--error, #c00);
+}
+
+.admin-console__detail-placeholder {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted, #666);
+}
+
 .grid-2,
 .grid-3,
 .grid-4 {

@@ -47,6 +47,9 @@ const Cabinet = () => (
             <span className="pill" data-profile-discipline>
               Discipline: --
             </span>
+            <span className="pill" data-profile-tier>
+              Tier: --
+            </span>
             <span className="pill" data-profile-platforms>
               Platforms: --
             </span>
@@ -140,6 +143,8 @@ const Cabinet = () => (
 
         <div className="tab-panel active" data-tab-panel="overview">
           <div className="grid-2">
+            {/* Next actions: loadDashboardRecommendations (dashboard.js) when profile loads.
+                Data: GET /api/recommendations/latest?driver_id=&discipline= → items (risks, missing tasks, "Race next: …"). */}
             <div className="card compact">
               <p className="card-title">Next actions</p>
               <ul className="list" data-recommendation-list>

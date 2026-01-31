@@ -36,6 +36,7 @@ const profileInitials = document.querySelector('[data-profile-initials]');
 const profileFullname = document.querySelector('[data-profile-fullname]');
 const profileLocation = document.querySelector('[data-profile-location]');
 const profileDiscipline = document.querySelector('[data-profile-discipline]');
+const profileTier = document.querySelector('[data-profile-tier]');
 const profilePlatforms = document.querySelector('[data-profile-platforms]');
 const profileUserId = document.querySelector('[data-profile-user-id]');
 const profileGoals = document.querySelector('[data-profile-goals]');
@@ -90,6 +91,7 @@ export const setProfileEmpty = (message, options = {}) => {
   if (profileFullname) profileFullname.textContent = '--';
   if (profileLocation) profileLocation.textContent = 'Location not set';
   if (profileDiscipline) profileDiscipline.textContent = 'Discipline: --';
+  if (profileTier) profileTier.textContent = 'Tier: --';
   if (profilePlatforms) profilePlatforms.textContent = 'Platforms: --';
   setProfileIdLabel('--', 'Driver ID');
   if (profileGoals) profileGoals.textContent = 'System goals will appear after your first recommendations.';
@@ -124,6 +126,9 @@ const loadUserProfile = async (driver) => {
     }
     if (profileDiscipline) {
       profileDiscipline.textContent = `Discipline: ${formatDiscipline(profile.primary_discipline)}`;
+    }
+    if (profileTier && driver) {
+      profileTier.textContent = `Tier: ${driver.tier ?? 'E0'}`;
     }
     if (profilePlatforms) {
       const platforms =

@@ -59,10 +59,6 @@ def latest(
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    recommendation = (
-        session.query(Recommendation)
-        .filter(Recommendation.driver_id == driver_id, Recommendation.discipline == discipline)
-        .order_by(Recommendation.created_at.desc())
-        .first()
-    )
+    # Always recompute so "Race next" uses same driver.tier filter as /events/upcoming
+    recommendation = compute_recommendation(session, driver_id, discipline)
     return recommendation

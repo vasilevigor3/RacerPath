@@ -1,6 +1,7 @@
 import { apiFetch } from '../api/client.js';
 import { setList } from '../utils/dom.js';
 import { formatDateTime } from '../utils/format.js';
+import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { readinessState } from '../state/session.js';
 import { updateReadiness } from '../ui/readiness.js';
 import {
@@ -325,41 +326,35 @@ export const loadDashboardEvents = async (driver) => {
     if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
     return;
   }
+  const formatEventItem = (event) => {
+    const gameLabel = event.game ? ` / ${event.game}` : '';
+    const timeLabel = event.start_time_utc ? ` • ${formatDateTime(event.start_time_utc)}` : '';
+    return `${event.title} - ${event.format_type}${gameLabel}${timeLabel}`;
+  };
   try {
-    const res = await apiFetch('/api/events');
-    if (!res.ok) throw new Error('failed');
-    let events = await res.json();
+    const [eventsRes, upcomingRes] = await Promise.all([
+      apiFetch('/api/events'),
+      apiFetch(`/api/events/upcoming?driver_id=${driver.id}&discipline=${driver.primary_discipline || 'gt'}`),
+    ]);
+    if (!eventsRes.ok) throw new Error('failed');
+    let events = await eventsRes.json();
 
-    // Filter: only events for driver's selected sim games (if any).
-    // Event.game can be short name (e.g. "ACC"); driver.sim_games uses option value (e.g. "Assetto Corsa Competizione").
-    const driverGamesSet = new Set((driver.sim_games || []).map((g) => (g || '').toLowerCase()));
-    const eventMatchesDriverGames = (event) => {
-      if (!event.game) return false;
-      const g = event.game.trim();
-      if (driverGamesSet.has(g.toLowerCase())) return true;
-      if (g === 'ACC' && driverGamesSet.has('assetto corsa competizione')) return true;
-      if (g.toLowerCase() === 'assetto corsa competizione' && driverGamesSet.has('acc')) return true;
-      return false;
-    };
     if (driver.sim_games && driver.sim_games.length) {
-      events = events.filter(eventMatchesDriverGames);
+      events = events.filter((event) => eventGameMatchesDriverGames(event?.game, driver.sim_games));
     }
 
     const withStart = events
       .filter((event) => event.start_time_utc)
       .sort((a, b) => new Date(a.start_time_utc) - new Date(b.start_time_utc));
-    const now = new Date();
-    const upcoming = withStart.filter((event) => new Date(event.start_time_utc) > now).slice(0, 3);
     const fallback = events.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
-    const formatEventItem = (event) => {
-      const gameLabel = event.game ? ` / ${event.game}` : '';
-      const timeLabel = event.start_time_utc ? ` • ${formatDateTime(event.start_time_utc)}` : '';
-      return `${event.title} - ${event.format_type}${gameLabel}${timeLabel}`;
-    };
-
     const dashboardItems = (withStart.length ? withStart : fallback).slice(0, 5).map(formatEventItem);
-    const upcomingItems = upcoming.map(formatEventItem);
+
+    let upcomingItems = [];
+    if (upcomingRes.ok) {
+      const upcomingEvents = await upcomingRes.json();
+      upcomingItems = (Array.isArray(upcomingEvents) ? upcomingEvents : []).map(formatEventItem);
+    }
 
     if (dashboardEventsList) {
       const emptyText = driver.sim_games && driver.sim_games.length

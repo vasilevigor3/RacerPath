@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -5,13 +6,17 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.models.classification import Classification
+from app.models.crs_history import CRSHistory
 from app.models.driver import Driver
 from app.models.event import Event
 from app.models.user import User
 from app.schemas.classification import ClassificationRead
-from app.schemas.event import EventCreate, EventRead
-from app.services.classifier import build_event_payload, classify_event
+from app.schemas.event import EventCreate, EventRead, EventUpdate
+from app.services.classifier import build_event_payload, classify_event, TIER_LABELS
 from app.services.auth import require_roles, require_user
+from app.utils.game_aliases import expand_driver_games_for_event_match
+
+TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -31,11 +36,20 @@ def infer_discipline(event: Event) -> str:
 
 
 def _event_create_to_orm_data(payload: EventCreate) -> dict:
-    """Event model has no event_status; filter schema-only and enum-serialized fields."""
+    """Event model has no event_status/event_tier; filter schema-only and enum-serialized fields."""
     data = payload.model_dump()
     data.pop("event_status", None)
+    data.pop("event_tier", None)
     orm_keys = {c.key for c in Event.__table__.columns}
     return {k: v for k, v in data.items() if k in orm_keys}
+
+
+def _tier_range_for_readiness(crs_score: float) -> tuple[str, str]:
+    if crs_score >= 85:
+        return "E3", "E4"
+    if crs_score >= 70:
+        return "E2", "E3"
+    return "E1", "E2"
 
 
 @router.post("", response_model=EventRead)
@@ -51,12 +65,15 @@ def create_event(
 
     classification_payload = build_event_payload(event, infer_discipline(event))
     classification_data = classify_event(classification_payload)
+    if payload.event_tier is not None:
+        classification_data["event_tier"] = payload.event_tier
+        classification_data["tier_label"] = TIER_LABELS.get(payload.event_tier, payload.event_tier)
 
     classification = Classification(event_id=event.id, **classification_data)
     session.add(classification)
     session.commit()
 
-    return event
+    return EventRead.model_validate(event).model_copy(update={"event_tier": payload.event_tier})
 
 
 @router.get("", response_model=List[EventRead])
@@ -106,10 +123,75 @@ def list_events(
     if driver_id:
         driver = session.query(Driver).filter(Driver.id == driver_id).first()
         if driver and driver.sim_games:
-            query = query.filter(Event.game.in_(driver.sim_games))
+            query = query.filter(Event.game.in_(expand_driver_games_for_event_match(driver.sim_games)))
         else:
             return []
     return query.order_by(Event.created_at.desc()).all()
+
+
+@router.get("/upcoming", response_model=List[EventRead])
+def list_upcoming_events(
+    driver_id: str,
+    discipline: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Upcoming events for driver: start_time_utc > now, event tier matches driver.tier, filtered by sim_games. Max 3."""
+    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    if user.role not in {"admin"} and driver.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Insufficient role")
+
+    driver_tier = getattr(driver, "tier", "E0") or "E0"
+    driver_games = expand_driver_games_for_event_match(driver.sim_games or [])
+
+    now = datetime.now(timezone.utc)
+    from sqlalchemy import func
+    # Only events whose tier matches driver.tier; events without Classification default to E2
+    query = (
+        session.query(Event)
+        .outerjoin(Classification, Event.id == Classification.event_id)
+        .filter(
+            Event.start_time_utc.isnot(None),
+            Event.start_time_utc > now,
+            func.coalesce(Classification.event_tier, "E2") == driver_tier,
+        )
+    )
+    if driver_games:
+        query = query.filter(Event.game.in_(driver_games))
+    # PostgreSQL: DISTINCT ON (x) requires ORDER BY x first. Use subquery to get 3 soonest event ids.
+    subq = (
+        query.with_entities(Event.id, Event.start_time_utc)
+        .group_by(Event.id, Event.start_time_utc)
+        .order_by(Event.start_time_utc.asc())
+        .limit(3)
+    )
+    event_ids = [row[0] for row in subq.all()]
+    if not event_ids:
+        return []
+    events = (
+        session.query(Event)
+        .filter(Event.id.in_(event_ids))
+        .order_by(Event.start_time_utc.asc())
+        .all()
+    )
+    # Attach event_tier from Classification; exclude events without matching tier (defensive)
+    classifications = (
+        session.query(Classification)
+        .filter(Classification.event_id.in_(event_ids))
+        .all()
+    )
+    tier_by_event = {c.event_id: c.event_tier for c in classifications}
+    out = []
+    for e in events:
+        tier = tier_by_event.get(e.id)
+        if tier != driver_tier:
+            continue  # no classification or wrong tier — do not show
+        out.append(
+            EventRead.model_validate(e).model_copy(update={"event_tier": tier})
+        )
+    return out
 
 
 @router.get("/breakdown")
@@ -149,6 +231,59 @@ def get_event(
     event = session.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    classification = (
+        session.query(Classification)
+        .filter(Classification.event_id == event_id)
+        .order_by(Classification.created_at.desc())
+        .first()
+    )
+    event_tier = classification.event_tier if classification else None
+    return EventRead.model_validate(event).model_copy(update={"event_tier": event_tier})
+
+
+@router.patch("/{event_id}", response_model=EventRead)
+def update_event(
+    event_id: str,
+    payload: EventUpdate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    event = session.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    data = payload.model_dump(exclude_unset=True)
+    event_tier = data.pop("event_tier", None)
+    orm_keys = {c.key for c in Event.__table__.columns}
+    for key, value in data.items():
+        if key in orm_keys:
+            setattr(event, key, value)
+    if event_tier is not None:
+        classification = (
+            session.query(Classification)
+            .filter(Classification.event_id == event_id)
+            .order_by(Classification.created_at.desc())
+            .first()
+        )
+        if classification:
+            classification.event_tier = event_tier
+            classification.tier_label = TIER_LABELS.get(event_tier, event_tier)
+        else:
+            classification = Classification(
+                event_id=event_id,
+                event_tier=event_tier,
+                tier_label=TIER_LABELS.get(event_tier, event_tier),
+                difficulty_score=0.0,
+                seriousness_score=0.0,
+                realism_score=0.0,
+                discipline_compatibility={},
+                caps_applied=[],
+                classification_version="admin_override",
+                inputs_hash="",
+                inputs_snapshot={},
+            )
+            session.add(classification)
+    session.commit()
+    session.refresh(event)
     return event
 
 

@@ -3,6 +3,8 @@ from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
+DriverTier = Literal["E0", "E1", "E2", "E3", "E4", "E5"]
+
 
 class DriverCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
@@ -13,6 +15,7 @@ class DriverCreate(BaseModel):
 class DriverRead(DriverCreate):
     id: str
     user_id: str | None
+    tier: DriverTier = "E0"
     created_at: datetime
 
     model_config = {"from_attributes": True}

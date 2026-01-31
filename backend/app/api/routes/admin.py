@@ -208,6 +208,7 @@ def admin_lookup(
         id=driver.id,
         name=driver.name,
         primary_discipline=driver.primary_discipline or "",
+        tier=getattr(driver, "tier", "E0") or "E0",
         sim_games=driver.sim_games or [],
     )
 

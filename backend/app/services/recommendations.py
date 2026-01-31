@@ -13,6 +13,7 @@ from app.models.participation import Participation
 from app.models.recommendation import Recommendation
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
+from app.utils.game_aliases import expand_driver_games_for_event_match
 
 TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
 
@@ -52,9 +53,16 @@ def _tier_range_for_status(status: str) -> tuple[str, str]:
 def _build_recommendation_content(
     session: Session, driver_id: str, discipline: str
 ) -> tuple[str, str, List[str]]:
-    """Build (readiness_status, summary, items) for a recommendation."""
+    """Build (readiness_status, summary, items) for a recommendation.
+
+    Items are built in order:
+    1. Participation: one line — either risks (incidents/DNF) or "No participation history yet. Complete 2 classified events."
+    2. Missing tasks: "Complete task: {name}" for each active discipline task not yet completed; stop after 5 items total in this block.
+    3. Race next: up to 3 events in tier range for readiness, filtered by driver sim_games; "Race next: {title} ({game})".
+    4. If driver has sim_games but no events in range: "No eligible events for your selected games."
+    """
     driver = session.query(Driver).filter(Driver.id == driver_id).first()
-    driver_games = driver.sim_games if driver and driver.sim_games else []
+    driver_games = expand_driver_games_for_event_match(driver.sim_games or []) if driver else []
     crs = _latest_crs(session, driver_id, discipline)
     crs_score = crs.score if crs else 0.0
 
@@ -101,7 +109,7 @@ def _build_recommendation_content(
             if len(items) >= 5:
                 break
 
-    min_tier, max_tier = _tier_range_for_status(readiness)
+    driver_tier = getattr(driver, "tier", "E0") or "E0"
     candidate_query = session.query(Event)
     if driver_games:
         candidate_query = candidate_query.filter(Event.game.in_(driver_games))
@@ -109,8 +117,8 @@ def _build_recommendation_content(
     recommended = []
     for event in candidate_events:
         classification = _latest_classification(session, event.id)
-        tier = classification.event_tier if classification else "E2"
-        if _tier_in_range(tier, min_tier, max_tier):
+        tier = classification.event_tier if classification else None
+        if tier == driver_tier:
             recommended.append(event)
         if len(recommended) >= 3:
             break
@@ -124,7 +132,7 @@ def _build_recommendation_content(
 
     summary = (
         f"CRS {crs_score:.1f}. Status: {readiness.replace('_', ' ')}. "
-        f"Recommended events tier range: {min_tier}-{max_tier}."
+        f"Race next: tier {driver_tier}."
     )
     return readiness, summary, items
 

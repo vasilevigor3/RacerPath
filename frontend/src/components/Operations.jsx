@@ -70,11 +70,50 @@ const PARTICIPATION_STATUSES = ['finished', 'dnf', 'dsq', 'dns'];
 const PARTICIPATION_STATES = ['registered', 'withdrawn', 'started', 'completed'];
 const DISCIPLINES = ['gt', 'formula', 'rally', 'karting', 'historic'];
 const GAMES = ['', 'iRacing', 'ACC', 'rFactor 2', 'AMS2', 'AC', 'F1', 'Other'];
+const EVENT_TIERS = ['E0', 'E1', 'E2', 'E3', 'E4', 'E5'];
+const SCHEDULE_TYPES = ['weekly', 'daily', 'tournament', 'special'];
+const EVENT_TYPES = ['circuit', 'rally', 'drift', 'time_attack'];
+const FORMAT_TYPES = ['sprint', 'endurance', 'hotlap'];
+const DAMAGE_MODELS = ['off', 'reduced', 'full', 'limited'];
+const RULES_TOGGLES = ['off', 'reduced', 'realistic', 'real', 'normal', 'strict', 'standard'];
+const WEATHER_TYPES = ['fixed', 'dynamic'];
+const STEWARDING_TYPES = ['none', 'automated', 'live', 'human_review'];
+const LICENSE_REQUIREMENTS = ['none', 'entry', 'rookie', 'intermediate', 'pro'];
+
+const toDatetimeLocal = (iso) => {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day}T${h}:${min}`;
+  } catch {
+    return '';
+  }
+};
 
 const AdminConstructors = () => {
-  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '' });
+  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '', event_tier: 'E2' });
   const [eventLoading, setEventLoading] = useState(false);
   const [eventMsg, setEventMsg] = useState(null);
+
+  const [updateEventId, setUpdateEventId] = useState('');
+  const [updateEventForm, setUpdateEventForm] = useState({
+    title: '', source: '', game: '', country: '', city: '', start_time_utc: '', event_tier: '',
+    schedule_type: 'weekly', event_type: 'circuit', format_type: 'sprint',
+    team_size_min: '1', team_size_max: '1', duration_minutes: '0', grid_size_expected: '0', class_count: '1',
+    damage_model: 'off', penalties: 'off', fuel_usage: 'off', tire_wear: 'off',
+    weather: 'fixed', night: false, time_acceleration: false,
+    stewarding: 'none', team_event: false, license_requirement: 'none', official_event: false, assists_allowed: false,
+    surface_type: '', track_type: '', rolling_start: false,
+  });
+  const [updateEventLoading, setUpdateEventLoading] = useState(false);
+  const [updateEventFetching, setUpdateEventFetching] = useState(false);
+  const [updateEventMsg, setUpdateEventMsg] = useState(null);
 
   const [partForm, setPartForm] = useState({
     driver_id: '', event_id: '', discipline: 'gt', status: 'finished',
@@ -96,6 +135,115 @@ const AdminConstructors = () => {
   const [updatePartLoading, setUpdatePartLoading] = useState(false);
   const [updatePartMsg, setUpdatePartMsg] = useState(null);
 
+  const fetchEventForUpdate = async () => {
+    const id = updateEventId?.trim();
+    if (!id) return;
+    setUpdateEventMsg(null);
+    setUpdateEventFetching(true);
+    try {
+      const [eventRes, classRes] = await Promise.all([
+        apiFetch(`/api/events/${encodeURIComponent(id)}`),
+        apiFetch(`/api/events/${encodeURIComponent(id)}/classification`),
+      ]);
+      if (!eventRes.ok) {
+        const d = await eventRes.json().catch(() => ({}));
+        setUpdateEventMsg(d.detail || 'Event not found');
+        return;
+      }
+      const event = await eventRes.json();
+      let eventTier = '';
+      if (classRes.ok) {
+        const cls = await classRes.json();
+        eventTier = cls.event_tier || '';
+      }
+      setUpdateEventForm({
+        title: event.title || '',
+        source: event.source || '',
+        game: event.game || '',
+        country: event.country || '',
+        city: event.city || '',
+        start_time_utc: toDatetimeLocal(event.start_time_utc),
+        event_tier: eventTier,
+        schedule_type: event.schedule_type || 'weekly',
+        event_type: event.event_type || 'circuit',
+        format_type: event.format_type || 'sprint',
+        team_size_min: String(event.team_size_min ?? 1),
+        team_size_max: String(event.team_size_max ?? 1),
+        duration_minutes: String(event.duration_minutes ?? 0),
+        grid_size_expected: String(event.grid_size_expected ?? 0),
+        class_count: String(event.class_count ?? 1),
+        damage_model: event.damage_model || 'off',
+        penalties: event.penalties || 'off',
+        fuel_usage: event.fuel_usage || 'off',
+        tire_wear: event.tire_wear || 'off',
+        weather: event.weather || 'fixed',
+        night: Boolean(event.night),
+        time_acceleration: Boolean(event.time_acceleration),
+        stewarding: event.stewarding || 'none',
+        team_event: Boolean(event.team_event),
+        license_requirement: event.license_requirement || 'none',
+        official_event: Boolean(event.official_event),
+        assists_allowed: Boolean(event.assists_allowed),
+        surface_type: event.surface_type || '',
+        track_type: event.track_type || '',
+        rolling_start: Boolean(event.rolling_start),
+      });
+      setUpdateEventMsg('Event loaded. Edit and submit to update.');
+    } catch (err) {
+      setUpdateEventMsg(err?.message || 'Failed to load event');
+    } finally {
+      setUpdateEventFetching(false);
+    }
+  };
+
+  const updateEventSubmit = (e) => {
+    e.preventDefault();
+    const id = updateEventId?.trim();
+    if (!id) return;
+    setUpdateEventLoading(true);
+    setUpdateEventMsg(null);
+    const body = {};
+    const f = updateEventForm;
+    if (f.title?.trim()) body.title = f.title.trim();
+    if (f.source?.trim()) body.source = f.source.trim();
+    if (f.game !== undefined) body.game = f.game?.trim() || null;
+    if (f.country !== undefined) body.country = f.country?.trim() || null;
+    if (f.city !== undefined) body.city = f.city?.trim() || null;
+    if (f.start_time_utc?.trim()) {
+      const v = f.start_time_utc.trim();
+      body.start_time_utc = v.endsWith('Z') ? v : (/T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z');
+    }
+    if (f.event_tier?.trim()) body.event_tier = f.event_tier.trim();
+    if (f.schedule_type) body.schedule_type = f.schedule_type;
+    if (f.event_type) body.event_type = f.event_type;
+    if (f.format_type) body.format_type = f.format_type;
+    if (f.team_size_min !== undefined) body.team_size_min = parseInt(f.team_size_min, 10);
+    if (f.team_size_max !== undefined) body.team_size_max = parseInt(f.team_size_max, 10);
+    if (f.duration_minutes !== undefined) body.duration_minutes = parseInt(f.duration_minutes, 10);
+    if (f.grid_size_expected !== undefined) body.grid_size_expected = parseInt(f.grid_size_expected, 10);
+    if (f.class_count !== undefined) body.class_count = parseInt(f.class_count, 10);
+    if (f.damage_model) body.damage_model = f.damage_model;
+    if (f.penalties) body.penalties = f.penalties;
+    if (f.fuel_usage) body.fuel_usage = f.fuel_usage;
+    if (f.tire_wear) body.tire_wear = f.tire_wear;
+    if (f.weather) body.weather = f.weather;
+    if (f.night !== undefined) body.night = f.night;
+    if (f.time_acceleration !== undefined) body.time_acceleration = f.time_acceleration;
+    if (f.stewarding) body.stewarding = f.stewarding;
+    if (f.team_event !== undefined) body.team_event = f.team_event;
+    if (f.license_requirement) body.license_requirement = f.license_requirement;
+    if (f.official_event !== undefined) body.official_event = f.official_event;
+    if (f.assists_allowed !== undefined) body.assists_allowed = f.assists_allowed;
+    if (f.surface_type !== undefined) body.surface_type = f.surface_type?.trim() || null;
+    if (f.track_type !== undefined) body.track_type = f.track_type?.trim() || null;
+    if (f.rolling_start !== undefined) body.rolling_start = f.rolling_start;
+    apiFetch(`/api/events/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
+      .then(() => setUpdateEventMsg('Event updated'))
+      .catch((err) => setUpdateEventMsg(err?.message || 'Error'))
+      .finally(() => setUpdateEventLoading(false));
+  };
+
   const createEvent = (e) => {
     e.preventDefault();
     if (!eventForm.title?.trim() || !eventForm.source?.trim()) return;
@@ -107,6 +255,7 @@ const AdminConstructors = () => {
       game: eventForm.game?.trim() || null,
       country: eventForm.country?.trim() || null,
       city: eventForm.city?.trim() || null,
+      event_tier: (eventForm.event_tier && eventForm.event_tier.trim()) ? eventForm.event_tier.trim() : 'E2',
       start_time_utc: (() => {
         const v = eventForm.start_time_utc?.trim();
         if (!v) return null;
@@ -206,6 +355,14 @@ const AdminConstructors = () => {
             </select>
           </div>
           <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Tier</label>
+            <select value={eventForm.event_tier} onChange={(e) => setEventForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input" required>
+              {EVENT_TIERS.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
             <label className="admin-constructors__label">Start time (UTC)</label>
             <input type="datetime-local" value={eventForm.start_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
           </div>
@@ -216,6 +373,110 @@ const AdminConstructors = () => {
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={eventLoading}>{eventLoading ? '…' : 'Create Event'}</button>
           {eventMsg && <p className="admin-constructors__msg" role="status">{eventMsg}</p>}
+        </form>
+      </section>
+
+      <section className="admin-constructors__block">
+        <h4 className="admin-constructors__subtitle">Update Event</h4>
+        <div className="admin-constructors__row">
+          <label className="admin-constructors__label">Event ID</label>
+          <input type="text" value={updateEventId} onChange={(e) => setUpdateEventId(e.target.value)} placeholder="event uuid" className="admin-constructors__input" />
+          <button type="button" className="btn ghost admin-constructors__btn" onClick={fetchEventForUpdate} disabled={updateEventFetching}>{updateEventFetching ? '…' : 'Fetch'}</button>
+        </div>
+        {updateEventMsg && <p className="admin-constructors__msg" role="status">{updateEventMsg}</p>}
+        <form onSubmit={updateEventSubmit} className="admin-constructors__form">
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Title</label>
+            <input type="text" value={updateEventForm.title} onChange={(e) => setUpdateEventForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Source</label>
+            <input type="text" value={updateEventForm.source} onChange={(e) => setUpdateEventForm((f) => ({ ...f, source: e.target.value }))} className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Game</label>
+            <select value={updateEventForm.game} onChange={(e) => setUpdateEventForm((f) => ({ ...f, game: e.target.value }))} className="admin-constructors__input">
+              {GAMES.map((g) => (<option key={g || '—'} value={g}>{g || '—'}</option>))}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Tier</label>
+            <select value={updateEventForm.event_tier} onChange={(e) => setUpdateEventForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input">
+              <option value="">—</option>
+              {EVENT_TIERS.map((t) => (<option key={t} value={t}>{t}</option>))}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Start time (UTC)</label>
+            <input type="datetime-local" value={updateEventForm.start_time_utc} onChange={(e) => setUpdateEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Country / City</label>
+            <input type="text" value={updateEventForm.country} onChange={(e) => setUpdateEventForm((f) => ({ ...f, country: e.target.value }))} placeholder="country" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="text" value={updateEventForm.city} onChange={(e) => setUpdateEventForm((f) => ({ ...f, city: e.target.value }))} placeholder="city" className="admin-constructors__input admin-constructors__input--short" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Schedule / Type / Format</label>
+            <select value={updateEventForm.schedule_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, schedule_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {SCHEDULE_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <select value={updateEventForm.event_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, event_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {EVENT_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <select value={updateEventForm.format_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, format_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {FORMAT_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Team size / Duration / Grid / Classes</label>
+            <input type="number" min="1" max="8" value={updateEventForm.team_size_min} onChange={(e) => setUpdateEventForm((f) => ({ ...f, team_size_min: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="team min" />
+            <input type="number" min="1" max="8" value={updateEventForm.team_size_max} onChange={(e) => setUpdateEventForm((f) => ({ ...f, team_size_max: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="team max" />
+            <input type="number" min="0" value={updateEventForm.duration_minutes} onChange={(e) => setUpdateEventForm((f) => ({ ...f, duration_minutes: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="duration" />
+            <input type="number" min="0" value={updateEventForm.grid_size_expected} onChange={(e) => setUpdateEventForm((f) => ({ ...f, grid_size_expected: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="grid" />
+            <input type="number" min="1" max="6" value={updateEventForm.class_count} onChange={(e) => setUpdateEventForm((f) => ({ ...f, class_count: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="classes" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Damage / Penalties / Fuel / Tire / Weather</label>
+            <select value={updateEventForm.damage_model} onChange={(e) => setUpdateEventForm((f) => ({ ...f, damage_model: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {DAMAGE_MODELS.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <select value={updateEventForm.penalties} onChange={(e) => setUpdateEventForm((f) => ({ ...f, penalties: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {RULES_TOGGLES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <select value={updateEventForm.fuel_usage} onChange={(e) => setUpdateEventForm((f) => ({ ...f, fuel_usage: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {RULES_TOGGLES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <select value={updateEventForm.tire_wear} onChange={(e) => setUpdateEventForm((f) => ({ ...f, tire_wear: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {RULES_TOGGLES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <select value={updateEventForm.weather} onChange={(e) => setUpdateEventForm((f) => ({ ...f, weather: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {WEATHER_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Stewarding / License</label>
+            <select value={updateEventForm.stewarding} onChange={(e) => setUpdateEventForm((f) => ({ ...f, stewarding: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {STEWARDING_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <select value={updateEventForm.license_requirement} onChange={(e) => setUpdateEventForm((f) => ({ ...f, license_requirement: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {LICENSE_REQUIREMENTS.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Night / Time accel / Team / Official / Assists / Rolling</label>
+            <label className="admin-constructors__label"><input type="checkbox" checked={updateEventForm.night} onChange={(e) => setUpdateEventForm((f) => ({ ...f, night: e.target.checked }))} /> Night</label>
+            <label className="admin-constructors__label"><input type="checkbox" checked={updateEventForm.time_acceleration} onChange={(e) => setUpdateEventForm((f) => ({ ...f, time_acceleration: e.target.checked }))} /> Time accel</label>
+            <label className="admin-constructors__label"><input type="checkbox" checked={updateEventForm.team_event} onChange={(e) => setUpdateEventForm((f) => ({ ...f, team_event: e.target.checked }))} /> Team</label>
+            <label className="admin-constructors__label"><input type="checkbox" checked={updateEventForm.official_event} onChange={(e) => setUpdateEventForm((f) => ({ ...f, official_event: e.target.checked }))} /> Official</label>
+            <label className="admin-constructors__label"><input type="checkbox" checked={updateEventForm.assists_allowed} onChange={(e) => setUpdateEventForm((f) => ({ ...f, assists_allowed: e.target.checked }))} /> Assists</label>
+            <label className="admin-constructors__label"><input type="checkbox" checked={updateEventForm.rolling_start} onChange={(e) => setUpdateEventForm((f) => ({ ...f, rolling_start: e.target.checked }))} /> Rolling start</label>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Surface / Track</label>
+            <input type="text" value={updateEventForm.surface_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, surface_type: e.target.value }))} placeholder="surface_type" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="text" value={updateEventForm.track_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, track_type: e.target.value }))} placeholder="track_type" className="admin-constructors__input admin-constructors__input--short" />
+          </div>
+          <button type="submit" className="btn primary admin-constructors__btn" disabled={updateEventLoading}>{updateEventLoading ? '…' : 'Update Event'}</button>
         </form>
       </section>
 

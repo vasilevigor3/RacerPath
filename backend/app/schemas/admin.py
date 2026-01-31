@@ -19,6 +19,7 @@ class AdminLookupDriver(BaseModel):
     id: str
     name: str
     primary_discipline: str
+    tier: str = "E0"
     sim_games: list[str] = []
 
 

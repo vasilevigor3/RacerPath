@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -9,6 +9,9 @@ from app.models.enums.event_enums import (EventStatus,
     StewardingType, LicenseRequirement,
 )
 
+EVENT_TIERS = ("E0", "E1", "E2", "E3", "E4", "E5")
+EventTier = Literal["E0", "E1", "E2", "E3", "E4", "E5"]
+
 
 class EventCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
@@ -17,6 +20,7 @@ class EventCreate(BaseModel):
     country: Optional[str] = Field(default=None, max_length=80)
     city: Optional[str] = Field(default=None, max_length=80)
     start_time_utc: Optional[datetime] = None
+    event_tier: Optional[EventTier] = Field(default=None, description="Override classification tier (E0–E5)")
 
     event_status: EventStatus = EventStatus.scheduled
 
@@ -58,6 +62,58 @@ class EventCreate(BaseModel):
     @model_validator(mode="after")
     def validate_team_sizes(self):
         if self.team_size_min > self.team_size_max:
+            raise ValueError("team_size_min cannot be greater than team_size_max")
+        return self
+
+
+class EventUpdate(BaseModel):
+    """Partial update for admin; all fields optional. event_tier updates Classification."""
+    title: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    source: Optional[str] = Field(default=None, max_length=40)
+    game: Optional[str] = Field(default=None, max_length=60)
+    country: Optional[str] = Field(default=None, max_length=80)
+    city: Optional[str] = Field(default=None, max_length=80)
+    start_time_utc: Optional[datetime] = None
+    event_tier: Optional[EventTier] = None
+
+    schedule_type: Optional[ScheduleType] = None
+    event_type: Optional[EventType] = None
+    format_type: Optional[FormatType] = None
+
+    session_list: Optional[List[str]] = None
+    team_size_min: Optional[int] = Field(default=None, ge=1, le=8)
+    team_size_max: Optional[int] = Field(default=None, ge=1, le=8)
+
+    rolling_start: Optional[bool] = None
+    pit_rules: Optional[Dict[str, bool | int | str]] = None
+
+    duration_minutes: Optional[int] = Field(default=None, ge=0, le=1440)
+    grid_size_expected: Optional[int] = Field(default=None, ge=0, le=100)
+
+    class_count: Optional[int] = Field(default=None, ge=1, le=6)
+    car_class_list: Optional[List[str]] = None
+
+    damage_model: Optional[DamageModel] = None
+    penalties: Optional[RulesToggle] = None
+    fuel_usage: Optional[RulesToggle] = None
+    tire_wear: Optional[RulesToggle] = None
+
+    weather: Optional[WeatherType] = None
+    night: Optional[bool] = None
+    time_acceleration: Optional[bool] = None
+
+    surface_type: Optional[str] = None
+    track_type: Optional[str] = None
+
+    stewarding: Optional[StewardingType] = None
+    team_event: Optional[bool] = None
+    license_requirement: Optional[LicenseRequirement] = None
+    official_event: Optional[bool] = None
+    assists_allowed: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_team_sizes(self):
+        if self.team_size_min is not None and self.team_size_max is not None and self.team_size_min > self.team_size_max:
             raise ValueError("team_size_min cannot be greater than team_size_max")
         return self
 

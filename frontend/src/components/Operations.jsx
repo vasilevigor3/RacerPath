@@ -233,9 +233,14 @@ const AdminLookup = () => {
                 {partData.incidents?.length > 0 && (
                   <>
                     <h4 className="admin-detail-panel__subtitle">Incidents</h4>
-                    <ul className="admin-lookup-result__list">
+                    <ul className="admin-lookup-result__list admin-lookup-result__participations">
                       {partData.incidents.map((i) => (
-                        <li key={i.id}>{i.incident_type} (severity {i.severity}) {i.lap != null ? `lap ${i.lap}` : ''}</li>
+                        <li key={i.id}>
+                          <span className="admin-lookup-result__part-id">{i.id}</span>
+                          {i.created_at != null && (
+                            <span className="admin-lookup-result__part-date">{formatDate(i.created_at)}</span>
+                          )}
+                        </li>
                       ))}
                     </ul>
                   </>

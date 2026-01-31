@@ -1,0 +1,52 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: racerpath-app
+    working_dir: /app
+    environment:
+      ALEMBIC_CONFIG: /app/alembic.ini
+      DATABASE_URL: postgresql+psycopg://racerpath:racerpath@postgres:5432/racerpath
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: local
+      WSS_EVENTS_URL: ${WSS_EVENTS_URL:-}
+      WSS_API_KEY: ${WSS_API_KEY:-}
+      GRIDFINDER_EVENTS_URL: ${GRIDFINDER_EVENTS_URL:-}
+      GRIDFINDER_API_KEY: ${GRIDFINDER_API_KEY:-}
+    ports:
+      - "8001:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: racerpath-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+
+  postgres:
+    image: postgres:16
+    container_name: racerpath-postgres
+    environment:
+      POSTGRES_USER: racerpath
+      POSTGRES_PASSWORD: racerpath
+      POSTGRES_DB: racerpath
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: racerpath-redis
+    ports:
+      - "6380:6379"
+
+volumes:
+  postgres_data:

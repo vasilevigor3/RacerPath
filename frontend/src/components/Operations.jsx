@@ -64,11 +64,21 @@ const formatDate = (d) => {
   }
 };
 
-const AdminLookup = ({ onSelectEntity }) => {
+const AdminLookup = () => {
   const [q, setQ] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const [partId, setPartId] = useState('');
+  const [partData, setPartData] = useState(null);
+  const [partLoading, setPartLoading] = useState(false);
+  const [partError, setPartError] = useState(null);
+
+  const [incidentId, setIncidentId] = useState('');
+  const [incidentData, setIncidentData] = useState(null);
+  const [incidentLoading, setIncidentLoading] = useState(false);
+  const [incidentError, setIncidentError] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -77,6 +87,10 @@ const AdminLookup = ({ onSelectEntity }) => {
     setLoading(true);
     setError(null);
     setResult(null);
+    setPartData(null);
+    setPartError(null);
+    setIncidentData(null);
+    setIncidentError(null);
     apiFetch(`/api/admin/lookup?q=${encodeURIComponent(query)}`)
       .then((res) => {
         if (!res.ok) throw new Error(res.statusText || 'Not found');
@@ -93,8 +107,46 @@ const AdminLookup = ({ onSelectEntity }) => {
       });
   };
 
-  const handleClick = (type, id) => {
-    if (typeof onSelectEntity === 'function') onSelectEntity({ type, id });
+  const fetchParticipation = (e) => {
+    e.preventDefault();
+    const id = partId.trim();
+    if (!id) return;
+    setPartLoading(true);
+    setPartError(null);
+    setPartData(null);
+    apiFetch(`/api/admin/participations/${encodeURIComponent(id)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Not found');
+        return res.json();
+      })
+      .then(setPartData)
+      .catch((err) => {
+        setPartError(err?.message || 'Error');
+      })
+      .finally(() => {
+        setPartLoading(false);
+      });
+  };
+
+  const fetchIncident = (e) => {
+    e.preventDefault();
+    const id = incidentId.trim();
+    if (!id) return;
+    setIncidentLoading(true);
+    setIncidentError(null);
+    setIncidentData(null);
+    apiFetch(`/api/admin/incidents/${encodeURIComponent(id)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Not found');
+        return res.json();
+      })
+      .then(setIncidentData)
+      .catch((err) => {
+        setIncidentError(err?.message || 'Error');
+      })
+      .finally(() => {
+        setIncidentLoading(false);
+      });
   };
 
   return (
@@ -121,17 +173,6 @@ const AdminLookup = ({ onSelectEntity }) => {
       {error && <p className="admin-lookup__error" role="alert">{error}</p>}
       {result && (
         <div className="admin-lookup-result card">
-          {result.user && (
-            <section className="admin-lookup-result__block">
-              <h3 className="admin-lookup-result__title">User</h3>
-              <dl className="admin-lookup-result__dl">
-                <div><dt>ID</dt><dd>{result.user.id}</dd></div>
-                <div><dt>Name</dt><dd>{result.user.name}</dd></div>
-                <div><dt>Email</dt><dd>{result.user.email ?? '—'}</dd></div>
-                <div><dt>Role</dt><dd>{result.user.role}</dd></div>
-              </dl>
-            </section>
-          )}
           {result.driver && (
             <section className="admin-lookup-result__block">
               <h3 className="admin-lookup-result__title">Driver</h3>
@@ -141,308 +182,122 @@ const AdminLookup = ({ onSelectEntity }) => {
                 <div><dt>Discipline</dt><dd>{result.driver.primary_discipline}</dd></div>
                 <div><dt>Games</dt><dd>{result.driver.sim_games?.length ? result.driver.sim_games.join(', ') : '—'}</dd></div>
               </dl>
+              <h4 className="admin-lookup-result__subtitle">Last Participations</h4>
+              {result.participations?.length > 0 ? (
+                <ul className="admin-lookup-result__list admin-lookup-result__participations">
+                  {result.participations.map((p) => (
+                    <li key={p.id}>
+                      <span className="admin-lookup-result__part-id">{p.id}</span>
+                      <span className="admin-lookup-result__part-date">{formatDate(p.started_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="admin-lookup-result__empty">No participations</p>
+              )}
             </section>
           )}
-          {result.participations?.length > 0 && (
-            <section className="admin-lookup-result__block">
-              <h3 className="admin-lookup-result__title">Participations</h3>
-              <ul className="admin-lookup-result__list">
-                {result.participations.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      className="admin-lookup-result__link"
-                      onClick={() => handleClick('participation', p.id)}
-                      data-entity-type="participation"
-                      data-entity-id={p.id}
-                    >
-                      {p.event_title || p.event_id} {p.event_game ? `(${p.event_game})` : ''} — {p.status} · {p.incidents_count} incident(s)
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {result.incidents?.length > 0 && (
-            <section className="admin-lookup-result__block">
-              <h3 className="admin-lookup-result__title">Incidents</h3>
-              <ul className="admin-lookup-result__list">
-                {result.incidents.map((i) => (
-                  <li key={i.id}>
-                    <button
-                      type="button"
-                      className="admin-lookup-result__link"
-                      onClick={() => handleClick('incident', i.id)}
-                      data-entity-type="incident"
-                      data-entity-id={i.id}
-                    >
-                      {i.incident_type} (severity {i.severity}) · participation {i.participation_id?.slice(0, 8)}…
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {result.licenses?.length > 0 && (
-            <section className="admin-lookup-result__block">
-              <h3 className="admin-lookup-result__title">Licenses</h3>
-              <ul className="admin-lookup-result__list">
-                {result.licenses.map((l) => (
-                  <li key={l.id}>
-                    <button
-                      type="button"
-                      className="admin-lookup-result__link"
-                      onClick={() => handleClick('license', l.id)}
-                      data-entity-type="license"
-                      data-entity-id={l.id}
-                    >
-                      {l.discipline} — {l.level_code} ({l.status})
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {result.last_crs && (
-            <section className="admin-lookup-result__block">
-              <h3 className="admin-lookup-result__title">Last CRS</h3>
-              <p>{result.last_crs.discipline}: {result.last_crs.score} ({formatDate(result.last_crs.computed_at)})</p>
-            </section>
-          )}
-          {result.last_recommendation && (
-            <section className="admin-lookup-result__block">
-              <h3 className="admin-lookup-result__title">Last recommendation</h3>
-              <p>{result.last_recommendation.discipline}: {result.last_recommendation.readiness_status} — {result.last_recommendation.summary}</p>
-            </section>
-          )}
+
+          <section className="admin-lookup-result__block admin-lookup-result__inputs">
+            <label className="admin-lookup__label" htmlFor="admin-lookup-part-id">
+              Participation by id
+            </label>
+            <form className="admin-lookup__row" onSubmit={fetchParticipation}>
+              <input
+                id="admin-lookup-part-id"
+                type="text"
+                className="admin-lookup__input"
+                placeholder="participation id"
+                value={partId}
+                onChange={(e) => setPartId(e.target.value)}
+                autoComplete="off"
+              />
+              <button type="submit" className="btn primary admin-lookup__btn" disabled={partLoading}>
+                {partLoading ? '…' : 'Fetch'}
+              </button>
+            </form>
+            {partError && <p className="admin-lookup__error" role="alert">{partError}</p>}
+            {partData && (
+              <div className="admin-lookup-result__fetched">
+                <h4 className="admin-detail-panel__subtitle">Event</h4>
+                <p>{partData.event?.title ?? partData.event?.id} {partData.event?.game ? `(${partData.event.game})` : ''}</p>
+                <h4 className="admin-detail-panel__subtitle">Driver</h4>
+                <p>{partData.driver?.name} ({partData.driver?.primary_discipline})</p>
+                <h4 className="admin-detail-panel__subtitle">Result</h4>
+                <dl className="admin-lookup-result__dl">
+                  <div><dt>Status</dt><dd>{partData.participation?.status}</dd></div>
+                  <div><dt>Position</dt><dd>{partData.participation?.position_overall ?? '—'}</dd></div>
+                  <div><dt>Laps</dt><dd>{partData.participation?.laps_completed}</dd></div>
+                  <div><dt>Started</dt><dd>{formatDate(partData.participation?.started_at)}</dd></div>
+                </dl>
+                {partData.incidents?.length > 0 && (
+                  <>
+                    <h4 className="admin-detail-panel__subtitle">Incidents</h4>
+                    <ul className="admin-lookup-result__list">
+                      {partData.incidents.map((i) => (
+                        <li key={i.id}>{i.incident_type} (severity {i.severity}) {i.lap != null ? `lap ${i.lap}` : ''}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
+            <label className="admin-lookup__label" htmlFor="admin-lookup-incident-id">
+              Incident by id
+            </label>
+            <form className="admin-lookup__row" onSubmit={fetchIncident}>
+              <input
+                id="admin-lookup-incident-id"
+                type="text"
+                className="admin-lookup__input"
+                placeholder="incident id"
+                value={incidentId}
+                onChange={(e) => setIncidentId(e.target.value)}
+                autoComplete="off"
+              />
+              <button type="submit" className="btn primary admin-lookup__btn" disabled={incidentLoading}>
+                {incidentLoading ? '…' : 'Fetch'}
+              </button>
+            </form>
+            {incidentError && <p className="admin-lookup__error" role="alert">{incidentError}</p>}
+            {incidentData && (
+              <div className="admin-lookup-result__fetched">
+                <h4 className="admin-detail-panel__subtitle">Incident</h4>
+                <dl className="admin-lookup-result__dl">
+                  <div><dt>Type</dt><dd>{incidentData.incident?.incident_type}</dd></div>
+                  <div><dt>Severity</dt><dd>{incidentData.incident?.severity}</dd></div>
+                  <div><dt>Lap</dt><dd>{incidentData.incident?.lap ?? '—'}</dd></div>
+                  <div><dt>Description</dt><dd>{incidentData.incident?.description ?? '—'}</dd></div>
+                </dl>
+                {incidentData.participation && (
+                  <>
+                    <h4 className="admin-detail-panel__subtitle">Participation</h4>
+                    <p>{incidentData.participation.id} — {incidentData.participation.status}</p>
+                  </>
+                )}
+                {incidentData.event && (
+                  <>
+                    <h4 className="admin-detail-panel__subtitle">Event</h4>
+                    <p>{incidentData.event.title} {incidentData.event.game ? `(${incidentData.event.game})` : ''}</p>
+                  </>
+                )}
+                {incidentData.driver && (
+                  <>
+                    <h4 className="admin-detail-panel__subtitle">Driver</h4>
+                    <p>{incidentData.driver.name}</p>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
         </div>
       )}
     </div>
   );
 };
 
-const ADMIN_DETAIL_ENDPOINTS = {
-  event: (id) => `/api/admin/events/${id}`,
-  participation: (id) => `/api/admin/participations/${id}`,
-  incident: (id) => `/api/admin/incidents/${id}`,
-};
-
-const AdminDetailPanel = ({ entity, onBack, onSelectEntity }) => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!entity?.type || !entity?.id) return;
-    const endpoint = ADMIN_DETAIL_ENDPOINTS[entity.type];
-    if (!endpoint) {
-      setData(null);
-      setError(`No detail for type: ${entity.type}`);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setData(null);
-    apiFetch(endpoint(entity.id))
-      .then((res) => {
-        if (cancelled) return;
-        if (!res.ok) throw new Error(res.statusText || 'Failed to load');
-        return res.json();
-      })
-      .then(setData)
-      .catch((err) => { if (!cancelled) setError(err?.message || 'Error'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [entity?.type, entity?.id]);
-
-  const handleNav = (type, id) => {
-    if (typeof onSelectEntity === 'function') onSelectEntity({ type, id });
-  };
-
-  if (entity?.type === 'license') {
-    return (
-      <div className="admin-console__detail card" role="region" aria-label="Detail">
-        <div className="admin-detail-panel__head">
-          <button type="button" className="admin-detail-panel__back" onClick={onBack}>← Back</button>
-          <h3 className="admin-detail-panel__title">License</h3>
-        </div>
-        <p className="admin-console__detail-placeholder">License {entity.id} — no detail endpoint yet.</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="admin-console__detail card" role="region" aria-label="Detail">
-        <div className="admin-detail-panel__head">
-          <button type="button" className="admin-detail-panel__back" onClick={onBack}>← Back</button>
-        </div>
-        <p aria-busy="true">Loading…</p>
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="admin-console__detail card" role="region" aria-label="Detail">
-        <div className="admin-detail-panel__head">
-          <button type="button" className="admin-detail-panel__back" onClick={onBack}>← Back</button>
-        </div>
-        <p className="admin-detail-panel__error" role="alert">{error}</p>
-      </div>
-    );
-  }
-  if (!data) return null;
-
-  if (entity.type === 'event') {
-    const { event, classification, participations } = data;
-    return (
-      <div className="admin-console__detail card" role="region" aria-label="Event detail">
-        <div className="admin-detail-panel__head">
-          <button type="button" className="admin-detail-panel__back" onClick={onBack}>← Back</button>
-          <h3 className="admin-detail-panel__title">{event?.title ?? event?.id}</h3>
-        </div>
-        <section className="admin-detail-panel__block">
-          <h4 className="admin-detail-panel__subtitle">Event</h4>
-          <dl className="admin-lookup-result__dl">
-            <div><dt>ID</dt><dd>{event?.id}</dd></div>
-            <div><dt>Game</dt><dd>{event?.game ?? '—'}</dd></div>
-            <div><dt>Start</dt><dd>{formatDate(event?.start_time_utc)}</dd></div>
-            <div><dt>Type</dt><dd>{event?.event_type ?? '—'}</dd></div>
-          </dl>
-        </section>
-        {classification && (
-          <section className="admin-detail-panel__block">
-            <h4 className="admin-detail-panel__subtitle">Classification</h4>
-            <dl className="admin-lookup-result__dl">
-              <div><dt>Tier</dt><dd>{classification.event_tier} — {classification.tier_label}</dd></div>
-              <div><dt>Difficulty</dt><dd>{classification.difficulty_score}</dd></div>
-            </dl>
-          </section>
-        )}
-        {participations?.length > 0 && (
-          <section className="admin-detail-panel__block">
-            <h4 className="admin-detail-panel__subtitle">Participations</h4>
-            <ul className="admin-lookup-result__list">
-              {participations.map((p) => (
-                <li key={p.id}>
-                  <button type="button" className="admin-lookup-result__link" onClick={() => handleNav('participation', p.id)}>
-                    {p.driver_name ?? p.driver_id} — P{p.position_overall ?? '?'} · {p.laps_completed} laps · {p.incidents_count} incident(s)
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </div>
-    );
-  }
-
-  if (entity.type === 'participation') {
-    const { participation, driver, event, incidents } = data;
-    return (
-      <div className="admin-console__detail card" role="region" aria-label="Participation detail">
-        <div className="admin-detail-panel__head">
-          <button type="button" className="admin-detail-panel__back" onClick={onBack}>← Back</button>
-          <h3 className="admin-detail-panel__title">Participation {participation?.id?.slice(0, 8)}…</h3>
-        </div>
-        <section className="admin-detail-panel__block">
-          <h4 className="admin-detail-panel__subtitle">Event</h4>
-          <p>
-            <button type="button" className="admin-lookup-result__link" onClick={() => handleNav('event', event?.id)}>
-              {event?.title ?? event?.id} {event?.game ? `(${event.game})` : ''}
-            </button>
-          </p>
-        </section>
-        <section className="admin-detail-panel__block">
-          <h4 className="admin-detail-panel__subtitle">Driver</h4>
-          <dl className="admin-lookup-result__dl">
-            <div><dt>Name</dt><dd>{driver?.name}</dd></div>
-            <div><dt>Discipline</dt><dd>{driver?.primary_discipline}</dd></div>
-          </dl>
-        </section>
-        <section className="admin-detail-panel__block">
-          <h4 className="admin-detail-panel__subtitle">Result</h4>
-          <dl className="admin-lookup-result__dl">
-            <div><dt>Status</dt><dd>{participation?.status}</dd></div>
-            <div><dt>Position</dt><dd>{participation?.position_overall ?? '—'}</dd></div>
-            <div><dt>Laps</dt><dd>{participation?.laps_completed}</dd></div>
-            <div><dt>Started</dt><dd>{formatDate(participation?.started_at)}</dd></div>
-          </dl>
-        </section>
-        {incidents?.length > 0 && (
-          <section className="admin-detail-panel__block">
-            <h4 className="admin-detail-panel__subtitle">Incidents</h4>
-            <ul className="admin-lookup-result__list">
-              {incidents.map((i) => (
-                <li key={i.id}>
-                  <button type="button" className="admin-lookup-result__link" onClick={() => handleNav('incident', i.id)}>
-                    {i.incident_type} (severity {i.severity}) {i.lap != null ? `lap ${i.lap}` : ''}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </div>
-    );
-  }
-
-  if (entity.type === 'incident') {
-    const { incident, participation, event, driver } = data;
-    return (
-      <div className="admin-console__detail card" role="region" aria-label="Incident detail">
-        <div className="admin-detail-panel__head">
-          <button type="button" className="admin-detail-panel__back" onClick={onBack}>← Back</button>
-          <h3 className="admin-detail-panel__title">{incident?.incident_type} (severity {incident?.severity})</h3>
-        </div>
-        <section className="admin-detail-panel__block">
-          <h4 className="admin-detail-panel__subtitle">Incident</h4>
-          <dl className="admin-lookup-result__dl">
-            <div><dt>ID</dt><dd>{incident?.id}</dd></div>
-            <div><dt>Type</dt><dd>{incident?.incident_type}</dd></div>
-            <div><dt>Lap</dt><dd>{incident?.lap ?? '—'}</dd></div>
-            <div><dt>Description</dt><dd>{incident?.description ?? '—'}</dd></div>
-            <div><dt>Created</dt><dd>{formatDate(incident?.created_at)}</dd></div>
-          </dl>
-        </section>
-        {participation && (
-          <section className="admin-detail-panel__block">
-            <h4 className="admin-detail-panel__subtitle">Participation</h4>
-            <p>
-              <button type="button" className="admin-lookup-result__link" onClick={() => handleNav('participation', participation.id)}>
-                {participation.id} — {participation.status} (started {formatDate(participation.started_at)})
-              </button>
-            </p>
-          </section>
-        )}
-        {event && (
-          <section className="admin-detail-panel__block">
-            <h4 className="admin-detail-panel__subtitle">Event</h4>
-            <p>
-              <button type="button" className="admin-lookup-result__link" onClick={() => handleNav('event', event.id)}>
-                {event.title} {event.game ? `(${event.game})` : ''}
-              </button>
-            </p>
-          </section>
-        )}
-        {driver && (
-          <section className="admin-detail-panel__block">
-            <h4 className="admin-detail-panel__subtitle">Driver</h4>
-            <p>{driver.name} ({driver.id})</p>
-          </section>
-        )}
-      </div>
-    );
-  }
-
-  return null;
-};
-
 const Operations = () => {
-  const [selectedEntity, setSelectedEntity] = useState(null);
-
   return (
     <section id="operations" className="section reveal is-hidden" data-admin-only>
       <div className="section-header-row section-header-row--with-metrics">
@@ -456,14 +311,7 @@ const Operations = () => {
         </div>
       </div>
       <div className="admin-console__body">
-        <AdminLookup onSelectEntity={setSelectedEntity} />
-        {selectedEntity && (
-          <AdminDetailPanel
-            entity={selectedEntity}
-            onBack={() => setSelectedEntity(null)}
-            onSelectEntity={setSelectedEntity}
-          />
-        )}
+        <AdminLookup />
       </div>
     </section>
   );

@@ -630,7 +630,38 @@ footer {
 .admin-lookup-result__title {
   font-size: 1rem;
   font-weight: 600;
+}
+
+.admin-lookup-result__subtitle {
+  margin: 12px 0 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted, #666);
+}
+
+.admin-lookup-result__participations {
+  font-size: 0.8125rem;
+}
+
+.admin-lookup-result__participations li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+}
+
+.admin-lookup-result__part-id {
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.admin-lookup-result__part-date {
+  color: var(--muted, #666);
+}
+
+.admin-lookup-result__empty {
   margin: 0 0 8px;
+  font-size: 0.875rem;
   color: var(--muted, #666);
 }
 
@@ -659,6 +690,37 @@ footer {
 
 .admin-lookup-result__list li {
   margin-bottom: 4px;
+}
+
+.admin-lookup-result__inputs {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #e0e0e0);
+}
+
+.admin-lookup-result__inputs .admin-lookup__row {
+  margin-bottom: 8px;
+}
+
+.admin-lookup-result__inputs .admin-lookup__label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.admin-lookup-result__fetched {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-muted, #f5f5f5);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.admin-lookup-result__fetched .admin-detail-panel__subtitle {
+  margin-top: 12px;
+}
+
+.admin-lookup-result__fetched .admin-detail-panel__subtitle:first-child {
+  margin-top: 0;
 }
 
 .admin-lookup-result__link {

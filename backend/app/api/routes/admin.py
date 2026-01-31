@@ -46,7 +46,7 @@ from app.schemas.driver import DriverRead
 from app.models.enums.event_enums import EventStatus
 from app.schemas.event import EventRead
 from app.schemas.classification import ClassificationRead
-from app.schemas.participation import ParticipationRead
+from app.schemas.participation import ParticipationRead, ParticipationAdminRead
 from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
 from app.services.tasks import ensure_task_completion

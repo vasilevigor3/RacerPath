@@ -41,8 +41,8 @@ class ParticipationCreate(BaseModel):
     # Lifecycle state (where we are in the process)
     participation_state: ParticipationState = ParticipationState.registered
 
-    position_overall: int | None = Field(default=None, ge=1)
-    position_class: int | None = Field(default=None, ge=1)
+    position_overall: int | None = Field(default=None, ge=0)
+    position_class: int | None = Field(default=None, ge=0)
 
     laps_completed: int = Field(default=0, ge=0)
     incidents_count: int = Field(default=0, ge=0)

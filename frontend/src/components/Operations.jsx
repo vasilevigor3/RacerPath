@@ -64,6 +64,242 @@ const formatDate = (d) => {
   }
 };
 
+const INCIDENT_TYPES = ['Contact', 'Off-track', 'Track limits', 'Unsafe rejoin', 'Blocking', 'Avoidable contact', 'Mechanical', 'Other'];
+const PARTICIPATION_STATUSES = ['finished', 'dnf', 'dsq', 'dns'];
+const PARTICIPATION_STATES = ['registered', 'withdrawn', 'started', 'completed'];
+const DISCIPLINES = ['gt', 'formula', 'rally', 'karting', 'historic'];
+const GAMES = ['', 'iRacing', 'ACC', 'rFactor 2', 'AMS2', 'AC', 'F1', 'Other'];
+
+const AdminConstructors = () => {
+  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '' });
+  const [eventLoading, setEventLoading] = useState(false);
+  const [eventMsg, setEventMsg] = useState(null);
+
+  const [partForm, setPartForm] = useState({
+    driver_id: '', event_id: '', discipline: 'gt', status: 'finished',
+    participation_state: 'registered', position_overall: '', laps_completed: '0',
+  });
+  const [partLoading, setPartLoading] = useState(false);
+  const [partMsg, setPartMsg] = useState(null);
+
+  const [incidentForm, setIncidentForm] = useState({
+    participation_id: '', incident_type: 'Contact', severity: '1', lap: '', description: '',
+  });
+  const [incidentLoading, setIncidentLoading] = useState(false);
+  const [incidentMsg, setIncidentMsg] = useState(null);
+
+  const [updatePartForm, setUpdatePartForm] = useState({
+    participation_id: '', status: '', participation_state: '', position_overall: '',
+    laps_completed: '', started_at: '', finished_at: '',
+  });
+  const [updatePartLoading, setUpdatePartLoading] = useState(false);
+  const [updatePartMsg, setUpdatePartMsg] = useState(null);
+
+  const createEvent = (e) => {
+    e.preventDefault();
+    if (!eventForm.title?.trim() || !eventForm.source?.trim()) return;
+    setEventLoading(true);
+    setEventMsg(null);
+    const body = {
+      title: eventForm.title.trim(),
+      source: eventForm.source.trim(),
+      game: eventForm.game?.trim() || null,
+    };
+    apiFetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
+      .then((data) => setEventMsg(`Event created: ${data.id}`))
+      .catch((err) => setEventMsg(err?.message || 'Error'))
+      .finally(() => setEventLoading(false));
+  };
+
+  const createParticipation = (e) => {
+    e.preventDefault();
+    if (!partForm.driver_id?.trim() || !partForm.event_id?.trim()) return;
+    setPartLoading(true);
+    setPartMsg(null);
+    const body = {
+      driver_id: partForm.driver_id.trim(),
+      event_id: partForm.event_id.trim(),
+      discipline: partForm.discipline,
+      status: partForm.status,
+      participation_state: partForm.participation_state,
+      position_overall: partForm.position_overall ? parseInt(partForm.position_overall, 10) : null,
+      laps_completed: parseInt(partForm.laps_completed, 10) || 0,
+    };
+    apiFetch('/api/participations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
+      .then((data) => setPartMsg(`Participation created: ${data.id}`))
+      .catch((err) => setPartMsg(err?.message || 'Error'))
+      .finally(() => setPartLoading(false));
+  };
+
+  const createIncident = (e) => {
+    e.preventDefault();
+    const pid = incidentForm.participation_id?.trim();
+    if (!pid) return;
+    setIncidentLoading(true);
+    setIncidentMsg(null);
+    const body = {
+      participation_id: pid,
+      incident_type: incidentForm.incident_type,
+      severity: parseInt(incidentForm.severity, 10) || 1,
+      lap: incidentForm.lap ? parseInt(incidentForm.lap, 10) : null,
+      description: incidentForm.description?.trim() || null,
+    };
+    apiFetch(`/api/participations/${encodeURIComponent(pid)}/incidents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
+      .then((data) => setIncidentMsg(`Incident created: ${data.id}`))
+      .catch((err) => setIncidentMsg(err?.message || 'Error'))
+      .finally(() => setIncidentLoading(false));
+  };
+
+  const updateParticipation = (e) => {
+    e.preventDefault();
+    const pid = updatePartForm.participation_id?.trim();
+    if (!pid) return;
+    setUpdatePartLoading(true);
+    setUpdatePartMsg(null);
+    const body = {};
+    if (updatePartForm.status) body.status = updatePartForm.status;
+    if (updatePartForm.participation_state) body.participation_state = updatePartForm.participation_state;
+    if (updatePartForm.position_overall !== '') body.position_overall = parseInt(updatePartForm.position_overall, 10);
+    if (updatePartForm.laps_completed !== '') body.laps_completed = parseInt(updatePartForm.laps_completed, 10);
+    if (updatePartForm.started_at) body.started_at = updatePartForm.started_at;
+    if (updatePartForm.finished_at) body.finished_at = updatePartForm.finished_at;
+    apiFetch(`/api/admin/participations/${encodeURIComponent(pid)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
+      .then(() => setUpdatePartMsg('Participation updated'))
+      .catch((err) => setUpdatePartMsg(err?.message || 'Error'))
+      .finally(() => setUpdatePartLoading(false));
+  };
+
+  return (
+    <div className="admin-constructors card">
+      <h3 className="admin-constructors__title">Constructors (driver flow)</h3>
+
+      <section className="admin-constructors__block">
+        <h4 className="admin-constructors__subtitle">Create Event</h4>
+        <form onSubmit={createEvent} className="admin-constructors__form">
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Title</label>
+            <input type="text" value={eventForm.title} onChange={(e) => setEventForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" required className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Source</label>
+            <input type="text" value={eventForm.source} onChange={(e) => setEventForm((f) => ({ ...f, source: e.target.value }))} placeholder="admin" className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Game</label>
+            <select value={eventForm.game} onChange={(e) => setEventForm((f) => ({ ...f, game: e.target.value }))} className="admin-constructors__input">
+              {GAMES.map((g) => (
+                <option key={g || '—'} value={g}>{g || '—'}</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="btn primary admin-constructors__btn" disabled={eventLoading}>{eventLoading ? '…' : 'Create Event'}</button>
+          {eventMsg && <p className="admin-constructors__msg" role="status">{eventMsg}</p>}
+        </form>
+      </section>
+
+      <section className="admin-constructors__block">
+        <h4 className="admin-constructors__subtitle">Create Participation</h4>
+        <form onSubmit={createParticipation} className="admin-constructors__form">
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Driver ID</label>
+            <input type="text" value={partForm.driver_id} onChange={(e) => setPartForm((f) => ({ ...f, driver_id: e.target.value }))} placeholder="driver uuid" required className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Event ID</label>
+            <input type="text" value={partForm.event_id} onChange={(e) => setPartForm((f) => ({ ...f, event_id: e.target.value }))} placeholder="event uuid" required className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Discipline</label>
+            <select value={partForm.discipline} onChange={(e) => setPartForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input">
+              {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Status</label>
+            <select value={partForm.status} onChange={(e) => setPartForm((f) => ({ ...f, status: e.target.value }))} className="admin-constructors__input">
+              {PARTICIPATION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">State</label>
+            <select value={partForm.participation_state} onChange={(e) => setPartForm((f) => ({ ...f, participation_state: e.target.value }))} className="admin-constructors__input">
+              {PARTICIPATION_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Position / Laps</label>
+            <input type="number" min="0" value={partForm.position_overall} onChange={(e) => setPartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="number" min="0" value={partForm.laps_completed} onChange={(e) => setPartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--short" />
+          </div>
+          <button type="submit" className="btn primary admin-constructors__btn" disabled={partLoading}>{partLoading ? '…' : 'Create Participation'}</button>
+          {partMsg && <p className="admin-constructors__msg" role="status">{partMsg}</p>}
+        </form>
+      </section>
+
+      <section className="admin-constructors__block">
+        <h4 className="admin-constructors__subtitle">Create Incident</h4>
+        <form onSubmit={createIncident} className="admin-constructors__form">
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Participation ID</label>
+            <input type="text" value={incidentForm.participation_id} onChange={(e) => setIncidentForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Type / Severity / Lap</label>
+            <select value={incidentForm.incident_type} onChange={(e) => setIncidentForm((f) => ({ ...f, incident_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {INCIDENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <input type="number" min="1" max="5" value={incidentForm.severity} onChange={(e) => setIncidentForm((f) => ({ ...f, severity: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+            <input type="number" min="0" value={incidentForm.lap} onChange={(e) => setIncidentForm((f) => ({ ...f, lap: e.target.value }))} placeholder="lap" className="admin-constructors__input admin-constructors__input--short" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Description</label>
+            <input type="text" value={incidentForm.description} onChange={(e) => setIncidentForm((f) => ({ ...f, description: e.target.value }))} placeholder="optional" className="admin-constructors__input" />
+          </div>
+          <button type="submit" className="btn primary admin-constructors__btn" disabled={incidentLoading}>{incidentLoading ? '…' : 'Create Incident'}</button>
+          {incidentMsg && <p className="admin-constructors__msg" role="status">{incidentMsg}</p>}
+        </form>
+      </section>
+
+      <section className="admin-constructors__block">
+        <h4 className="admin-constructors__subtitle">Update Participation</h4>
+        <form onSubmit={updateParticipation} className="admin-constructors__form">
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Participation ID</label>
+            <input type="text" value={updatePartForm.participation_id} onChange={(e) => setUpdatePartForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Status / State</label>
+            <select value={updatePartForm.status} onChange={(e) => setUpdatePartForm((f) => ({ ...f, status: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              <option value="">—</option>
+              {PARTICIPATION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={updatePartForm.participation_state} onChange={(e) => setUpdatePartForm((f) => ({ ...f, participation_state: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              <option value="">—</option>
+              {PARTICIPATION_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Position / Laps</label>
+            <input type="number" min="0" value={updatePartForm.position_overall} onChange={(e) => setUpdatePartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="number" min="0" value={updatePartForm.laps_completed} onChange={(e) => setUpdatePartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--short" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Started / Finished (ISO)</label>
+            <input type="text" value={updatePartForm.started_at} onChange={(e) => setUpdatePartForm((f) => ({ ...f, started_at: e.target.value }))} placeholder="2025-01-31T12:00:00Z" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="text" value={updatePartForm.finished_at} onChange={(e) => setUpdatePartForm((f) => ({ ...f, finished_at: e.target.value }))} placeholder="2025-01-31T14:00:00Z" className="admin-constructors__input admin-constructors__input--short" />
+          </div>
+          <button type="submit" className="btn primary admin-constructors__btn" disabled={updatePartLoading}>{updatePartLoading ? '…' : 'Update Participation'}</button>
+          {updatePartMsg && <p className="admin-constructors__msg" role="status">{updatePartMsg}</p>}
+        </form>
+      </section>
+    </div>
+  );
+};
+
 const AdminLookup = () => {
   const [q, setQ] = useState('');
   const [result, setResult] = useState(null);
@@ -171,6 +407,9 @@ const AdminLookup = () => {
         </div>
       </form>
       {error && <p className="admin-lookup__error" role="alert">{error}</p>}
+
+      <AdminConstructors />
+
       {result && (
         <div className="admin-lookup-result card">
           {result.driver && (

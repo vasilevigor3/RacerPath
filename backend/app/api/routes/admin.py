@@ -10,7 +10,7 @@ from app.models.driver import Driver
 from app.models.user import User
 from app.models.event import Event
 from app.models.classification import Classification
-from app.models.participation import Participation
+from app.models.participation import Participation, ParticipationStatus, ParticipationState
 from app.models.user_profile import UserProfile
 from app.models.incident import Incident
 from app.models.driver_license import DriverLicense
@@ -36,6 +36,7 @@ from app.schemas.admin import (
     AdminParticipationDriverRef,
     AdminParticipationEventRef,
     AdminParticipationIncidentItem,
+    AdminParticipationUpdate,
     AdminIncidentRead,
     AdminIncidentDetailRead,
     AdminIncidentParticipationRef,
@@ -479,6 +480,29 @@ def get_participation_detail(
             for i in incidents
         ],
     )
+
+
+@router.patch("/participations/{participation_id}", response_model=ParticipationRead)
+def update_participation(
+    participation_id: str,
+    payload: AdminParticipationUpdate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Update participation fields (status, participation_state, position, laps, started_at, finished_at)."""
+    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    if not part:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    data = payload.model_dump(exclude_unset=True)
+    if "status" in data and data["status"] is not None:
+        data["status"] = ParticipationStatus(data["status"])
+    if "participation_state" in data and data["participation_state"] is not None:
+        data["participation_state"] = ParticipationState(data["participation_state"])
+    for key, value in data.items():
+        setattr(part, key, value)
+    session.commit()
+    session.refresh(part)
+    return part
 
 
 @router.get("/incidents/{incident_id}", response_model=AdminIncidentDetailRead)

@@ -81,14 +81,14 @@ const Cabinet = () => (
             </span>
             <span className="stat-meta">Latest score</span>
           </button>
-          <button className="stat-card is-link" type="button" data-stat-target="events" data-scroll-target="#cabinet" data-tab-target="events">
+          <button className="stat-card is-link" type="button" data-stat-target="events" data-tab-target="events">
             <span className="stat-label">Events raced</span>
             <span className="stat-value" data-stat-events>
               0
             </span>
             <span className="stat-meta">Last 30 days</span>
           </button>
-          <button className="stat-card is-link" type="button" data-stat-target="tasks" data-scroll-target="#cabinet" data-tab-target="tasks">
+          <button className="stat-card is-link" type="button" data-stat-target="tasks" data-tab-target="tasks">
             <span className="stat-label">Tasks done</span>
             <span className="stat-value" data-stat-tasks>
               0

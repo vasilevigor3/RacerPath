@@ -30,13 +30,21 @@ def infer_discipline(event: Event) -> str:
     return "gt"
 
 
+def _event_create_to_orm_data(payload: EventCreate) -> dict:
+    """Event model has no event_status; filter schema-only and enum-serialized fields."""
+    data = payload.model_dump()
+    data.pop("event_status", None)
+    orm_keys = {c.key for c in Event.__table__.columns}
+    return {k: v for k, v in data.items() if k in orm_keys}
+
+
 @router.post("", response_model=EventRead)
 def create_event(
     payload: EventCreate,
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    event = Event(**payload.model_dump())
+    event = Event(**_event_create_to_orm_data(payload))
     session.add(event)
     session.commit()
     session.refresh(event)

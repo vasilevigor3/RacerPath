@@ -164,6 +164,19 @@ class AdminParticipationDetailRead(BaseModel):
     incidents: list[AdminParticipationIncidentItem] = []
 
 
+class AdminParticipationUpdate(BaseModel):
+    """Partial update for participation (admin constructor / driver flow)."""
+    status: str | None = None
+    participation_state: str | None = None
+    position_overall: int | None = None
+    position_class: int | None = None
+    laps_completed: int | None = None
+    incidents_count: int | None = None
+    penalties_count: int | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
 class AdminIncidentParticipationRef(BaseModel):
     id: str
     driver_id: str

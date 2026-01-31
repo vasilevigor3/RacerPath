@@ -15,6 +15,7 @@ from app.schemas.event import EventCreate, EventRead, EventUpdate
 from app.services.classifier import build_event_payload, classify_event, TIER_LABELS
 from app.services.auth import require_roles, require_user
 from app.utils.game_aliases import expand_driver_games_for_event_match
+from app.utils.special_events import special_slot_tier_conflict
 
 TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
 

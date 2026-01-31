@@ -72,7 +72,7 @@ const DISCIPLINES = ['gt', 'formula', 'rally', 'karting', 'historic'];
 const GAMES = ['', 'iRacing', 'ACC', 'rFactor 2', 'AMS2', 'AC', 'F1', 'Other'];
 
 const AdminConstructors = () => {
-  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '' });
+  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '' });
   const [eventLoading, setEventLoading] = useState(false);
   const [eventMsg, setEventMsg] = useState(null);
 
@@ -107,6 +107,12 @@ const AdminConstructors = () => {
       game: eventForm.game?.trim() || null,
       country: eventForm.country?.trim() || null,
       city: eventForm.city?.trim() || null,
+      start_time_utc: (() => {
+        const v = eventForm.start_time_utc?.trim();
+        if (!v) return null;
+        if (v.endsWith('Z')) return v;
+        return /T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z';
+      })(),
     };
     apiFetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
@@ -198,6 +204,10 @@ const AdminConstructors = () => {
                 <option key={g || '—'} value={g}>{g || '—'}</option>
               ))}
             </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Start time (UTC)</label>
+            <input type="datetime-local" value={eventForm.start_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Country / City</label>

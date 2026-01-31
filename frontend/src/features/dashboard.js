@@ -330,9 +330,19 @@ export const loadDashboardEvents = async (driver) => {
     if (!res.ok) throw new Error('failed');
     let events = await res.json();
 
-    // Filter: only events for driver's selected sim games (if any)
+    // Filter: only events for driver's selected sim games (if any).
+    // Event.game can be short name (e.g. "ACC"); driver.sim_games uses option value (e.g. "Assetto Corsa Competizione").
+    const driverGamesSet = new Set((driver.sim_games || []).map((g) => (g || '').toLowerCase()));
+    const eventMatchesDriverGames = (event) => {
+      if (!event.game) return false;
+      const g = event.game.trim();
+      if (driverGamesSet.has(g.toLowerCase())) return true;
+      if (g === 'ACC' && driverGamesSet.has('assetto corsa competizione')) return true;
+      if (g.toLowerCase() === 'assetto corsa competizione' && driverGamesSet.has('acc')) return true;
+      return false;
+    };
     if (driver.sim_games && driver.sim_games.length) {
-      events = events.filter((event) => event.game && driver.sim_games.includes(event.game));
+      events = events.filter(eventMatchesDriverGames);
     }
 
     const withStart = events

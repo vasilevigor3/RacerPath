@@ -146,10 +146,11 @@ const Cabinet = () => (
                 <li>Log in to load recommendations.</li>
               </ul>
             </div>
+            {/* Upcoming events: loadDashboardEvents (dashboard.js). GET /api/events → filter by driver.sim_games (only events for selected games) → only future events (start_time_utc > now), max 3. */}
             <div className="card compact">
               <p className="card-title">Upcoming events</p>
               <ul className="list" data-upcoming-events>
-                <li>No events loaded.</li>
+                <li>Log in to load events.</li>
               </ul>
             </div>
           </div>

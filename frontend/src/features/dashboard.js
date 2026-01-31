@@ -320,17 +320,26 @@ export const loadActivityFeed = async (driver) => {
 
 export const loadDashboardEvents = async (driver) => {
   if (!dashboardEventsList && !upcomingEventsList) return;
+  if (!driver) {
+    if (dashboardEventsList) setList(dashboardEventsList, [], 'Log in to load events.');
+    if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
+    return;
+  }
   try {
     const res = await apiFetch('/api/events');
     if (!res.ok) throw new Error('failed');
     let events = await res.json();
-    if (driver && driver.sim_games && driver.sim_games.length) {
+
+    // Filter: only events for driver's selected sim games (if any)
+    if (driver.sim_games && driver.sim_games.length) {
       events = events.filter((event) => event.game && driver.sim_games.includes(event.game));
     }
+
     const withStart = events
       .filter((event) => event.start_time_utc)
       .sort((a, b) => new Date(a.start_time_utc) - new Date(b.start_time_utc));
-    const upcoming = withStart.filter((event) => new Date(event.start_time_utc) > new Date());
+    const now = new Date();
+    const upcoming = withStart.filter((event) => new Date(event.start_time_utc) > now).slice(0, 3);
     const fallback = events.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
     const formatEventItem = (event) => {
@@ -340,17 +349,18 @@ export const loadDashboardEvents = async (driver) => {
     };
 
     const dashboardItems = (withStart.length ? withStart : fallback).slice(0, 5).map(formatEventItem);
-    const upcomingItems = (upcoming.length ? upcoming : withStart).slice(0, 3).map(formatEventItem);
+    const upcomingItems = upcoming.map(formatEventItem);
+
     if (dashboardEventsList) {
-      const emptyText = driver && driver.sim_games && driver.sim_games.length
+      const emptyText = driver.sim_games && driver.sim_games.length
         ? 'No events for your games yet.'
         : 'Add sim games to see events.';
       setList(dashboardEventsList, dashboardItems, emptyText);
     }
     if (upcomingEventsList) {
-      const emptyText = driver && driver.sim_games && driver.sim_games.length
-        ? 'No events for your games yet.'
-        : 'Add sim games to see events.';
+      const emptyText = driver.sim_games && driver.sim_games.length
+        ? 'No upcoming events for your games.'
+        : 'No upcoming events. Add sim games to see events.';
       setList(upcomingEventsList, upcomingItems, emptyText);
     }
   } catch (err) {

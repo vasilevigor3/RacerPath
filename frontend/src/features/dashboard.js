@@ -20,6 +20,12 @@ const riskFlagsList = document.querySelector('[data-risk-flags]');
 const tasksCompletedList = document.querySelector('[data-tasks-completed]');
 const tasksPendingList = document.querySelector('[data-tasks-pending]');
 const recommendationList = document.querySelector('[data-recommendation-list]');
+const recNextEventTitle = document.querySelector('[data-rec-next-event-title]');
+const recNextEventDesc = document.querySelector('[data-rec-next-event-desc]');
+const recSkillGapTitle = document.querySelector('[data-rec-skill-gap-title]');
+const recSkillGapDesc = document.querySelector('[data-rec-skill-gap-desc]');
+const recReadinessTitle = document.querySelector('[data-rec-readiness-title]');
+const recReadinessDesc = document.querySelector('[data-rec-readiness-desc]');
 const upcomingEventsList = document.querySelector('[data-upcoming-events]');
 const dashboardEventsList = document.querySelector('[data-dashboard-events]');
 const licenseCurrent = document.querySelector('[data-license-current]');
@@ -67,10 +73,15 @@ export const loadDashboardStats = async (driver) => {
     const res = await apiFetch(`/api/crs/latest?driver_id=${driver.id}&discipline=${discipline}`);
     if (res.ok) {
       const crs = await res.json();
-      if (statCrs) statCrs.textContent = Math.round(crs.score);
-      readinessState.crsScore = crs.score || 0;
-    } else if (statCrs) {
-      statCrs.textContent = '--';
+      if (crs) {
+        if (statCrs) statCrs.textContent = Math.round(crs.score);
+        readinessState.crsScore = crs.score || 0;
+      } else {
+        if (statCrs) statCrs.textContent = '--';
+        readinessState.crsScore = 0;
+      }
+    } else {
+      if (statCrs) statCrs.textContent = '--';
       readinessState.crsScore = 0;
     }
   } catch (err) {
@@ -187,10 +198,43 @@ export const loadTasksOverview = async (driver) => {
   }
 };
 
+const READINESS_LABELS = { ready: 'Ready', almost_ready: 'Almost ready', not_ready: 'Not ready' };
+
+const updateRecommendationCards = (data) => {
+  const set = (el, text) => { if (el) el.textContent = text ?? '—'; };
+  if (!data) {
+    set(recNextEventTitle, '—');
+    set(recNextEventDesc, 'Load profile to see recommended event.');
+    set(recSkillGapTitle, '—');
+    set(recSkillGapDesc, 'Load profile to see next skill focus.');
+    set(recReadinessTitle, '—');
+    set(recReadinessDesc, 'Load profile to see readiness.');
+    return;
+  }
+  const items = data.items || [];
+  const nextEvent = items.find((i) => typeof i === 'string' && i.startsWith('Race next:'));
+  const skillItem = items.find(
+    (i) => typeof i === 'string' && (i.startsWith('Complete task:') || i.startsWith('Risk:'))
+  );
+  set(recNextEventTitle, nextEvent ? nextEvent.replace(/^Race next:\s*/, '').trim() : '—');
+  set(recNextEventDesc, nextEvent ? 'Add to your plan from events.' : 'No recommended event yet.');
+  if (skillItem) {
+    const isTask = skillItem.startsWith('Complete task:');
+    set(recSkillGapTitle, isTask ? skillItem.replace(/^Complete task:\s*/, '').trim() : 'Risk');
+    set(recSkillGapDesc, skillItem);
+  } else {
+    set(recSkillGapTitle, '—');
+    set(recSkillGapDesc, 'No skill gap highlighted.');
+  }
+  set(recReadinessTitle, READINESS_LABELS[data.readiness_status] ?? data.readiness_status ?? '—');
+  set(recReadinessDesc, data.summary || '');
+};
+
 export const loadDashboardRecommendations = async (driver) => {
   if (!recommendationList) return;
   if (!driver) {
     setList(recommendationList, ['Log in and create a driver profile to see next steps.'], '');
+    updateRecommendationCards(null);
     return;
   }
   try {
@@ -198,12 +242,20 @@ export const loadDashboardRecommendations = async (driver) => {
     const res = await apiFetch(`/api/recommendations/latest?driver_id=${driver.id}&discipline=${discipline}`);
     if (!res.ok) {
       setList(recommendationList, ['No recommendations yet. Compute one in Dashboards.'], '');
+      updateRecommendationCards(null);
       return;
     }
     const data = await res.json();
-    setList(recommendationList, data.items || [], 'No recommendations yet.');
+    if (data) {
+      setList(recommendationList, data.items || [], 'No recommendations yet.');
+      updateRecommendationCards(data);
+    } else {
+      setList(recommendationList, ['No recommendations yet. Compute one in Dashboards.'], '');
+      updateRecommendationCards(null);
+    }
   } catch (err) {
     setList(recommendationList, ['Unable to load recommendations.'], '');
+    updateRecommendationCards(null);
   }
 };
 
@@ -219,7 +271,7 @@ export const loadLicenseProgress = async (driver) => {
     const discipline = driver.primary_discipline || 'gt';
     const [latestRes, reqRes] = await Promise.all([
       apiFetch(`/api/licenses/latest?driver_id=${driver.id}&discipline=${discipline}`),
-      apiFetch(`/api/licenses/requirements?discipline=${discipline}`)
+      apiFetch(`/api/licenses/requirements?discipline=${discipline}&driver_id=${driver.id}`)
     ]);
     const latest = latestRes.ok ? await latestRes.json() : null;
     const requirements = reqRes.ok ? await reqRes.json() : null;

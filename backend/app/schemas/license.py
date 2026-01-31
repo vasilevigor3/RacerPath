@@ -31,3 +31,8 @@ class DriverLicenseRead(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class LicenseRequirementsRead(BaseModel):
+    next_level: str | None = None
+    requirements: List[str] = Field(default_factory=list)

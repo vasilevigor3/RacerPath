@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -47,7 +47,7 @@ def list_recommendations(
     return query.order_by(Recommendation.created_at.desc()).all()
 
 
-@router.get("/latest", response_model=RecommendationRead)
+@router.get("/latest", response_model=Optional[RecommendationRead])
 def latest(
     driver_id: str,
     discipline: str,
@@ -65,6 +65,4 @@ def latest(
         .order_by(Recommendation.created_at.desc())
         .first()
     )
-    if not recommendation:
-        raise HTTPException(status_code=404, detail="Recommendation not found")
     return recommendation

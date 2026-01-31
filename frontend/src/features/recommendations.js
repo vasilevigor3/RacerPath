@@ -15,8 +15,13 @@ const loadRecommendation = async (driverId, discipline) => {
     const res = await apiFetch(`/api/recommendations/latest?driver_id=${driverId}&discipline=${discipline}`);
     if (!res.ok) throw new Error('failed');
     const data = await res.json();
+    if (!data) {
+      if (recSummary) recSummary.textContent = 'No recommendation yet.';
+      recList.innerHTML = '<li>No recommendations.</li>';
+      return;
+    }
     if (recSummary) recSummary.textContent = data.summary;
-    recList.innerHTML = data.items.map((item) => `<li>${item}</li>`).join('');
+    recList.innerHTML = (data.items || []).map((item) => `<li>${item}</li>`).join('');
   } catch (err) {
     if (recSummary) recSummary.textContent = 'No recommendation yet.';
     if (recList) recList.innerHTML = '<li>No recommendations.</li>';

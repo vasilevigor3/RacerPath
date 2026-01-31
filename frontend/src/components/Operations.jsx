@@ -13,11 +13,12 @@ const MetricsBoard = () => {
     apiFetch('/api/metrics')
       .then((res) => {
         if (cancelled) return;
+        if (res.status === 403) return null;
         if (!res.ok) throw new Error(res.statusText || 'Failed to load metrics');
         return res.json();
       })
       .then((data) => {
-        if (!cancelled) setMetrics(data);
+        if (!cancelled) setMetrics(data ?? null);
       })
       .catch((err) => {
         if (!cancelled) setError(err?.message || 'Error');

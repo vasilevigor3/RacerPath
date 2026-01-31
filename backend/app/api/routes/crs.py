@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -47,7 +47,7 @@ def list_history(
     return query.order_by(CRSHistory.computed_at.desc()).all()
 
 
-@router.get("/latest", response_model=CRSHistoryRead)
+@router.get("/latest", response_model=Optional[CRSHistoryRead])
 def latest_crs(
     driver_id: str,
     discipline: str,
@@ -65,6 +65,4 @@ def latest_crs(
         .order_by(CRSHistory.computed_at.desc())
         .first()
     )
-    if not history:
-        raise HTTPException(status_code=404, detail="CRS not found")
     return history

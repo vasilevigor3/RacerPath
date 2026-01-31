@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 import uuid
 
@@ -17,3 +19,8 @@ class Recommendation(Base):
     summary: Mapped[str] = mapped_column(String(300), nullable=False)
     items: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    inputs_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    algo_version: Mapped[str] = mapped_column(String(32), nullable=False, default="rec_v1")
+    computed_from_participation_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("participations.id", ondelete="SET NULL"), nullable=True
+    )

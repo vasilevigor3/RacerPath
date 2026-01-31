@@ -1,9 +1,12 @@
 from datetime import datetime
-from typing import Dict, Literal
+from typing import Any, Dict, List, Literal
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 DISCIPLINE_ALIASES = {"offroad": "karting"}
+
+TASK_SCOPE = Literal["global", "per_participation", "rolling_window", "periodic"]
+TASK_PERIOD = Literal["daily", "weekly", "monthly"]
 
 
 class TaskDefinitionCreate(BaseModel):
@@ -14,8 +17,14 @@ class TaskDefinitionCreate(BaseModel):
     requirements: Dict[str, str | int | float | bool] = Field(default_factory=dict)
     min_event_tier: str | None = None
     active: bool = True
+    scope: TASK_SCOPE = "per_participation"
+    cooldown_days: int | None = Field(default=None, ge=0, le=365)
+    period: TASK_PERIOD | None = None
+    window_size: int | None = Field(default=None, ge=1, le=1000)
+    window_unit: Literal["participations", "days"] | None = None
 
-    @validator("discipline", pre=True)
+    @field_validator("discipline", mode="before")
+    @classmethod
     def normalize_discipline(cls, value: object) -> object:
         if isinstance(value, str):
             return DISCIPLINE_ALIASES.get(value, value)
@@ -37,6 +46,8 @@ class TaskCompletionCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=240)
     completed_at: datetime | None = None
     score_multiplier: float = 1.0
+    period_key: str | None = Field(default=None, max_length=16)
+    achieved_by: List[str] | Dict[str, Any] | None = None
 
 
 class TaskCompletionRead(TaskCompletionCreate):
@@ -45,3 +56,12 @@ class TaskCompletionRead(TaskCompletionCreate):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TaskCompleteRequest(BaseModel):
+    """Request for POST /api/dev/tasks/complete (by task_code)."""
+    driver_id: str
+    task_code: str
+    participation_id: str | None = None
+    period_key: str | None = Field(default=None, max_length=16)
+    achieved_by: List[str] | None = None

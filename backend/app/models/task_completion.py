@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from datetime import datetime
 import uuid
 
-from sqlalchemy import DateTime, Float, ForeignKey, String
+from sqlalchemy import DateTime, Float, ForeignKey, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -20,3 +22,7 @@ class TaskCompletion(Base):
     score_multiplier: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    # periodic: YYYY-MM-DD (daily), YYYY-Www (weekly), YYYY-MM (monthly)
+    period_key: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # for rolling_window / audit: list of participation_id or aggregates
+    achieved_by: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)

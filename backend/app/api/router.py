@@ -17,6 +17,7 @@ from app.api.routes.anti_gaming import router as anti_gaming_router
 from app.api.routes.connectors import router as connectors_router
 from app.api.routes.profile import router as profile_router
 from app.api.routes.admin import router as admin_router
+from app.api.routes.dev import router as dev_router
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(classify_router)
@@ -36,3 +37,4 @@ api_router.include_router(anti_gaming_router)
 api_router.include_router(connectors_router)
 api_router.include_router(profile_router)
 api_router.include_router(admin_router)
+api_router.include_router(dev_router)

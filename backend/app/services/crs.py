@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
@@ -8,7 +10,11 @@ from app.models.classification import Classification
 from app.models.anti_gaming import AntiGamingReport
 from app.models.crs_history import CRSHistory
 from app.models.participation import Participation
+from app.models.task_completion import TaskCompletion
 from app.core.settings import settings
+
+CRS_ALGO_VERSION = "crs_v1"
+PARTICIPATIONS_INPUT_LIMIT = 20
 
 TIER_WEIGHTS = {
     "E0": 0.6,
@@ -108,9 +114,77 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
     return CRSResult(score=round(clamp_score(score), 2), inputs=inputs)
 
 
-def record_crs(session: Session, driver_id: str, discipline: str) -> CRSHistory:
+def compute_inputs(session: Session, driver_id: str, discipline: str) -> dict:
+    """Minimal input snapshot for CRS: participation ids, counts, aggregates."""
+    participations = (
+        session.query(Participation)
+        .filter(Participation.driver_id == driver_id, Participation.discipline == discipline)
+        .order_by(Participation.created_at.desc())
+        .limit(PARTICIPATIONS_INPUT_LIMIT)
+        .all()
+    )
+    participation_ids = [p.id for p in participations]
+    if not participations:
+        return {
+            "participation_ids": [],
+            "reason": "no_participations",
+            "participations_count": 0,
+            "incidents_count": 0,
+            "finished_count": 0,
+            "task_completions_count": 0,
+        }
+    incidents_count = sum(p.incidents_count for p in participations)
+    finished_count = sum(1 for p in participations if p.status == "finished")
+    task_completions_count = (
+        session.query(TaskCompletion)
+        .filter(TaskCompletion.driver_id == driver_id, TaskCompletion.status == "completed")
+        .count()
+    )
+    return {
+        "participation_ids": participation_ids,
+        "participations_count": len(participations),
+        "incidents_count": incidents_count,
+        "finished_count": finished_count,
+        "task_completions_count": task_completions_count,
+        "avg_incidents": incidents_count / len(participations),
+    }
+
+
+def compute_inputs_hash(inputs: dict) -> str:
+    """SHA256 of canonical JSON (sorted keys) for inputs snapshot."""
+    payload = json.dumps(inputs, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def record_crs(
+    session: Session,
+    driver_id: str,
+    discipline: str,
+    trigger_participation_id: str | None = None,
+) -> CRSHistory:
+    """Legacy entry point: same as recompute_crs (writes inputs_hash, algo_version)."""
+    return recompute_crs(session, driver_id, discipline, trigger_participation_id)
+
+
+def recompute_crs(
+    session: Session,
+    driver_id: str,
+    discipline: str,
+    trigger_participation_id: str | None = None,
+) -> CRSHistory:
+    """Compute CRS and save with inputs_hash, algo_version, computed_from_participation_id."""
     result = compute_crs(session, driver_id, discipline)
-    history = CRSHistory(driver_id=driver_id, discipline=discipline, score=result.score, inputs=result.inputs)
+    inputs_snapshot = compute_inputs(session, driver_id, discipline)
+    inputs_hash = compute_inputs_hash(inputs_snapshot)
+    history = CRSHistory(
+        driver_id=driver_id,
+        discipline=discipline,
+        score=result.score,
+        inputs=result.inputs,
+        computed_from_participation_id=trigger_participation_id,
+        inputs_hash=inputs_hash,
+        algo_version=CRS_ALGO_VERSION,
+    )
     session.add(history)
     session.commit()
     session.refresh(history)

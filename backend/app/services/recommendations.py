@@ -5,6 +5,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.models.classification import Classification
+from app.services.crs import compute_inputs, compute_inputs_hash
 from app.models.crs_history import CRSHistory
 from app.models.event import Event
 from app.models.driver import Driver
@@ -48,7 +49,10 @@ def _tier_range_for_status(status: str) -> tuple[str, str]:
     return "E1", "E2"
 
 
-def compute_recommendation(session: Session, driver_id: str, discipline: str) -> Recommendation:
+def _build_recommendation_content(
+    session: Session, driver_id: str, discipline: str
+) -> tuple[str, str, List[str]]:
+    """Build (readiness_status, summary, items) for a recommendation."""
     driver = session.query(Driver).filter(Driver.id == driver_id).first()
     driver_games = driver.sim_games if driver and driver.sim_games else []
     crs = _latest_crs(session, driver_id, discipline)
@@ -122,13 +126,46 @@ def compute_recommendation(session: Session, driver_id: str, discipline: str) ->
         f"CRS {crs_score:.1f}. Status: {readiness.replace('_', ' ')}. "
         f"Recommended events tier range: {min_tier}-{max_tier}."
     )
+    return readiness, summary, items
 
+
+def compute_recommendation(session: Session, driver_id: str, discipline: str) -> Recommendation:
+    readiness, summary, items = _build_recommendation_content(session, driver_id, discipline)
     recommendation = Recommendation(
         driver_id=driver_id,
         discipline=discipline,
         readiness_status=readiness,
         summary=summary,
         items=items,
+    )
+    session.add(recommendation)
+    session.commit()
+    session.refresh(recommendation)
+    return recommendation
+
+
+REC_ALGO_VERSION = "rec_v1"
+
+
+def recompute_recommendations(
+    session: Session,
+    driver_id: str,
+    discipline: str,
+    trigger_participation_id: str | None = None,
+) -> Recommendation:
+    """Compute recommendation and save with inputs_hash, algo_version, computed_from_participation_id."""
+    readiness, summary, items = _build_recommendation_content(session, driver_id, discipline)
+    inputs_snapshot = compute_inputs(session, driver_id, discipline)
+    inputs_hash = compute_inputs_hash(inputs_snapshot)
+    recommendation = Recommendation(
+        driver_id=driver_id,
+        discipline=discipline,
+        readiness_status=readiness,
+        summary=summary,
+        items=items,
+        inputs_hash=inputs_hash,
+        algo_version=REC_ALGO_VERSION,
+        computed_from_participation_id=trigger_participation_id,
     )
     session.add(recommendation)
     session.commit()

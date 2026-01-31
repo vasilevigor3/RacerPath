@@ -62,6 +62,8 @@ def create_event(
 @router.get("", response_model=List[EventRead])
 def list_events(
     game: str | None = None,
+    country: str | None = None,
+    city: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
     driver_id: str | None = None,
@@ -75,6 +77,10 @@ def list_events(
             raise HTTPException(status_code=403, detail="Insufficient role")
     if game:
         query = query.filter(Event.game == game)
+    if country:
+        query = query.filter(Event.country == country)
+    if city:
+        query = query.filter(Event.city == city)
     if date_from:
         try:
             from datetime import datetime, timezone
@@ -104,6 +110,34 @@ def list_events(
         else:
             return []
     return query.order_by(Event.created_at.desc()).all()
+
+
+@router.get("/breakdown")
+def events_breakdown(
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Разбивка событий по странам и городам: by_country, by_city."""
+    from sqlalchemy import func
+
+    by_country = (
+        session.query(Event.country, func.count(Event.id).label("count"))
+        .filter(Event.country.isnot(None), Event.country != "")
+        .group_by(Event.country)
+        .order_by(func.count(Event.id).desc())
+        .all()
+    )
+    by_city = (
+        session.query(Event.country, Event.city, func.count(Event.id).label("count"))
+        .filter(Event.city.isnot(None), Event.city != "")
+        .group_by(Event.country, Event.city)
+        .order_by(Event.country, func.count(Event.id).desc())
+        .all()
+    )
+    return {
+        "by_country": [{"country": c, "count": n} for c, n in by_country],
+        "by_city": [{"country": c, "city": t, "count": n} for c, t, n in by_city],
+    }
 
 
 @router.get("/{event_id}", response_model=EventRead)

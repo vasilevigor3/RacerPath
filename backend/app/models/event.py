@@ -25,6 +25,9 @@ class Event(Base):
     source: Mapped[str] = mapped_column(String(40), nullable=False)
     game: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
+    country: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+
     start_time_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # в БД храним строку, в API валидируем Enum-ом

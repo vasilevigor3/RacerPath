@@ -71,7 +71,7 @@ const DISCIPLINES = ['gt', 'formula', 'rally', 'karting', 'historic'];
 const GAMES = ['', 'iRacing', 'ACC', 'rFactor 2', 'AMS2', 'AC', 'F1', 'Other'];
 
 const AdminConstructors = () => {
-  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '' });
+  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '' });
   const [eventLoading, setEventLoading] = useState(false);
   const [eventMsg, setEventMsg] = useState(null);
 
@@ -104,6 +104,8 @@ const AdminConstructors = () => {
       title: eventForm.title.trim(),
       source: eventForm.source.trim(),
       game: eventForm.game?.trim() || null,
+      country: eventForm.country?.trim() || null,
+      city: eventForm.city?.trim() || null,
     };
     apiFetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
@@ -195,6 +197,11 @@ const AdminConstructors = () => {
                 <option key={g || '—'} value={g}>{g || '—'}</option>
               ))}
             </select>
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Country / City</label>
+            <input type="text" value={eventForm.country} onChange={(e) => setEventForm((f) => ({ ...f, country: e.target.value }))} placeholder="country" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="text" value={eventForm.city} onChange={(e) => setEventForm((f) => ({ ...f, city: e.target.value }))} placeholder="city" className="admin-constructors__input admin-constructors__input--short" />
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={eventLoading}>{eventLoading ? '…' : 'Create Event'}</button>
           {eventMsg && <p className="admin-constructors__msg" role="status">{eventMsg}</p>}

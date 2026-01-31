@@ -14,6 +14,8 @@ class EventCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     source: str
     game: Optional[str] = Field(default=None, max_length=60)
+    country: Optional[str] = Field(default=None, max_length=80)
+    city: Optional[str] = Field(default=None, max_length=80)
     start_time_utc: Optional[datetime] = None
 
     event_status: EventStatus = EventStatus.scheduled

@@ -12,3 +12,4 @@ frontend/dist/
 _backup*/
 *.log
 .DS_Store
+*.md

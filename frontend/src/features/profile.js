@@ -138,6 +138,8 @@ const loadUserProfile = async (driver) => {
           parts.push(`Missing licenses: ${data.missing_license_codes.join(', ')}`);
         }
         profileNextTierMeta.textContent = parts.join('. ') || 'Complete requirements to advance tier.';
+      } else if (data && data.events_required === 0 && (!data.missing_license_codes || !data.missing_license_codes.length)) {
+        profileNextTierMeta.textContent = 'Tier rule not set. Add min_events and threshold in Admin → Tier progression.';
       } else {
         const missing = profile.missing_fields || [];
         profileNextTierMeta.textContent =

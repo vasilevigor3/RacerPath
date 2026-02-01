@@ -1,4 +1,4 @@
-"""Progress toward next tier: events with classification.difficulty_score > tier rule threshold + licenses."""
+"""Progress toward next tier: min number of events with classification.difficulty_score > threshold."""
 
 from __future__ import annotations
 
@@ -18,12 +18,11 @@ TIER_TOP = "E5"
 
 def compute_next_tier_progress(session: Session, user_id: str) -> tuple[int, dict[str, Any] | None]:
     """
-    Progress (0–100) toward next driver tier and data about what's missing.
-    - Driver's current tier has a rule: min_events, difficulty_threshold, required_license_codes.
-    - Count finished participations where event's classification.difficulty_score > difficulty_threshold.
-    - progress = min(100, count / min_events * 100).
-    - next_tier_data: events_done, events_required, difficulty_threshold, missing_license_codes.
-    - If tier is E5 or no rule, return (100, None).
+    Progress (0–100) toward next driver tier.
+    Counts only finished events where event's classification.difficulty_score > rule.difficulty_threshold.
+    Requires at least rule.min_events such events to advance; progress = count / min_events * 100 (capped 100).
+    Also returns next_tier_data (events_done, events_required, difficulty_threshold, missing_license_codes).
+    E5 or no rule -> (100, None).
     """
     driver = session.query(Driver).filter(Driver.user_id == user_id).first()
     if not driver:
@@ -42,7 +41,7 @@ def compute_next_tier_progress(session: Session, user_id: str) -> tuple[int, dic
             "missing_license_codes": list(rule.required_license_codes or []) if rule else [],
         }
 
-    # Count finished participations where event has classification with difficulty_score > threshold
+    # Count finished events (participations) where classification.difficulty_score > threshold
     count = (
         session.query(Participation.id)
         .join(Event, Participation.event_id == Event.id)

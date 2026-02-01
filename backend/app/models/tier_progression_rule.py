@@ -1,4 +1,4 @@
-"""Tier progression rules: min_events with difficulty_score > threshold to advance to next tier."""
+"""Tier progression rules: minimum number of events with classification.difficulty_score > threshold."""
 
 from sqlalchemy import CheckConstraint, Float, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -9,6 +9,14 @@ TIER_VALUES = ("E0", "E1", "E2", "E3", "E4", "E5")
 
 
 class TierProgressionRule(Base):
+    """
+    Rule for advancing from this tier to the next.
+    - min_events: minimum number of finished events required where
+      event's classification.difficulty_score > difficulty_threshold.
+    - difficulty_threshold: only events with difficulty_score strictly above this count.
+    - required_license_codes: license level_codes the driver must have earned.
+    """
+
     __tablename__ = "tier_progression_rules"
     __table_args__ = (
         CheckConstraint(

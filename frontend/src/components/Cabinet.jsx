@@ -225,15 +225,24 @@ const Cabinet = () => (
             </ul>
           </div>
           <div className="grid-2">
-            <div className="card">
+            <div className="card card-events">
               <p className="card-title">Recent events</p>
-              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <input type="checkbox" data-events-same-tier />
-                <span>Show only my lvl events</span>
-              </label>
-              <ul className="list" data-dashboard-events>
-                <li>No events loaded.</li>
-              </ul>
+              <div data-events-list-view>
+                <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <input type="checkbox" data-events-same-tier />
+                  <span>Show only my lvl events</span>
+                </label>
+                <ul className="list" data-dashboard-events>
+                  <li>No events loaded.</li>
+                </ul>
+              </div>
+              <div className="event-detail-panel is-hidden" data-event-detail-panel>
+                <button type="button" className="btn ghost event-detail-back" data-event-detail-back>Back</button>
+                <div className="event-detail-content" data-event-detail-content />
+                <div className="event-detail-actions" data-event-detail-actions>
+                  <button type="button" className="btn primary btn-register-event-panel" data-event-detail-register disabled>Register on event</button>
+                </div>
+              </div>
             </div>
             <div className="card">
               <p className="card-title">Recent participations</p>

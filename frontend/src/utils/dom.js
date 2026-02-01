@@ -12,6 +12,27 @@ export const setList = (listEl, items, emptyText) => {
   listEl.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
 };
 
+/**
+ * Render events as clickable rows; click opens event detail panel (no inline Register button).
+ * events: array of { id, title, event_tier, ... }
+ * driver: { id }
+ * formatEventItem(event, forRecent): returns display string
+ */
+export const setEventListWithRegister = (listEl, events, driver, emptyText, formatEventItem) => {
+  if (!listEl) return;
+  if (!events || events.length === 0) {
+    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
+    return;
+  }
+  listEl.innerHTML = events
+    .map((event) => {
+      const text = formatEventItem(event, true);
+      const eventId = escapeHtml(event.id);
+      return `<li class="event-list-item"><button type="button" class="event-list-item__text btn-link" data-event-id="${eventId}" data-driver-id="${escapeHtml(driver?.id ?? '')}">${escapeHtml(text)}</button></li>`;
+    })
+    .join('');
+};
+
 /** Slot label prefix -> slot value for matching items to special_events */
 const RACE_OF_PREFIX_TO_SLOT = {
   'Race of the day:': 'race_of_day',

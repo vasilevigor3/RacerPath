@@ -1,5 +1,5 @@
 import { apiFetch } from '../api/client.js';
-import { setList, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
+import { setList, setEventListWithRegister, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
 import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { readinessState } from '../state/session.js';
@@ -53,6 +53,7 @@ const getParticipationMinutes = (participation) => {
 
 export const loadDashboardStats = async (driver) => {
   if (!driver) {
+    lastDriverParticipations = [];
     readinessState.hasDriver = false;
     readinessState.crsScore = 0;
     if (statCrs) statCrs.textContent = '--';
@@ -103,16 +104,16 @@ export const loadDashboardStats = async (driver) => {
   } catch (err) {
     participations = [];
   }
+  lastDriverParticipations = participations;
 
   if (statEvents) statEvents.textContent = participations.length.toString();
   const incidentTotal = participations.reduce((sum, item) => sum + (item.incidents_count || 0), 0);
   if (statIncidents) statIncidents.textContent = incidentTotal.toString();
 
   if (dashboardParticipationsList) {
-    const completedStatuses = ['finished', 'dnf', 'dsq'];
-    const completed = participations.filter((item) => completedStatuses.includes(item.status));
-    const items = completed.slice(0, 5).map((item) => {
-      return `${item.discipline.toUpperCase()} - ${item.status} / ${item.event_id.slice(0, 8)}...`;
+    const items = participations.slice(0, 10).map((item) => {
+      const state = item.participation_state ?? item.status ?? '—';
+      return `${item.discipline?.toUpperCase() ?? '—'} - ${state} / ${(item.event_id || '').slice(0, 8)}...`;
     });
     setList(dashboardParticipationsList, items, 'No participations loaded.');
   }
@@ -291,6 +292,7 @@ export const loadDashboardRecommendations = async (driver) => {
 export const loadLicenseProgress = async (driver) => {
   if (!licenseCurrent || !licenseNext || !licenseReqs) return;
   if (!driver) {
+    lastDriverLicenseLevel = null;
     licenseCurrent.textContent = '--';
     licenseNext.textContent = '--';
     setList(licenseReqs, [], 'Create a driver profile to see license progress.');
@@ -304,6 +306,7 @@ export const loadLicenseProgress = async (driver) => {
     ]);
     const latest = latestRes.ok ? await latestRes.json() : null;
     const requirements = reqRes.ok ? await reqRes.json() : null;
+    lastDriverLicenseLevel = latest?.level_code ?? null;
     if (latest) {
       licenseCurrent.textContent = latest.level_code;
     } else {
@@ -317,6 +320,7 @@ export const loadLicenseProgress = async (driver) => {
       setList(licenseReqs, ['Maintain performance to keep license.'], '');
     }
   } catch (err) {
+    lastDriverLicenseLevel = null;
     licenseCurrent.textContent = '--';
     licenseNext.textContent = '--';
     setList(licenseReqs, [], 'Unable to load license progress.');
@@ -349,6 +353,141 @@ export const loadActivityFeed = async (driver) => {
 
 let lastDriverForEvents = null;
 let lastDriverForActiveRace = null;
+let lastDashboardEventsData = [];
+let lastDriverParticipations = [];
+let lastDriverLicenseLevel = null;
+
+const EVENT_STATUS_LABELS = { waiting_start: 'Waiting to start', started: 'Started', finished: 'Finished' };
+
+const LICENSE_REQUIREMENT_RANK = { none: 0, entry: 1, rookie: 2, intermediate: 3, pro: 4 };
+
+const getEventStatus = (event, now = Date.now()) => {
+  if (!event?.start_time_utc) return null;
+  const startMs = new Date(event.start_time_utc).getTime();
+  if (Number.isNaN(startMs)) return null;
+  if (now < startMs) return 'waiting_start';
+  if (event.finished_time_utc != null) {
+    const finishedMs = new Date(event.finished_time_utc).getTime();
+    if (!Number.isNaN(finishedMs) && now >= finishedMs) return 'finished';
+  }
+  return 'started';
+};
+
+function showEventDetail(event, driver) {
+  const listView = document.querySelector('[data-events-list-view]');
+  const panel = document.querySelector('[data-event-detail-panel]');
+  const content = document.querySelector('[data-event-detail-content]');
+  const registerBtn = document.querySelector('[data-event-detail-register]');
+  const actionsEl = document.querySelector('[data-event-detail-actions]');
+  if (!listView || !panel || !content) return;
+  const eventTier = (event.event_tier ?? 'E2').toUpperCase();
+  const driverTier = (driver?.tier ?? 'E0').toUpperCase();
+  const tierMatch = eventTier === driverTier;
+  const reqLicense = (event.license_requirement ?? 'none').toLowerCase();
+  const reqRank = LICENSE_REQUIREMENT_RANK[reqLicense] ?? 0;
+  const driverLicenseRank = reqRank === 0 ? 1 : (LICENSE_REQUIREMENT_RANK[(lastDriverLicenseLevel ?? '').toLowerCase()] ?? 0);
+  const licenseOk = reqRank === 0 || driverLicenseRank >= reqRank;
+  const alreadyRegistered = lastDriverParticipations.some((p) => p.event_id === event.id);
+  const canRegister = tierMatch && licenseOk && !alreadyRegistered;
+  const status = getEventStatus(event);
+  const statusLabel = status ? EVENT_STATUS_LABELS[status] : '—';
+  content.innerHTML = `
+    <dl class="event-detail-dl">
+      <div><dt>Title</dt><dd>${escapeHtml(event.title ?? '—')}</dd></div>
+      <div><dt>Session</dt><dd>${escapeHtml(event.session_type === 'training' ? 'Training' : 'Race')}</dd></div>
+      <div><dt>Format</dt><dd>${escapeHtml(event.format_type ?? '—')}</dd></div>
+      <div><dt>Game</dt><dd>${escapeHtml(event.game ?? '—')}</dd></div>
+      <div><dt>Start (UTC)</dt><dd>${event.start_time_utc ? formatDateTime(event.start_time_utc) : '—'}</dd></div>
+      <div><dt>Finish (UTC)</dt><dd>${event.finished_time_utc ? formatDateTime(event.finished_time_utc) : '—'}</dd></div>
+      <div><dt>Status</dt><dd>${escapeHtml(statusLabel)}</dd></div>
+      <div><dt>Tier</dt><dd>${escapeHtml(eventTier)}</dd></div>
+      ${event.country ? `<div><dt>Country</dt><dd>${escapeHtml(event.country)}</dd></div>` : ''}
+      ${event.city ? `<div><dt>City</dt><dd>${escapeHtml(event.city)}</dd></div>` : ''}
+    </dl>
+  `;
+  if (registerBtn) {
+    registerBtn.disabled = !canRegister;
+    registerBtn.dataset.eventId = event.id;
+    registerBtn.dataset.driverId = driver?.id ?? '';
+  }
+  if (actionsEl) {
+    actionsEl.classList.toggle('is-hidden', !canRegister);
+  }
+  listView.classList.add('is-hidden');
+  panel.classList.remove('is-hidden');
+}
+
+function hideEventDetail() {
+  const listView = document.querySelector('[data-events-list-view]');
+  const panel = document.querySelector('[data-event-detail-panel]');
+  if (listView) listView.classList.remove('is-hidden');
+  if (panel) panel.classList.add('is-hidden');
+}
+
+function escapeHtml(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+const registerOnEvent = async (driverId, eventId) => {
+  const driver = lastDriverForEvents;
+  if (!driver || driver.id !== driverId) return;
+  const discipline = driver.primary_discipline || 'gt';
+  try {
+    const res = await apiFetch('/api/participations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        driver_id: driverId,
+        event_id: eventId,
+        discipline,
+        participation_state: 'registered',
+        status: 'dns',
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = Array.isArray(err.detail) ? err.detail.map((d) => d.msg).join(', ') : (err.detail || 'Register failed.');
+      if (typeof window !== 'undefined' && window.alert) window.alert(msg);
+      return;
+    }
+    hideEventDetail();
+    if (lastDriverForEvents) loadDashboardEvents(lastDriverForEvents);
+  } catch (err) {
+    if (typeof window !== 'undefined' && window.alert) window.alert('Register failed.');
+  }
+};
+
+function initDashboardEventsRegisterDelegation() {
+  if (document.body.dataset.dashboardEventsRegisterDelegation) return;
+  document.body.dataset.dashboardEventsRegisterDelegation = '1';
+  document.body.addEventListener('click', (e) => {
+    const list = e.target.closest('[data-dashboard-events]');
+    const textBtn = list ? e.target.closest('.event-list-item__text') : null;
+    if (textBtn && list) {
+      e.preventDefault();
+      const eventId = textBtn.getAttribute('data-event-id');
+      const driver = lastDriverForEvents;
+      if (!eventId || !driver) return;
+      const event = lastDashboardEventsData.find((ev) => ev.id === eventId);
+      if (event) showEventDetail(event, driver);
+      return;
+    }
+    const backBtn = e.target.closest('[data-event-detail-back]');
+    if (backBtn) {
+      e.preventDefault();
+      hideEventDetail();
+      return;
+    }
+    const registerBtn = e.target.closest('.btn-register-event-panel:not([disabled])');
+    if (registerBtn) {
+      e.preventDefault();
+      const eventId = registerBtn.dataset.eventId;
+      const driverId = registerBtn.dataset.driverId;
+      if (eventId && driverId) registerOnEvent(driverId, eventId);
+    }
+  });
+}
 
 const setCurrentRaceCard = (data) => {
   if (!currentRaceCard) return;
@@ -406,6 +545,8 @@ export const loadDashboardEvents = async (driver) => {
   if (!dashboardEventsList && !upcomingEventsList) return;
   if (!driver) {
     lastDriverForEvents = null;
+    lastDashboardEventsData = [];
+    hideEventDetail();
     loadActiveRace(null);
     if (dashboardEventsList) setList(dashboardEventsList, [], 'Log in to load events.');
     if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
@@ -421,19 +562,6 @@ export const loadDashboardEvents = async (driver) => {
     });
   }
   const now = Date.now();
-  // finished_time_utc is editable in admin / from external API; when null, status is derived from start_time only (waiting_start | started)
-  const getEventStatus = (event) => {
-    if (!event?.start_time_utc) return null;
-    const startMs = new Date(event.start_time_utc).getTime();
-    if (Number.isNaN(startMs)) return null;
-    if (now < startMs) return 'waiting_start';
-    if (event.finished_time_utc != null) {
-      const finishedMs = new Date(event.finished_time_utc).getTime();
-      if (!Number.isNaN(finishedMs) && now >= finishedMs) return 'finished';
-    }
-    return 'started';
-  };
-  const EVENT_STATUS_LABELS = { waiting_start: 'Waiting to start', started: 'Started', finished: 'Finished' };
   const formatEventItem = (event, forRecent = false) => {
     const sessionLabel = event.session_type === 'training' ? 'Training' : 'Race';
     const gameLabel = event.game ? ` / ${event.game}` : '';
@@ -454,14 +582,15 @@ export const loadDashboardEvents = async (driver) => {
     if (!eventsRes.ok) throw new Error('failed');
     const events = await eventsRes.json();
 
-    const withStart = events
-      .filter((event) => event.start_time_utc)
-      .sort((a, b) => new Date(a.start_time_utc) - new Date(b.start_time_utc));
-    const fallback = events.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-
-    const dashboardItems = (withStart.length ? withStart : fallback)
-      .slice(0, 5)
-      .map((e) => formatEventItem(e, true));
+    const waitingOrUpcoming = events.filter((e) => {
+      if (!e.start_time_utc) return false;
+      const startMs = new Date(e.start_time_utc).getTime();
+      return !Number.isNaN(startMs) && startMs > now;
+    });
+    const dashboardEventsData = [...waitingOrUpcoming]
+      .sort((a, b) => new Date(a.start_time_utc).getTime() - new Date(b.start_time_utc).getTime())
+      .slice(0, 5);
+    lastDashboardEventsData = dashboardEventsData;
 
     let upcomingItems = [];
     if (upcomingRes.ok) {
@@ -471,9 +600,9 @@ export const loadDashboardEvents = async (driver) => {
 
     if (dashboardEventsList) {
       const emptyText = driver.sim_games && driver.sim_games.length
-        ? 'No events for your games yet.'
+        ? 'No upcoming events (waiting to start).'
         : 'Add sim games to see events.';
-      setList(dashboardEventsList, dashboardItems, emptyText);
+      setEventListWithRegister(dashboardEventsList, dashboardEventsData, driver, emptyText, formatEventItem);
     }
     if (upcomingEventsList) {
       const emptyText = driver.sim_games && driver.sim_games.length
@@ -491,3 +620,7 @@ export const loadDashboardEvents = async (driver) => {
     }
   }
 };
+
+if (typeof document !== 'undefined') {
+  initDashboardEventsRegisterDelegation();
+}

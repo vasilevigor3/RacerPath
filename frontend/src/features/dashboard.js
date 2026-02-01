@@ -509,6 +509,8 @@ let lastDriverForEvents = null;
 let lastDriverForActiveRace = null;
 let lastDashboardEventsData = [];
 let lastUpcomingEventsData = [];
+let lastShownEventId = null;
+let lastShownEvent = null;
 let lastDriverParticipations = [];
 let lastDriverLicenseLevel = null;
 let lastDriverForTasks = null;
@@ -544,6 +546,9 @@ function showEventDetail(event, driver) {
   const registerBtn = document.querySelector('[data-event-detail-register]');
   const actionsEl = document.querySelector('[data-event-detail-actions]');
   if (!listView || !panel || !content) return;
+  // Normalize so rig check is stable (no undefined vs null flip-flop)
+  const driverRigOpts = driver && typeof driver === 'object' ? (driver.rig_options ?? null) : null;
+  const eventRigOpts = event && typeof event === 'object' && event.rig_options ? event.rig_options : null;
   const eventTier = (event.event_tier ?? 'E2').toUpperCase();
   const driverTier = (driver?.tier ?? 'E0').toUpperCase();
   const tierMatch = eventTier === driverTier;
@@ -558,10 +563,13 @@ function showEventDetail(event, driver) {
   const isWithdrawn = state === 'withdrawn';
   const isRegistered = state === 'registered';
   const canReRegister = participationForEvent && isWithdrawn && withdrawCount < MAX_WITHDRAWALS;
-  const rigOk = driverRigSatisfiesEvent(driver?.rig_options, event.rig_options);
+  const eventHasRigReq = eventRigOpts && (eventRigOpts.wheel_type || eventRigOpts.pedals_class || eventRigOpts.manual_with_clutch === true);
+  const driverRigUnknown = eventHasRigReq && (!driver || driver.rig_options === undefined);
+  const rigOk = driverRigUnknown ? false : driverRigSatisfiesEvent(driverRigOpts, eventRigOpts);
   const canRegister = tierMatch && licenseOk && rigOk && (!participationForEvent || canReRegister);
   const maxWithdrawalsReached = participationForEvent && isWithdrawn && withdrawCount >= MAX_WITHDRAWALS;
-  const cannotRegisterReason = !tierMatch ? 'tier' : !licenseOk ? 'license' : !rigOk ? 'rig' : null;
+  const cannotRegisterReason = !tierMatch ? 'tier' : !licenseOk ? 'license' : (!rigOk && !driverRigUnknown) ? 'rig' : null;
+  const rigLoading = driverRigUnknown;
   const canWithdraw = participationForEvent && isRegistered;
   const status = getEventStatus(event);
   const statusLabel = status ? EVENT_STATUS_LABELS[status] : '—';
@@ -582,14 +590,16 @@ function showEventDetail(event, driver) {
   const withdrawBtn = document.querySelector('[data-event-detail-withdraw]');
   const maxWithdrawalsMsg = document.querySelector('[data-event-detail-max-withdrawals]');
   const noRegisterMsg = document.querySelector('[data-event-detail-no-register-message]');
+  const showNoRegisterMsg = !canRegister && !maxWithdrawalsReached && (rigLoading || cannotRegisterReason);
+  const showActions = canRegister || canWithdraw || maxWithdrawalsReached || showNoRegisterMsg;
   if (noRegisterMsg) {
-    noRegisterMsg.classList.toggle('is-hidden', canRegister || maxWithdrawalsReached);
-    if (cannotRegisterReason) {
-      const text = cannotRegisterReason === 'tier' ? 'This event does not match your tier. You cannot register.'
+    if (rigLoading) noRegisterMsg.textContent = 'Loading…';
+    else if (cannotRegisterReason) {
+      noRegisterMsg.textContent = cannotRegisterReason === 'tier' ? 'This event does not match your tier. You cannot register.'
         : cannotRegisterReason === 'license' ? 'You do not meet the license requirement for this event. You cannot register.'
           : 'Your rig does not meet this event\'s requirements. You cannot register.';
-      noRegisterMsg.textContent = text;
-    }
+    } else noRegisterMsg.textContent = '';
+    noRegisterMsg.classList.toggle('is-hidden', !showNoRegisterMsg);
   }
   if (registerBtn) {
     registerBtn.disabled = !canRegister;
@@ -598,21 +608,23 @@ function showEventDetail(event, driver) {
     registerBtn.classList.toggle('is-hidden', !canRegister);
   }
   if (withdrawBtn) {
-    withdrawBtn.classList.toggle('is-hidden', !canWithdraw);
     withdrawBtn.dataset.participationId = participationForEvent && canWithdraw ? participationForEvent.id : '';
+    withdrawBtn.classList.toggle('is-hidden', !canWithdraw);
   }
   if (maxWithdrawalsMsg) {
-    maxWithdrawalsMsg.classList.toggle('is-hidden', !maxWithdrawalsReached);
     maxWithdrawalsMsg.textContent = `You have reached the maximum number of withdrawals (${MAX_WITHDRAWALS}) for this event. You cannot register again.`;
+    maxWithdrawalsMsg.classList.toggle('is-hidden', !maxWithdrawalsReached);
   }
-  if (actionsEl) {
-    actionsEl.classList.toggle('is-hidden', !canRegister && !canWithdraw && !maxWithdrawalsReached && !cannotRegisterReason);
-  }
+  if (actionsEl) actionsEl.classList.toggle('is-hidden', !showActions);
+  lastShownEventId = event.id;
+  lastShownEvent = event;
   listView.classList.add('is-hidden');
   panel.classList.remove('is-hidden');
 }
 
 function hideEventDetail() {
+  lastShownEventId = null;
+  lastShownEvent = null;
   const listView = document.querySelector('[data-events-list-view]');
   const panel = document.querySelector('[data-event-detail-panel]');
   if (listView) listView.classList.remove('is-hidden');
@@ -786,16 +798,16 @@ function initDashboardEventsRegisterDelegation() {
       const eventId = textBtn.getAttribute('data-event-id');
       const driver = lastDriverForEvents;
       if (!eventId || !driver) return;
-      const event = list
-        ? lastDashboardEventsData.find((ev) => ev.id === eventId)
-        : lastUpcomingEventsData.find((ev) => ev.id === eventId);
-      if (event) {
-        if (upcomingList) {
-          const eventsTab = document.querySelector('[data-tab-button="events"]');
-          if (eventsTab) eventsTab.click();
-        }
-        showEventDetail(event, driver);
+      if (upcomingList) {
+        const eventsTab = document.querySelector('[data-tab-button="events"]');
+        if (eventsTab) eventsTab.click();
       }
+      try {
+        const res = await apiFetch(`/api/events/${encodeURIComponent(eventId)}`);
+        if (!res.ok) return;
+        const event = await res.json();
+        showEventDetail(event, driver);
+      } catch (_) {}
       return;
     }
     const backBtn = e.target.closest('[data-event-detail-back]');

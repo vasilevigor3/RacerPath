@@ -65,5 +65,10 @@ class ParticipationRead(ParticipationCreate):
     model_config = {"from_attributes": True}
 
 
+class ActiveParticipationRead(ParticipationRead):
+    """Current race: participation + event title for live stats display."""
+    event_title: str | None = None
+
+
 class ParticipationAdminRead(ParticipationRead):
     game: str | None = None

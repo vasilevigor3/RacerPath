@@ -33,6 +33,7 @@ class Event(Base):
     city: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
 
     start_time_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_time_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Race of the day / week / month / year — special featured event (more points)
     special_event: Mapped[str | None] = mapped_column(String(20), nullable=True)

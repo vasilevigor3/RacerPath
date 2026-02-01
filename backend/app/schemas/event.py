@@ -23,6 +23,7 @@ class EventCreate(BaseModel):
     country: Optional[str] = Field(default=None, max_length=80)
     city: Optional[str] = Field(default=None, max_length=80)
     start_time_utc: Optional[datetime] = None
+    finished_time_utc: Optional[datetime] = None
     event_tier: Optional[EventTier] = Field(default=None, description="Override classification tier (E0–E5)")
     special_event: Optional[SpecialEvent] = None
 
@@ -78,6 +79,7 @@ class EventUpdate(BaseModel):
     country: Optional[str] = Field(default=None, max_length=80)
     city: Optional[str] = Field(default=None, max_length=80)
     start_time_utc: Optional[datetime] = None
+    finished_time_utc: Optional[datetime] = None
     event_tier: Optional[EventTier] = None
     special_event: Optional[SpecialEvent] = None
 

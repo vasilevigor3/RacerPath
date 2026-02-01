@@ -223,6 +223,16 @@ const Cabinet = () => (
         </div>
 
         <div className="tab-panel" data-tab-panel="events">
+          <div className="card compact" data-current-race-card style={{ display: 'none' }}>
+            <p className="card-title">Current race</p>
+            <p className="muted" data-current-race-event>—</p>
+            <ul className="list" data-current-race-stats>
+              <li data-current-race-position>Position: —</li>
+              <li data-current-race-laps>Laps: —</li>
+              <li data-current-race-penalties>Penalties: —</li>
+              <li data-current-race-incidents>Incidents: —</li>
+            </ul>
+          </div>
           <div className="grid-2">
             <div className="card">
               <p className="card-title">Recent events</p>

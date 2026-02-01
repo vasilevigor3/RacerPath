@@ -33,7 +33,15 @@ const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
 const licenseReqs = document.querySelector('[data-license-reqs]');
 const activityFeed = document.querySelector('[data-activity-feed]');
+const currentRaceCard = document.querySelector('[data-current-race-card]');
+const currentRaceEvent = document.querySelector('[data-current-race-event]');
+const currentRacePosition = document.querySelector('[data-current-race-position]');
+const currentRaceLaps = document.querySelector('[data-current-race-laps]');
+const currentRacePenalties = document.querySelector('[data-current-race-penalties]');
+const currentRaceIncidents = document.querySelector('[data-current-race-incidents]');
 let recommendationCountdownInterval = null;
+let activeRacePollInterval = null;
+const ACTIVE_RACE_POLL_MS = 5000;
 
 const getParticipationMinutes = (participation) => {
   if (!participation) return null;
@@ -346,11 +354,65 @@ export const loadActivityFeed = async (driver) => {
 };
 
 let lastDriverForEvents = null;
+let lastDriverForActiveRace = null;
+
+const setCurrentRaceCard = (data) => {
+  if (!currentRaceCard) return;
+  if (!data) {
+    currentRaceCard.style.display = 'none';
+    return;
+  }
+  currentRaceCard.style.display = '';
+  if (currentRaceEvent) currentRaceEvent.textContent = data.event_title || 'Current race';
+  if (currentRacePosition) {
+    const pos = data.position_overall ?? data.position_class;
+    currentRacePosition.textContent = `Position: ${pos != null ? pos : '—'}`;
+  }
+  if (currentRaceLaps) currentRaceLaps.textContent = `Laps: ${data.laps_completed ?? 0}`;
+  if (currentRacePenalties) currentRacePenalties.textContent = `Penalties: ${data.penalties_count ?? 0}`;
+  if (currentRaceIncidents) currentRaceIncidents.textContent = `Incidents: ${data.incidents_count ?? 0}`;
+};
+
+const fetchActiveRace = async (driver) => {
+  if (!driver) return null;
+  const res = await apiFetch(`/api/participations/active?driver_id=${driver.id}`);
+  if (!res.ok || res.status === 204) return null;
+  const data = await res.json().catch(() => null);
+  return data || null;
+};
+
+export const loadActiveRace = async (driver) => {
+  if (activeRacePollInterval) {
+    clearInterval(activeRacePollInterval);
+    activeRacePollInterval = null;
+  }
+  lastDriverForActiveRace = driver;
+  if (!driver || !currentRaceCard) {
+    setCurrentRaceCard(null);
+    return;
+  }
+  const data = await fetchActiveRace(driver);
+  setCurrentRaceCard(data ?? null);
+  if (data) {
+    activeRacePollInterval = setInterval(async () => {
+      if (lastDriverForActiveRace?.id !== driver.id) return;
+      const next = await fetchActiveRace(driver);
+      if (!next) {
+        if (activeRacePollInterval) clearInterval(activeRacePollInterval);
+        activeRacePollInterval = null;
+        setCurrentRaceCard(null);
+        return;
+      }
+      setCurrentRaceCard(next);
+    }, ACTIVE_RACE_POLL_MS);
+  }
+};
 
 export const loadDashboardEvents = async (driver) => {
   if (!dashboardEventsList && !upcomingEventsList) return;
   if (!driver) {
     lastDriverForEvents = null;
+    loadActiveRace(null);
     if (dashboardEventsList) setList(dashboardEventsList, [], 'Log in to load events.');
     if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
     return;
@@ -364,10 +426,29 @@ export const loadDashboardEvents = async (driver) => {
       if (lastDriverForEvents) loadDashboardEvents(lastDriverForEvents);
     });
   }
-  const formatEventItem = (event) => {
+  const now = Date.now();
+  // finished_time_utc is editable in admin / from external API; when null, status is derived from start_time only (waiting_start | started)
+  const getEventStatus = (event) => {
+    if (!event?.start_time_utc) return null;
+    const startMs = new Date(event.start_time_utc).getTime();
+    if (Number.isNaN(startMs)) return null;
+    if (now < startMs) return 'waiting_start';
+    if (event.finished_time_utc != null) {
+      const finishedMs = new Date(event.finished_time_utc).getTime();
+      if (!Number.isNaN(finishedMs) && now >= finishedMs) return 'finished';
+    }
+    return 'started';
+  };
+  const EVENT_STATUS_LABELS = { waiting_start: 'Waiting to start', started: 'Started', finished: 'Finished' };
+  const formatEventItem = (event, forRecent = false) => {
     const gameLabel = event.game ? ` / ${event.game}` : '';
     const timeLabel = event.start_time_utc ? ` • ${formatDateTime(event.start_time_utc)}` : '';
-    return `${event.title} - ${event.format_type}${gameLabel}${timeLabel}`;
+    let statusSuffix = '';
+    if (forRecent && event.start_time_utc) {
+      const status = getEventStatus(event);
+      if (status) statusSuffix = ` • ${EVENT_STATUS_LABELS[status]}`;
+    }
+    return `${event.title} - ${event.format_type}${gameLabel}${timeLabel}${statusSuffix}`;
   };
   try {
     const eventsUrl = `/api/events?driver_id=${driver.id}&same_tier=${sameTier}`;
@@ -383,7 +464,9 @@ export const loadDashboardEvents = async (driver) => {
       .sort((a, b) => new Date(a.start_time_utc) - new Date(b.start_time_utc));
     const fallback = events.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
-    const dashboardItems = (withStart.length ? withStart : fallback).slice(0, 5).map(formatEventItem);
+    const dashboardItems = (withStart.length ? withStart : fallback)
+      .slice(0, 5)
+      .map((e) => formatEventItem(e, true));
 
     let upcomingItems = [];
     if (upcomingRes.ok) {
@@ -403,6 +486,7 @@ export const loadDashboardEvents = async (driver) => {
         : 'No upcoming events. Add sim games to see events.';
       setList(upcomingEventsList, upcomingItems, emptyText);
     }
+    loadActiveRace(driver);
   } catch (err) {
     if (dashboardEventsList) {
       setList(dashboardEventsList, [], 'Unable to load events.');

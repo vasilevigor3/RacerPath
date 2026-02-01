@@ -7,10 +7,10 @@ from app.db.session import get_session
 from app.models.driver import Driver
 from app.models.event import Event
 from app.models.incident import Incident
-from app.models.participation import Participation
+from app.models.participation import Participation, ParticipationState
 from app.models.user import User
 from app.schemas.incident import IncidentCreate, IncidentRead
-from app.schemas.participation import ParticipationCreate, ParticipationRead
+from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead
 from app.services.tasks import evaluate_tasks
 from app.services.auth import require_user
 
@@ -76,6 +76,38 @@ def list_participations(
         query = query.filter(Participation.event_id == event_id)
     limit = max(1, min(limit, 200))
     return query.order_by(Participation.created_at.desc()).offset(offset).limit(limit).all()
+
+
+@router.get("/active", response_model=ActiveParticipationRead | None)
+def get_active_participation(
+    driver_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Return the driver's current race (participation_state=started, finished_at is null), if any."""
+    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    if not driver:
+        return None
+    if user.role not in {"admin"} and driver.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Insufficient role")
+    participation = (
+        session.query(Participation)
+        .filter(
+            Participation.driver_id == driver_id,
+            Participation.participation_state == ParticipationState.started,
+            Participation.finished_at.is_(None),
+        )
+        .order_by(Participation.started_at.desc())
+        .first()
+    )
+    if not participation:
+        return None
+    event = session.query(Event).filter(Event.id == participation.event_id).first()
+    event_title = event.title if event else None
+    return ActiveParticipationRead(
+        **ParticipationRead.model_validate(participation).model_dump(),
+        event_title=event_title,
+    )
 
 
 @router.get("/{participation_id}", response_model=ParticipationRead)

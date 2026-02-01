@@ -104,13 +104,13 @@ const toDatetimeLocal = (iso) => {
 };
 
 const AdminConstructors = () => {
-  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '', event_tier: 'E2', special_event: '' });
+  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: 'E2', special_event: '' });
   const [eventLoading, setEventLoading] = useState(false);
   const [eventMsg, setEventMsg] = useState(null);
 
   const [updateEventId, setUpdateEventId] = useState('');
   const [updateEventForm, setUpdateEventForm] = useState({
-    title: '', source: '', game: '', country: '', city: '', start_time_utc: '', event_tier: '', special_event: '',
+    title: '', source: '', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: '', special_event: '',
     schedule_type: 'weekly', event_type: 'circuit', format_type: 'sprint',
     team_size_min: '1', team_size_max: '1', duration_minutes: '0', grid_size_expected: '0', class_count: '1',
     damage_model: 'off', penalties: 'off', fuel_usage: 'off', tire_wear: 'off',
@@ -170,6 +170,7 @@ const AdminConstructors = () => {
         country: event.country || '',
         city: event.city || '',
         start_time_utc: toDatetimeLocal(event.start_time_utc),
+        finished_time_utc: toDatetimeLocal(event.finished_time_utc),
         event_tier: eventTier,
         schedule_type: event.schedule_type || 'weekly',
         event_type: event.event_type || 'circuit',
@@ -220,6 +221,10 @@ const AdminConstructors = () => {
       const v = f.start_time_utc.trim();
       body.start_time_utc = v.endsWith('Z') ? v : (/T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z');
     }
+    if (f.finished_time_utc !== undefined) {
+      const v = f.finished_time_utc?.trim();
+      body.finished_time_utc = v ? (v.endsWith('Z') ? v : (/T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z')) : null;
+    }
     if (f.event_tier?.trim()) body.event_tier = f.event_tier.trim();
     if (f.special_event !== undefined) body.special_event = f.special_event?.trim() || null;
     if (f.schedule_type) body.schedule_type = f.schedule_type;
@@ -267,6 +272,12 @@ const AdminConstructors = () => {
       special_event: eventForm.special_event?.trim() || null,
       start_time_utc: (() => {
         const v = eventForm.start_time_utc?.trim();
+        if (!v) return null;
+        if (v.endsWith('Z')) return v;
+        return /T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z';
+      })(),
+      finished_time_utc: (() => {
+        const v = eventForm.finished_time_utc?.trim();
         if (!v) return null;
         if (v.endsWith('Z')) return v;
         return /T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z';
@@ -376,6 +387,10 @@ const AdminConstructors = () => {
             <input type="datetime-local" value={eventForm.start_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
           </div>
           <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Finished time (UTC)</label>
+            <input type="datetime-local" value={eventForm.finished_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, finished_time_utc: e.target.value }))} className="admin-constructors__input" placeholder="optional — from external API or set later" />
+          </div>
+          <div className="admin-constructors__row">
             <label className="admin-constructors__label">Race of</label>
             <select value={eventForm.special_event} onChange={(e) => setEventForm((f) => ({ ...f, special_event: e.target.value }))} className="admin-constructors__input">
               {SPECIAL_EVENT_OPTIONS.map((o) => (
@@ -434,6 +449,10 @@ const AdminConstructors = () => {
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Start time (UTC)</label>
             <input type="datetime-local" value={updateEventForm.start_time_utc} onChange={(e) => setUpdateEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Finished time (UTC)</label>
+            <input type="datetime-local" value={updateEventForm.finished_time_utc} onChange={(e) => setUpdateEventForm((f) => ({ ...f, finished_time_utc: e.target.value }))} className="admin-constructors__input" placeholder="optional" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Country / City</label>

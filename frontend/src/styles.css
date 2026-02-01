@@ -600,7 +600,7 @@ footer {
 .admin-tabpanels {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 8px;
 }
 
 .admin-tabpanel {
@@ -673,7 +673,7 @@ footer {
 .admin-lookup__form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   max-width: 400px;
 }
 
@@ -685,7 +685,7 @@ footer {
 
 .admin-lookup__row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -710,26 +710,33 @@ footer {
 }
 
 .admin-constructors {
-  padding: 20px;
-  margin-top: 16px;
+  padding: 12px;
+  margin-top: 8px;
 }
 
 .admin-constructors__title {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   font-size: 1rem;
   font-weight: 600;
 }
 
 .admin-constructors__subtitle {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--muted, #666);
 }
 
+.admin-constructors__hint {
+  margin: 0 0 4px;
+  font-size: 0.8125rem;
+  color: var(--muted, #666);
+  line-height: 1.35;
+}
+
 .admin-constructors__block {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border, #e8e8e8);
 }
 
@@ -740,20 +747,38 @@ footer {
 }
 
 .admin-constructors__form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 12px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .admin-constructors__form {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px 14px;
+  }
+}
+
+.admin-constructors__form > .admin-constructors__btn,
+.admin-constructors__form > .admin-constructors__msg {
+  grid-column: 1 / -1;
 }
 
 .admin-constructors__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-constructors__row--full {
+  grid-column: 1 / -1;
 }
 
 .admin-constructors__row .admin-constructors__label {
-  flex: 0 0 120px;
+  flex: 0 0 100px;
   font-size: 0.8125rem;
   color: var(--muted, #666);
 }
@@ -764,25 +789,58 @@ footer {
 
 .admin-constructors__input {
   flex: 1;
-  min-width: 120px;
-  padding: 6px 10px;
-  font-size: 0.875rem;
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: 0.8125rem;
   border: 1px solid var(--border, #ddd);
   border-radius: 4px;
 }
 
 .admin-constructors__input--short {
-  flex: 0 1 120px;
-  min-width: 60px;
+  flex: 0 1 100px;
+  min-width: 56px;
+}
+
+/* Limit width by content: UUID ~36 chars, short dropdowns, tiny numbers */
+.admin-constructors__input--uuid {
+  flex: 0 1 auto;
+  max-width: 38ch;
+  min-width: 12ch;
+}
+
+.admin-constructors__input--narrow {
+  flex: 0 1 auto;
+  max-width: 14ch;
+  min-width: 6ch;
+}
+
+.admin-constructors__input--num {
+  flex: 0 1 auto;
+  max-width: 8ch;
+  min-width: 4ch;
+}
+
+/* Title: limit width so it doesn't stretch in row--full */
+.admin-constructors__input--title {
+  flex: 0 1 auto;
+  max-width: 42ch;
+  min-width: 14ch;
+}
+
+/* datetime-local: fixed width for date/time picker */
+.admin-constructors__input--datetime {
+  flex: 0 1 auto;
+  max-width: 22ch;
+  min-width: 18ch;
 }
 
 .admin-constructors__btn {
   align-self: flex-start;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .admin-constructors__msg {
-  margin: 8px 0 0;
+  margin: 2px 0 0;
   font-size: 0.8125rem;
   color: var(--muted, #666);
 }

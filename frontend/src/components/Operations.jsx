@@ -481,15 +481,15 @@ const AdminConstructors = ({ tab }) => {
         <form onSubmit={createEvent} className="admin-constructors__form">
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Title</label>
-            <input type="text" value={eventForm.title} onChange={(e) => setEventForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" required className="admin-constructors__input" />
+            <input type="text" value={eventForm.title} onChange={(e) => setEventForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" required className="admin-constructors__input admin-constructors__input--title" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Source</label>
-            <input type="text" value={eventForm.source} onChange={(e) => setEventForm((f) => ({ ...f, source: e.target.value }))} placeholder="admin" className="admin-constructors__input" />
+            <input type="text" value={eventForm.source} onChange={(e) => setEventForm((f) => ({ ...f, source: e.target.value }))} placeholder="admin" className="admin-constructors__input admin-constructors__input--narrow" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Game</label>
-            <select value={eventForm.game} onChange={(e) => setEventForm((f) => ({ ...f, game: e.target.value }))} className="admin-constructors__input">
+            <select value={eventForm.game} onChange={(e) => setEventForm((f) => ({ ...f, game: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {GAMES.map((g) => (
                 <option key={g || '—'} value={g}>{g || '—'}</option>
               ))}
@@ -497,7 +497,7 @@ const AdminConstructors = ({ tab }) => {
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Tier</label>
-            <select value={eventForm.event_tier} onChange={(e) => setEventForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input" required>
+            <select value={eventForm.event_tier} onChange={(e) => setEventForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow" required>
               {EVENT_TIERS.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
@@ -505,7 +505,7 @@ const AdminConstructors = ({ tab }) => {
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Event type (race/training)</label>
-            <select value={eventForm.session_type} onChange={(e) => setEventForm((f) => ({ ...f, session_type: e.target.value }))} className="admin-constructors__input">
+            <select value={eventForm.session_type} onChange={(e) => setEventForm((f) => ({ ...f, session_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {SESSION_TYPES.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
@@ -513,21 +513,21 @@ const AdminConstructors = ({ tab }) => {
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Start time (UTC)</label>
-            <input type="datetime-local" value={eventForm.start_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
+            <input type="datetime-local" value={eventForm.start_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Finished time (UTC)</label>
-            <input type="datetime-local" value={eventForm.finished_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, finished_time_utc: e.target.value }))} className="admin-constructors__input" placeholder="optional — from external API or set later" />
+            <input type="datetime-local" value={eventForm.finished_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, finished_time_utc: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" placeholder="optional — from external API or set later" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Race of</label>
-            <select value={eventForm.special_event} onChange={(e) => setEventForm((f) => ({ ...f, special_event: e.target.value }))} className="admin-constructors__input">
+            <select value={eventForm.special_event} onChange={(e) => setEventForm((f) => ({ ...f, special_event: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {SPECIAL_EVENT_OPTIONS.map((o) => (
                 <option key={o.value || '—'} value={o.value}>{o.label}</option>
               ))}
             </select>
           </div>
-          <div className="admin-constructors__row">
+          <div className="admin-constructors__row admin-constructors__row--full">
             <label className="admin-constructors__label">Country / City</label>
             <input type="text" value={eventForm.country} onChange={(e) => setEventForm((f) => ({ ...f, country: e.target.value }))} placeholder="country" className="admin-constructors__input admin-constructors__input--short" />
             <input type="text" value={eventForm.city} onChange={(e) => setEventForm((f) => ({ ...f, city: e.target.value }))} placeholder="city" className="admin-constructors__input admin-constructors__input--short" />
@@ -541,39 +541,39 @@ const AdminConstructors = ({ tab }) => {
         <h4 className="admin-constructors__subtitle">Update Event</h4>
         <div className="admin-constructors__row">
           <label className="admin-constructors__label">Event ID</label>
-          <input type="text" value={updateEventId} onChange={(e) => setUpdateEventId(e.target.value)} placeholder="event uuid" className="admin-constructors__input" />
+          <input type="text" value={updateEventId} onChange={(e) => setUpdateEventId(e.target.value)} placeholder="event uuid" className="admin-constructors__input admin-constructors__input--uuid" />
           <button type="button" className="btn ghost admin-constructors__btn" onClick={fetchEventForUpdate} disabled={updateEventFetching}>{updateEventFetching ? '…' : 'Fetch'}</button>
         </div>
         {updateEventMsg && <p className="admin-constructors__msg" role="status">{updateEventMsg}</p>}
         <form onSubmit={updateEventSubmit} className="admin-constructors__form">
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Classification ID</label>
-            <input type="text" value={updateEventForm.classification_id || ''} readOnly placeholder="—" className="admin-constructors__input admin-constructors__input--short" title="1 event = 1 classification (read-only)" />
+            <input type="text" value={updateEventForm.classification_id || ''} readOnly placeholder="—" className="admin-constructors__input admin-constructors__input--uuid" title="1 event = 1 classification (read-only)" />
           </div>
-          <div className="admin-constructors__row">
+          <div className="admin-constructors__row admin-constructors__row--full">
             <label className="admin-constructors__label">Title</label>
-            <input type="text" value={updateEventForm.title} onChange={(e) => setUpdateEventForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" className="admin-constructors__input" />
+            <input type="text" value={updateEventForm.title} onChange={(e) => setUpdateEventForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" className="admin-constructors__input admin-constructors__input--title" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Source</label>
-            <input type="text" value={updateEventForm.source} onChange={(e) => setUpdateEventForm((f) => ({ ...f, source: e.target.value }))} className="admin-constructors__input" />
+            <input type="text" value={updateEventForm.source} onChange={(e) => setUpdateEventForm((f) => ({ ...f, source: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Game</label>
-            <select value={updateEventForm.game} onChange={(e) => setUpdateEventForm((f) => ({ ...f, game: e.target.value }))} className="admin-constructors__input">
+            <select value={updateEventForm.game} onChange={(e) => setUpdateEventForm((f) => ({ ...f, game: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {GAMES.map((g) => (<option key={g || '—'} value={g}>{g || '—'}</option>))}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Tier</label>
-            <select value={updateEventForm.event_tier} onChange={(e) => setUpdateEventForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input">
+            <select value={updateEventForm.event_tier} onChange={(e) => setUpdateEventForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               <option value="">—</option>
               {EVENT_TIERS.map((t) => (<option key={t} value={t}>{t}</option>))}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Race of</label>
-            <select value={updateEventForm.special_event} onChange={(e) => setUpdateEventForm((f) => ({ ...f, special_event: e.target.value }))} className="admin-constructors__input">
+            <select value={updateEventForm.special_event} onChange={(e) => setUpdateEventForm((f) => ({ ...f, special_event: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {SPECIAL_EVENT_OPTIONS.map((o) => (
                 <option key={o.value || '—'} value={o.value}>{o.label}</option>
               ))}
@@ -581,20 +581,20 @@ const AdminConstructors = ({ tab }) => {
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Start time (UTC)</label>
-            <input type="datetime-local" value={updateEventForm.start_time_utc} onChange={(e) => setUpdateEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
+            <input type="datetime-local" value={updateEventForm.start_time_utc} onChange={(e) => setUpdateEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Finished time (UTC)</label>
-            <input type="datetime-local" value={updateEventForm.finished_time_utc} onChange={(e) => setUpdateEventForm((f) => ({ ...f, finished_time_utc: e.target.value }))} className="admin-constructors__input" placeholder="optional" />
+            <input type="datetime-local" value={updateEventForm.finished_time_utc} onChange={(e) => setUpdateEventForm((f) => ({ ...f, finished_time_utc: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" placeholder="optional" />
           </div>
-          <div className="admin-constructors__row">
+          <div className="admin-constructors__row admin-constructors__row--full">
             <label className="admin-constructors__label">Country / City</label>
             <input type="text" value={updateEventForm.country} onChange={(e) => setUpdateEventForm((f) => ({ ...f, country: e.target.value }))} placeholder="country" className="admin-constructors__input admin-constructors__input--short" />
             <input type="text" value={updateEventForm.city} onChange={(e) => setUpdateEventForm((f) => ({ ...f, city: e.target.value }))} placeholder="city" className="admin-constructors__input admin-constructors__input--short" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Event type (race/training) / Schedule / Type / Format</label>
-            <select value={updateEventForm.session_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, session_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.session_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, session_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {SESSION_TYPES.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
@@ -602,45 +602,45 @@ const AdminConstructors = ({ tab }) => {
             <select value={updateEventForm.schedule_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, schedule_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
               {SCHEDULE_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
-            <select value={updateEventForm.event_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, event_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.event_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, event_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {EVENT_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
-            <select value={updateEventForm.format_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, format_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.format_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, format_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {FORMAT_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Team size / Duration / Grid / Classes</label>
-            <input type="number" min="1" max="8" value={updateEventForm.team_size_min} onChange={(e) => setUpdateEventForm((f) => ({ ...f, team_size_min: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="team min" />
-            <input type="number" min="1" max="8" value={updateEventForm.team_size_max} onChange={(e) => setUpdateEventForm((f) => ({ ...f, team_size_max: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="team max" />
-            <input type="number" min="0" value={updateEventForm.duration_minutes} onChange={(e) => setUpdateEventForm((f) => ({ ...f, duration_minutes: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="duration" />
-            <input type="number" min="0" value={updateEventForm.grid_size_expected} onChange={(e) => setUpdateEventForm((f) => ({ ...f, grid_size_expected: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="grid" />
-            <input type="number" min="1" max="6" value={updateEventForm.class_count} onChange={(e) => setUpdateEventForm((f) => ({ ...f, class_count: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" placeholder="classes" />
+            <input type="number" min="1" max="8" value={updateEventForm.team_size_min} onChange={(e) => setUpdateEventForm((f) => ({ ...f, team_size_min: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" placeholder="team min" />
+            <input type="number" min="1" max="8" value={updateEventForm.team_size_max} onChange={(e) => setUpdateEventForm((f) => ({ ...f, team_size_max: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" placeholder="team max" />
+            <input type="number" min="0" value={updateEventForm.duration_minutes} onChange={(e) => setUpdateEventForm((f) => ({ ...f, duration_minutes: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" placeholder="duration" />
+            <input type="number" min="0" value={updateEventForm.grid_size_expected} onChange={(e) => setUpdateEventForm((f) => ({ ...f, grid_size_expected: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" placeholder="grid" />
+            <input type="number" min="1" max="6" value={updateEventForm.class_count} onChange={(e) => setUpdateEventForm((f) => ({ ...f, class_count: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" placeholder="classes" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Damage / Penalties / Fuel / Tire / Weather</label>
             <select value={updateEventForm.damage_model} onChange={(e) => setUpdateEventForm((f) => ({ ...f, damage_model: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
               {DAMAGE_MODELS.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
-            <select value={updateEventForm.penalties} onChange={(e) => setUpdateEventForm((f) => ({ ...f, penalties: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.penalties} onChange={(e) => setUpdateEventForm((f) => ({ ...f, penalties: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {RULES_TOGGLES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
-            <select value={updateEventForm.fuel_usage} onChange={(e) => setUpdateEventForm((f) => ({ ...f, fuel_usage: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.fuel_usage} onChange={(e) => setUpdateEventForm((f) => ({ ...f, fuel_usage: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {RULES_TOGGLES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
             <select value={updateEventForm.tire_wear} onChange={(e) => setUpdateEventForm((f) => ({ ...f, tire_wear: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
               {RULES_TOGGLES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
-            <select value={updateEventForm.weather} onChange={(e) => setUpdateEventForm((f) => ({ ...f, weather: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.weather} onChange={(e) => setUpdateEventForm((f) => ({ ...f, weather: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {WEATHER_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Stewarding / License</label>
-            <select value={updateEventForm.stewarding} onChange={(e) => setUpdateEventForm((f) => ({ ...f, stewarding: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.stewarding} onChange={(e) => setUpdateEventForm((f) => ({ ...f, stewarding: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {STEWARDING_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
-            <select value={updateEventForm.license_requirement} onChange={(e) => setUpdateEventForm((f) => ({ ...f, license_requirement: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updateEventForm.license_requirement} onChange={(e) => setUpdateEventForm((f) => ({ ...f, license_requirement: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {LICENSE_REQUIREMENTS.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
           </div>
@@ -655,8 +655,8 @@ const AdminConstructors = ({ tab }) => {
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Surface / Track</label>
-            <input type="text" value={updateEventForm.surface_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, surface_type: e.target.value }))} placeholder="surface_type" className="admin-constructors__input admin-constructors__input--short" />
-            <input type="text" value={updateEventForm.track_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, track_type: e.target.value }))} placeholder="track_type" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="text" value={updateEventForm.surface_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, surface_type: e.target.value }))} placeholder="surface_type" className="admin-constructors__input admin-constructors__input--narrow" />
+            <input type="text" value={updateEventForm.track_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, track_type: e.target.value }))} placeholder="track_type" className="admin-constructors__input admin-constructors__input--narrow" />
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={updateEventLoading}>{updateEventLoading ? '…' : 'Update Event'}</button>
         </form>
@@ -672,34 +672,34 @@ const AdminConstructors = ({ tab }) => {
         <form onSubmit={createParticipation} className="admin-constructors__form">
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Driver ID</label>
-            <input type="text" value={partForm.driver_id} onChange={(e) => setPartForm((f) => ({ ...f, driver_id: e.target.value }))} placeholder="driver uuid" required className="admin-constructors__input" />
+            <input type="text" value={partForm.driver_id} onChange={(e) => setPartForm((f) => ({ ...f, driver_id: e.target.value }))} placeholder="driver uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Event ID</label>
-            <input type="text" value={partForm.event_id} onChange={(e) => setPartForm((f) => ({ ...f, event_id: e.target.value }))} placeholder="event uuid" required className="admin-constructors__input" />
+            <input type="text" value={partForm.event_id} onChange={(e) => setPartForm((f) => ({ ...f, event_id: e.target.value }))} placeholder="event uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Discipline</label>
-            <select value={partForm.discipline} onChange={(e) => setPartForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input">
+            <select value={partForm.discipline} onChange={(e) => setPartForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Status</label>
-            <select value={partForm.status} onChange={(e) => setPartForm((f) => ({ ...f, status: e.target.value }))} className="admin-constructors__input">
+            <select value={partForm.status} onChange={(e) => setPartForm((f) => ({ ...f, status: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {PARTICIPATION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">State</label>
-            <select value={partForm.participation_state} onChange={(e) => setPartForm((f) => ({ ...f, participation_state: e.target.value }))} className="admin-constructors__input">
+            <select value={partForm.participation_state} onChange={(e) => setPartForm((f) => ({ ...f, participation_state: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {PARTICIPATION_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Position / Laps</label>
-            <input type="number" min="0" value={partForm.position_overall} onChange={(e) => setPartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--short" />
-            <input type="number" min="0" value={partForm.laps_completed} onChange={(e) => setPartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="number" min="0" value={partForm.position_overall} onChange={(e) => setPartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--num" />
+            <input type="number" min="0" value={partForm.laps_completed} onChange={(e) => setPartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--num" />
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={partLoading}>{partLoading ? '…' : 'Create Participation'}</button>
           {partMsg && (
@@ -713,19 +713,19 @@ const AdminConstructors = ({ tab }) => {
         <form onSubmit={createIncident} className="admin-constructors__form">
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Participation ID</label>
-            <input type="text" value={incidentForm.participation_id} onChange={(e) => setIncidentForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input" />
+            <input type="text" value={incidentForm.participation_id} onChange={(e) => setIncidentForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Type / Severity / Lap</label>
-            <select value={incidentForm.incident_type} onChange={(e) => setIncidentForm((f) => ({ ...f, incident_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={incidentForm.incident_type} onChange={(e) => setIncidentForm((f) => ({ ...f, incident_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {INCIDENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
-            <input type="number" min="1" max="5" value={incidentForm.severity} onChange={(e) => setIncidentForm((f) => ({ ...f, severity: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
-            <input type="number" min="0" value={incidentForm.lap} onChange={(e) => setIncidentForm((f) => ({ ...f, lap: e.target.value }))} placeholder="lap" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="number" min="1" max="5" value={incidentForm.severity} onChange={(e) => setIncidentForm((f) => ({ ...f, severity: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
+            <input type="number" min="0" value={incidentForm.lap} onChange={(e) => setIncidentForm((f) => ({ ...f, lap: e.target.value }))} placeholder="lap" className="admin-constructors__input admin-constructors__input--num" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Description</label>
-            <input type="text" value={incidentForm.description} onChange={(e) => setIncidentForm((f) => ({ ...f, description: e.target.value }))} placeholder="optional" className="admin-constructors__input" />
+            <input type="text" value={incidentForm.description} onChange={(e) => setIncidentForm((f) => ({ ...f, description: e.target.value }))} placeholder="optional" className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={incidentLoading}>{incidentLoading ? '…' : 'Create Incident'}</button>
           {incidentMsg && <p className="admin-constructors__msg" role="status">{incidentMsg}</p>}
@@ -737,28 +737,28 @@ const AdminConstructors = ({ tab }) => {
         <form onSubmit={updateParticipation} className="admin-constructors__form">
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Participation ID</label>
-            <input type="text" value={updatePartForm.participation_id} onChange={(e) => setUpdatePartForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input" />
+            <input type="text" value={updatePartForm.participation_id} onChange={(e) => setUpdatePartForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Status / State</label>
-            <select value={updatePartForm.status} onChange={(e) => setUpdatePartForm((f) => ({ ...f, status: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updatePartForm.status} onChange={(e) => setUpdatePartForm((f) => ({ ...f, status: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               <option value="">—</option>
               {PARTICIPATION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select value={updatePartForm.participation_state} onChange={(e) => setUpdatePartForm((f) => ({ ...f, participation_state: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+            <select value={updatePartForm.participation_state} onChange={(e) => setUpdatePartForm((f) => ({ ...f, participation_state: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               <option value="">—</option>
               {PARTICIPATION_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Position / Laps</label>
-            <input type="number" min="0" value={updatePartForm.position_overall} onChange={(e) => setUpdatePartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--short" />
-            <input type="number" min="0" value={updatePartForm.laps_completed} onChange={(e) => setUpdatePartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="number" min="0" value={updatePartForm.position_overall} onChange={(e) => setUpdatePartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--num" />
+            <input type="number" min="0" value={updatePartForm.laps_completed} onChange={(e) => setUpdatePartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--num" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Started / Finished (ISO)</label>
-            <input type="text" value={updatePartForm.started_at} onChange={(e) => setUpdatePartForm((f) => ({ ...f, started_at: e.target.value }))} placeholder="2025-01-31T12:00:00Z" className="admin-constructors__input admin-constructors__input--short" />
-            <input type="text" value={updatePartForm.finished_at} onChange={(e) => setUpdatePartForm((f) => ({ ...f, finished_at: e.target.value }))} placeholder="2025-01-31T14:00:00Z" className="admin-constructors__input admin-constructors__input--short" />
+            <input type="text" value={updatePartForm.started_at} onChange={(e) => setUpdatePartForm((f) => ({ ...f, started_at: e.target.value }))} placeholder="2025-01-31T12:00:00Z" className="admin-constructors__input admin-constructors__input--uuid" />
+            <input type="text" value={updatePartForm.finished_at} onChange={(e) => setUpdatePartForm((f) => ({ ...f, finished_at: e.target.value }))} placeholder="2025-01-31T14:00:00Z" className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={updatePartLoading}>{updatePartLoading ? '…' : 'Update Participation'}</button>
           {updatePartMsg && <p className="admin-constructors__msg" role="status">{updatePartMsg}</p>}
@@ -885,7 +885,7 @@ const ClassificationsPanel = () => {
       <p className="admin-constructors__hint">1 event = 1 classification. Required for participation and CRS. Create event first, then add classification if not auto-created.</p>
       <div className="admin-constructors__row">
         <label className="admin-constructors__label">Filter by event_id</label>
-        <input type="text" value={filterEventId} onChange={(e) => setFilterEventId(e.target.value)} placeholder="event uuid" className="admin-constructors__input admin-constructors__input--short" />
+        <input type="text" value={filterEventId} onChange={(e) => setFilterEventId(e.target.value)} placeholder="event uuid" className="admin-constructors__input admin-constructors__input--uuid" />
       </div>
       {loading && <p className="admin-constructors__msg">Loading…</p>}
       {error && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{error}</p>}
@@ -896,24 +896,24 @@ const ClassificationsPanel = () => {
             <form onSubmit={handleCreate} className="admin-constructors__form">
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Event ID</label>
-                <input type="text" value={createForm.event_id} onChange={(e) => setCreateForm((f) => ({ ...f, event_id: e.target.value }))} placeholder="event uuid" className="admin-constructors__input" required />
+                <input type="text" value={createForm.event_id} onChange={(e) => setCreateForm((f) => ({ ...f, event_id: e.target.value }))} placeholder="event uuid" className="admin-constructors__input admin-constructors__input--uuid" required />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Tier / Tier label</label>
-                <select value={createForm.event_tier} onChange={(e) => setCreateForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                <select value={createForm.event_tier} onChange={(e) => setCreateForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
                   {EVENT_TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <input type="text" value={createForm.tier_label} onChange={(e) => setCreateForm((f) => ({ ...f, tier_label: e.target.value }))} placeholder="E2" className="admin-constructors__input admin-constructors__input--short" />
+                <input type="text" value={createForm.tier_label} onChange={(e) => setCreateForm((f) => ({ ...f, tier_label: e.target.value }))} placeholder="E2" className="admin-constructors__input admin-constructors__input--narrow" />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">difficulty / seriousness / realism</label>
-                <input type="number" step="0.1" min="0" max="100" value={createForm.difficulty_score} onChange={(e) => setCreateForm((f) => ({ ...f, difficulty_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
-                <input type="number" step="0.1" min="0" max="100" value={createForm.seriousness_score} onChange={(e) => setCreateForm((f) => ({ ...f, seriousness_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
-                <input type="number" step="0.1" min="0" max="100" value={createForm.realism_score} onChange={(e) => setCreateForm((f) => ({ ...f, realism_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                <input type="number" step="0.1" min="0" max="100" value={createForm.difficulty_score} onChange={(e) => setCreateForm((f) => ({ ...f, difficulty_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
+                <input type="number" step="0.1" min="0" max="100" value={createForm.seriousness_score} onChange={(e) => setCreateForm((f) => ({ ...f, seriousness_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
+                <input type="number" step="0.1" min="0" max="100" value={createForm.realism_score} onChange={(e) => setCreateForm((f) => ({ ...f, realism_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">classification_version / inputs_hash</label>
-                <input type="text" value={createForm.classification_version} onChange={(e) => setCreateForm((f) => ({ ...f, classification_version: e.target.value }))} placeholder="v1" className="admin-constructors__input admin-constructors__input--short" />
+                <input type="text" value={createForm.classification_version} onChange={(e) => setCreateForm((f) => ({ ...f, classification_version: e.target.value }))} placeholder="v1" className="admin-constructors__input admin-constructors__input--narrow" />
                 <input type="text" value={createForm.inputs_hash} onChange={(e) => setCreateForm((f) => ({ ...f, inputs_hash: e.target.value }))} placeholder="manual" className="admin-constructors__input admin-constructors__input--short" required />
               </div>
               <button type="submit" className="btn primary admin-constructors__btn" disabled={createLoading}>{createLoading ? '…' : 'Create'}</button>
@@ -1096,7 +1096,7 @@ const TierRulesPanel = () => {
                     min="0"
                     value={editForm.min_events}
                     onChange={(e) => setEditForm((f) => ({ ...f, min_events: e.target.value }))}
-                    className="admin-constructors__input"
+                    className="admin-constructors__input admin-constructors__input--num"
                     placeholder="5"
                   />
                 </div>
@@ -1108,17 +1108,17 @@ const TierRulesPanel = () => {
                     min="0"
                     value={editForm.difficulty_threshold}
                     onChange={(e) => setEditForm((f) => ({ ...f, difficulty_threshold: e.target.value }))}
-                    className="admin-constructors__input"
+                    className="admin-constructors__input admin-constructors__input--num"
                     placeholder="0"
                   />
                 </div>
-                <div className="admin-constructors__row">
+                <div className="admin-constructors__row admin-constructors__row--full">
                   <label className="admin-constructors__label">required_license_codes (comma-separated)</label>
                   <input
                     type="text"
                     value={editForm.required_license_codes}
                     onChange={(e) => setEditForm((f) => ({ ...f, required_license_codes: e.target.value }))}
-                    className="admin-constructors__input"
+                    className="admin-constructors__input admin-constructors__input--uuid"
                     placeholder="GT_E1, GT_ROOKIE"
                   />
                 </div>
@@ -1275,29 +1275,29 @@ const LicenseLevelsPanel = () => {
             <form onSubmit={handleCreate} className="admin-constructors__form">
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Discipline</label>
-                <select value={createForm.discipline} onChange={(e) => setCreateForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                <select value={createForm.discipline} onChange={(e) => setCreateForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
                   {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Code</label>
-                <input type="text" value={createForm.code} onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. GT_ROOKIE" className="admin-constructors__input" required />
+                <input type="text" value={createForm.code} onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. GT_ROOKIE" className="admin-constructors__input admin-constructors__input--narrow" required />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Name</label>
-                <input type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Rookie" className="admin-constructors__input" required />
+                <input type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Rookie" className="admin-constructors__input admin-constructors__input--narrow" required />
               </div>
-              <div className="admin-constructors__row">
+              <div className="admin-constructors__row admin-constructors__row--full">
                 <label className="admin-constructors__label">Description</label>
-                <input type="text" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short description" className="admin-constructors__input" required />
+                <input type="text" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short description" className="admin-constructors__input admin-constructors__input--uuid" required />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">min_crs</label>
-                <input type="number" step="0.1" min="0" max="100" value={createForm.min_crs} onChange={(e) => setCreateForm((f) => ({ ...f, min_crs: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                <input type="number" step="0.1" min="0" max="100" value={createForm.min_crs} onChange={(e) => setCreateForm((f) => ({ ...f, min_crs: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">required_task_codes (comma)</label>
-                <input type="text" value={createForm.required_task_codes} onChange={(e) => setCreateForm((f) => ({ ...f, required_task_codes: e.target.value }))} placeholder="finish_race, top10" className="admin-constructors__input" />
+                <input type="text" value={createForm.required_task_codes} onChange={(e) => setCreateForm((f) => ({ ...f, required_task_codes: e.target.value }))} placeholder="finish_race, top10" className="admin-constructors__input admin-constructors__input--uuid" />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Active</label>
@@ -1344,29 +1344,29 @@ const LicenseLevelsPanel = () => {
               <form onSubmit={handleUpdate} className="admin-constructors__form">
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Discipline</label>
-                  <select value={editForm.discipline} onChange={(e) => setEditForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                  <select value={editForm.discipline} onChange={(e) => setEditForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
                     {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Code</label>
-                  <input type="text" value={editForm.code} onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))} className="admin-constructors__input" required />
+                  <input type="text" value={editForm.code} onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow" required />
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Name</label>
-                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="admin-constructors__input" required />
+                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow" required />
                 </div>
-                <div className="admin-constructors__row">
+                <div className="admin-constructors__row admin-constructors__row--full">
                   <label className="admin-constructors__label">Description</label>
-                  <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="admin-constructors__input" required />
+                  <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="admin-constructors__input admin-constructors__input--uuid" required />
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">min_crs</label>
-                  <input type="number" step="0.1" min="0" max="100" value={editForm.min_crs} onChange={(e) => setEditForm((f) => ({ ...f, min_crs: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                  <input type="number" step="0.1" min="0" max="100" value={editForm.min_crs} onChange={(e) => setEditForm((f) => ({ ...f, min_crs: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">required_task_codes (comma)</label>
-                  <input type="text" value={editForm.required_task_codes} onChange={(e) => setEditForm((f) => ({ ...f, required_task_codes: e.target.value }))} className="admin-constructors__input" />
+                  <input type="text" value={editForm.required_task_codes} onChange={(e) => setEditForm((f) => ({ ...f, required_task_codes: e.target.value }))} className="admin-constructors__input admin-constructors__input--uuid" />
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Active</label>
@@ -1736,7 +1736,7 @@ const TaskDefinitionsPanel = () => {
             <form onSubmit={handleCreate} className="admin-constructors__form">
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Code</label>
-                <input type="text" value={createForm.code} onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))} placeholder="finish_race" className="admin-constructors__input" required />
+                <input type="text" value={createForm.code} onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))} placeholder="finish_race" className="admin-constructors__input admin-constructors__input--narrow" required />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Name / Discipline / Description</label>
@@ -1744,11 +1744,11 @@ const TaskDefinitionsPanel = () => {
                 <select value={createForm.discipline} onChange={(e) => setCreateForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
                   {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
-                <input type="text" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="description" className="admin-constructors__input" required />
+                <input type="text" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="description" className="admin-constructors__input admin-constructors__input--narrow" required />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">requirements (JSON)</label>
-                <input type="text" value={createForm.requirements} onChange={(e) => setCreateForm((f) => ({ ...f, requirements: e.target.value }))} placeholder="{}" className="admin-constructors__input" />
+                <input type="text" value={createForm.requirements} onChange={(e) => setCreateForm((f) => ({ ...f, requirements: e.target.value }))} placeholder="{}" className="admin-constructors__input admin-constructors__input--uuid" />
               </div>
               <div className="admin-constructors__row">
                 <label className="admin-constructors__label">Scope / min_event_tier / active</label>
@@ -1797,19 +1797,19 @@ const TaskDefinitionsPanel = () => {
               <form onSubmit={handleUpdate} className="admin-constructors__form">
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Code / Name / Discipline</label>
-                  <input type="text" value={editForm.code} onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))} className="admin-constructors__input" required />
-                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="admin-constructors__input" required />
+                  <input type="text" value={editForm.code} onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow" required />
+                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow" required />
                   <select value={editForm.discipline} onChange={(e) => setEditForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
                     {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Description</label>
-                  <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="admin-constructors__input" required />
+                  <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow" required />
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">requirements (JSON)</label>
-                  <input type="text" value={editForm.requirements} onChange={(e) => setEditForm((f) => ({ ...f, requirements: e.target.value }))} className="admin-constructors__input" />
+                  <input type="text" value={editForm.requirements} onChange={(e) => setEditForm((f) => ({ ...f, requirements: e.target.value }))} className="admin-constructors__input admin-constructors__input--uuid" />
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Scope / min_event_tier / active</label>

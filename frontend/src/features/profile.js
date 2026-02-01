@@ -19,8 +19,7 @@ import {
   loadTasksOverview,
   loadDashboardRecommendations,
   loadDashboardEvents,
-  loadLicenseProgress,
-  loadActivityFeed
+  loadLicenseProgress
 } from './dashboard.js';
 import { loadIncidents } from './incidents.js';
 import { updateDriverSnapshotMeta, resetDriverSnapshot } from './driverSnapshot.js';
@@ -41,7 +40,6 @@ const profileCta = document.querySelector('[data-profile-cta]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
 const licenseReqs = document.querySelector('[data-license-reqs]');
-const activityFeed = document.querySelector('[data-activity-feed]');
 const profileForm = document.querySelector('[data-profile-form]');
 const profileSaveStatus = document.querySelector('[data-profile-save-status]');
 const profileStatus = document.querySelector('[data-profile-status]');
@@ -79,7 +77,6 @@ export const setProfileEmpty = (message, options = {}) => {
   if (licenseCurrent) licenseCurrent.textContent = '--';
   if (licenseNext) licenseNext.textContent = '--';
   if (licenseReqs) setList(licenseReqs, [], 'Log in to see license progress.');
-  if (activityFeed) setList(activityFeed, [], 'Log in to see activity.');
   if (profileNextTier) profileNextTier.style.width = '0%';
   if (profileNextTierMeta) profileNextTierMeta.textContent = 'Complete profile and races to advance.';
   if (profileForm) {
@@ -327,7 +324,6 @@ export const loadProfile = async () => {
     await loadDashboardRecommendations(driver);
     await loadDashboardEvents(driver);
     await loadLicenseProgress(driver);
-    await loadActivityFeed(driver);
     await loadIncidents(driver);
     scheduleRecommendationsRefetchAtMidnight();
   } catch (err) {

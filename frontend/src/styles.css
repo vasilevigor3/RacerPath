@@ -327,10 +327,6 @@ footer {
   color: var(--accent-2);
 }
 
-.activity-card .list li {
-  line-height: 1.4;
-}
-
 .hero-copy h1 {
   font-size: clamp(2.6rem, 4vw, 4.2rem);
   margin: 12px 0 16px;

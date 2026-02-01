@@ -181,12 +181,6 @@ const Cabinet = () => (
                 <li>No requirements loaded.</li>
               </ul>
             </div>
-            <div className="card compact activity-card">
-              <p className="card-title">Activity feed</p>
-              <ul className="list" data-activity-feed>
-                <li>No activity yet.</li>
-              </ul>
-            </div>
           </div>
         </div>
 

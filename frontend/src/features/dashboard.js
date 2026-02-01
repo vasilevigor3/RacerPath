@@ -27,7 +27,6 @@ const dashboardEventsList = document.querySelector('[data-dashboard-events]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
 const licenseReqs = document.querySelector('[data-license-reqs]');
-const activityFeed = document.querySelector('[data-activity-feed]');
 const currentRaceCard = document.querySelector('[data-current-race-card]');
 const currentRaceEvent = document.querySelector('[data-current-race-event]');
 const currentRacePosition = document.querySelector('[data-current-race-position]');
@@ -453,30 +452,6 @@ export const loadLicenseProgress = async (driver) => {
     licenseCurrent.textContent = '--';
     licenseNext.textContent = '--';
     setList(licenseReqs, [], 'Unable to load license progress.');
-  }
-};
-
-export const loadActivityFeed = async (driver) => {
-  if (!activityFeed) return;
-  if (!driver) {
-    setList(activityFeed, [], 'Create a driver profile to see activity.');
-    return;
-  }
-  try {
-    const res = await apiFetch(`/api/participations?driver_id=${driver.id}`);
-    if (!res.ok) throw new Error('failed');
-    const participations = await res.json();
-    const items = participations.slice(0, 6).map((participation) => {
-      const duration = getParticipationMinutes(participation);
-      const durationLabel = duration ? `${duration}m` : 'Duration n/a';
-      const incidentLabel = participation.incidents_count ? ` / ${participation.incidents_count} incidents` : '';
-      const title = participation.event_title || participation.event_id.slice(0, 8);
-      const statusLabel = participation.status ? participation.status.toUpperCase() : 'FINISHED';
-      return `${title} • ${statusLabel} • ${durationLabel}${incidentLabel}`;
-    });
-    setList(activityFeed, items, 'No activity yet.');
-  } catch (err) {
-    setList(activityFeed, [], 'Unable to load activity.');
   }
 };
 

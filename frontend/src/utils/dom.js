@@ -94,7 +94,12 @@ export const setRecommendationListWithCountdown = (listEl, items, special_events
       const countdown = startUtc
         ? `<span class="rec-countdown" data-start-utc="${escapeHtml(startUtc)}">${escapeHtml(formatCountdownFn(startUtc))}</span>`
         : '';
-      return `<li class="rec-item">${escapeHtml(text)}${countdown ? `<br><small class="rec-countdown-wrap">${countdown}</small>` : ''}</li>`;
+      const inner = `${escapeHtml(text)}${countdown ? `<br><small class="rec-countdown-wrap">${countdown}</small>` : ''}`;
+      if (special && special.event_id) {
+        const eventId = escapeHtml(String(special.event_id));
+        return `<li class="rec-item rec-item--clickable" data-event-id="${eventId}"><button type="button" class="rec-item__text btn-link">${inner}</button></li>`;
+      }
+      return `<li class="rec-item">${inner}</li>`;
     })
     .join('');
 };

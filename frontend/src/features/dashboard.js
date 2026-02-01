@@ -597,7 +597,24 @@ const registerOnEvent = async (driverId, eventId) => {
 function initDashboardEventsRegisterDelegation() {
   if (document.body.dataset.dashboardEventsRegisterDelegation) return;
   document.body.dataset.dashboardEventsRegisterDelegation = '1';
-  document.body.addEventListener('click', (e) => {
+  document.body.addEventListener('click', async (e) => {
+    const recList = e.target.closest('[data-recommendation-list]');
+    const recItem = recList ? e.target.closest('.rec-item[data-event-id]') : null;
+    if (recItem && recList) {
+      e.preventDefault();
+      const eventId = recItem.getAttribute('data-event-id');
+      const driver = lastDriverForEvents;
+      if (!eventId || !driver) return;
+      try {
+        const res = await apiFetch(`/api/events/${encodeURIComponent(eventId)}`);
+        if (!res.ok) return;
+        const event = await res.json();
+        const eventsTab = document.querySelector('[data-tab-button="events"]');
+        if (eventsTab) eventsTab.click();
+        showEventDetail(event, driver);
+      } catch (_) {}
+      return;
+    }
     const list = e.target.closest('[data-dashboard-events]');
     const upcomingList = e.target.closest('[data-upcoming-events]');
     const textBtn = (list || upcomingList) ? e.target.closest('.event-list-item__text') : null;

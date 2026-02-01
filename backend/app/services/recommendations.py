@@ -192,7 +192,7 @@ def _build_recommendation_content(
             special_events.append({
                 "slot": special_value,
                 "label": label,
-                "event_id": event.id,
+                "event_id": str(event.id),
                 "start_time_utc": event.start_time_utc,
                 "title": event.title,
                 "game": event.game,

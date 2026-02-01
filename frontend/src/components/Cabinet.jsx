@@ -12,21 +12,6 @@ const Cabinet = () => (
         </h1>
         <p className="lead">Your private dashboard: progress, risks, and the next events you must complete.</p>
       </div>
-      <div className="card level-card">
-        <p className="card-title">Profile level</p>
-        <div className="level-value" data-profile-level>
-          Rookie
-        </div>
-        <div className="progress">
-          <div className="progress-label">Profile completion</div>
-          <div className="progress-track">
-            <div className="progress-fill" data-profile-completion style={{ width: '5%' }}></div>
-          </div>
-          <div className="progress-meta" data-profile-missing>
-            Complete your profile to unlock the next level.
-          </div>
-        </div>
-      </div>
     </div>
 
     <div className="dashboard-grid">

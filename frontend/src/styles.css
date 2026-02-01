@@ -184,17 +184,6 @@ footer {
   margin: 10px 0 12px;
 }
 
-.level-card {
-  min-width: 260px;
-  max-width: 360px;
-}
-
-.level-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);

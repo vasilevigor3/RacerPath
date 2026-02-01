@@ -1,0 +1,31 @@
+---
+description: Commit message prefix by task type (feature, bug-fix, etc.)
+alwaysApply: true
+---
+
+# Commit Message Prefixes
+
+Every commit must use a prefix that reflects the type of change. Choose one and put it at the start of the commit message, followed by a colon and space, then the short description.
+
+## Prefixes
+
+| Prefix | Use when |
+|--------|----------|
+| `feature` | New functionality, new endpoint, new UI block, new field/API |
+| `bug-fix` | Fixing incorrect behavior, login/API errors, wrong display |
+| `fix` | Same as bug-fix; prefer `bug-fix` for user-facing bugs |
+| `refactor` | Restructure code without changing behavior |
+| `chore` | Tooling, deps, config, migrations, no user-facing change |
+| `docs` | Only documentation or comments |
+| `style` | Only formatting, CSS, no logic change |
+| `feature improvements` | Improving existing feature (UX, copy, layout, validation) |
+
+## Examples
+
+- `feature: add next_tier_progress_percent to profile API`
+- `bug-fix: login failed despite 200 response`
+- `feature improvements: reduce recommendations section top padding`
+- `chore: remove level-card and related DOM refs`
+- `refactor: move CRS pill to Driver identity`
+
+When the user asks to commit/push, choose the prefix from the change set (new stuff → feature; fix → bug-fix; removal/cleanup → chore or refactor; tweaks → feature improvements) and use it in the commit message.

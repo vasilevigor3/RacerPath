@@ -35,11 +35,8 @@ const profileTier = document.querySelector('[data-profile-tier]');
 const profilePlatforms = document.querySelector('[data-profile-platforms]');
 const profileUserId = document.querySelector('[data-profile-user-id]');
 const profileCtaButton = document.querySelector('[data-profile-cta-button]');
-const profileCompletion = document.querySelector('[data-profile-completion]');
 const profileNextTier = document.querySelector('[data-profile-next-tier]');
 const profileNextTierMeta = document.querySelector('[data-profile-next-tier-meta]');
-const profileLevel = document.querySelector('[data-profile-level]');
-const profileMissing = document.querySelector('[data-profile-missing]');
 const profileCta = document.querySelector('[data-profile-cta]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
@@ -127,7 +124,6 @@ const loadUserProfile = async (driver) => {
     setProfileIdLabel(playerId, driver ? 'Driver ID' : 'User ID');
     setCurrentProfileGoals(profile.goals || null);
     const systemGoals = profile.goals || '';
-    if (profileCompletion) profileCompletion.style.width = `${profile.completion_percent || 0}%`;
     const nextTierPercent =
       profile.next_tier_progress_percent != null ? profile.next_tier_progress_percent : 0;
     if (profileNextTier) profileNextTier.style.width = `${nextTierPercent}%`;
@@ -138,15 +134,7 @@ const loadUserProfile = async (driver) => {
           ? 'Profile complete. Race to advance tier.'
           : `Missing ${missing.length} fields to advance.`;
     }
-    if (profileLevel) profileLevel.textContent = profile.level || 'Rookie';
     readinessState.profileCompletion = profile.completion_percent || 0;
-    if (profileMissing) {
-      const missing = profile.missing_fields || [];
-      profileMissing.textContent =
-        missing.length === 0
-          ? 'Profile complete.'
-          : `Missing ${missing.length} fields to level up.`;
-    }
     if (profileCtaButton) {
       const missing = profile.missing_fields || [];
       profileCtaButton.textContent = missing.length === 0 ? 'Edit profile' : 'Complete profile';
@@ -247,11 +235,8 @@ export const loadProfile = async () => {
     setProfileEmpty('Log in to see your profile.');
     if (loginStatus) loginStatus.textContent = 'Not logged in.';
     if (dashboardName) dashboardName.textContent = 'Driver';
-    if (profileCompletion) profileCompletion.style.width = '0%';
     if (profileNextTier) profileNextTier.style.width = '0%';
     if (profileNextTierMeta) profileNextTierMeta.textContent = 'Complete profile and races to advance.';
-    if (profileLevel) profileLevel.textContent = 'Rookie';
-    if (profileMissing) profileMissing.textContent = 'Log in to complete profile.';
     updateReadiness();
     return;
   }

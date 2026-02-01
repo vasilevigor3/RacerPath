@@ -99,8 +99,6 @@ def list_events(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    from sqlalchemy import func
-
     query = session.query(Event)
     if driver_id and user.role not in {"admin"}:
         driver = session.query(Driver).filter(Driver.id == driver_id).first()
@@ -136,20 +134,16 @@ def list_events(
             pass
     if driver_id:
         driver = session.query(Driver).filter(Driver.id == driver_id).first()
-        if driver and driver.sim_games:
-            query = query.filter(Event.game.in_(expand_driver_games_for_event_match(driver.sim_games)))
-        else:
+        if not driver:
             return []
-        if same_tier and driver:
-            driver_tier = getattr(driver, "tier", "E0") or "E0"
-            query = (
-                query.outerjoin(Classification, Event.id == Classification.event_id)
-                .filter(func.coalesce(Classification.event_tier, "E2") == driver_tier)
-            )
+        if driver.sim_games:
+            query = query.filter(Event.game.in_(expand_driver_games_for_event_match(driver.sim_games)))
+        # else: no sim_games filter — show all events (e.g. newcomer before adding games)
+        # same_tier filter applied after we have latest classification per event (below)
     events = query.order_by(Event.created_at.desc()).all()
     if not events:
         return []
-    # Attach event_tier from Classification so list response shows tier (e.g. E2)
+    # Latest classification per event (same source we use for display)
     event_ids = [e.id for e in events]
     classifications = (
         session.query(Classification)
@@ -157,11 +151,14 @@ def list_events(
         .order_by(Classification.created_at.desc())
         .all()
     )
-    # latest classification per event
     tier_by_event = {}
     for c in classifications:
         if c.event_id not in tier_by_event:
             tier_by_event[c.event_id] = c.event_tier
+    # Filter by driver tier using the same "latest" tier we display (avoids showing lower-tier events)
+    if driver_id and same_tier and driver:
+        driver_tier = getattr(driver, "tier", "E0") or "E0"
+        events = [e for e in events if (tier_by_event.get(e.id) or "E2") == driver_tier]
     return [
         EventRead.model_validate(e).model_copy(update={"event_tier": tier_by_event.get(e.id) or "E2"})
         for e in events

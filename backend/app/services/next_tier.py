@@ -14,6 +14,21 @@ from app.models.participation import Participation, ParticipationStatus
 from app.models.tier_progression_rule import TierProgressionRule
 
 TIER_TOP = "E5"
+TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
+
+
+def _next_tier(current: str) -> str | None:
+    """Next tier after current (E0->E1, ..., E4->E5). None if current is E5."""
+    t = (current or "E0").strip()
+    if t == TIER_TOP:
+        return None
+    try:
+        i = TIER_ORDER.index(t)
+        if i + 1 < len(TIER_ORDER):
+            return TIER_ORDER[i + 1]
+    except ValueError:
+        pass
+    return None
 
 
 def compute_next_tier_progress(session: Session, user_id: str) -> tuple[int, dict[str, Any] | None]:
@@ -71,4 +86,13 @@ def compute_next_tier_progress(session: Session, user_id: str) -> tuple[int, dic
         "difficulty_threshold": rule.difficulty_threshold,
         "missing_license_codes": missing_license_codes,
     }
+
+    # Auto-promote when progress is 100% and all required licenses are earned
+    if progress >= 100 and not missing_license_codes:
+        next_t = _next_tier(driver.tier or "E0")
+        if next_t:
+            driver.tier = next_t
+            session.commit()
+            session.refresh(driver)
+
     return progress, next_tier_data

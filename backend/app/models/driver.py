@@ -22,6 +22,6 @@ class Driver(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     primary_discipline: Mapped[str] = mapped_column(String(40), nullable=False)
     sim_games: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    user_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     tier: Mapped[str] = mapped_column(String(10), nullable=False, default="E0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

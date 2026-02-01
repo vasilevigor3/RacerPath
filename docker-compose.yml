@@ -16,6 +16,9 @@ services:
       GRIDFINDER_API_KEY: ${GRIDFINDER_API_KEY:-}
     ports:
       - "8001:8000"
+    volumes:
+      # Новые миграции подхватываются без пересборки: добавь файл → docker compose restart app
+      - ./backend:/app/backend
     depends_on:
       - postgres
       - redis

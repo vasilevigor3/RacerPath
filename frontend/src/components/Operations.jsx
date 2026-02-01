@@ -107,7 +107,111 @@ const toDatetimeLocal = (iso) => {
   }
 };
 
-const AdminConstructors = () => {
+const TABS = ['drivers', 'events', 'classifications', 'participations', 'tasks', 'licenses', 'tier', 'schema'];
+const TAB_LABELS = { drivers: 'Drivers', events: 'Events', classifications: 'Classifications', participations: 'Participations', tasks: 'Tasks', licenses: 'Licenses', tier: 'Tier rules', schema: 'Project schema' };
+
+const ProjectSchemaPanel = () => {
+  return (
+    <div className="admin-constructors card admin-schema">
+      <h3 className="admin-constructors__title">Project schema</h3>
+      <p className="admin-constructors__hint">Arrows: “from → to” = “to depends on from”. Create in order: User → Driver; Event → Classification; then Participation (Driver + Event with Classification); Incident needs Participation.</p>
+      <div className="admin-schema__diagram" role="img" aria-label="Entity dependency diagram">
+        <div className="admin-schema__row">
+          <div className="admin-schema__node" title="Auth / registration">
+            <span className="admin-schema__node-label">User</span>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__node" title="Requires User">
+            <span className="admin-schema__node-label">Driver</span>
+          </div>
+        </div>
+        <div className="admin-schema__row">
+          <div className="admin-schema__node" title="Created first">
+            <span className="admin-schema__node-label">Event</span>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__node" title="1 event = 1 classification">
+            <span className="admin-schema__node-label">Classification</span>
+          </div>
+        </div>
+        <div className="admin-schema__row admin-schema__row--merge">
+          <div className="admin-schema__group">
+            <div className="admin-schema__node">
+              <span className="admin-schema__node-label">Driver</span>
+            </div>
+            <span className="admin-schema__plus">+</span>
+            <div className="admin-schema__node">
+              <span className="admin-schema__node-label">Event</span>
+            </div>
+            <span className="admin-schema__plus">+</span>
+            <div className="admin-schema__node admin-schema__node--small">
+              <span className="admin-schema__node-label">Classification</span>
+            </div>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__node" title="Participation requires Driver and Event (with Classification)">
+            <span className="admin-schema__node-label">Participation</span>
+          </div>
+        </div>
+        <div className="admin-schema__row">
+          <div className="admin-schema__node">
+            <span className="admin-schema__node-label">Participation</span>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__node" title="Requires Participation">
+            <span className="admin-schema__node-label">Incident</span>
+          </div>
+        </div>
+        <div className="admin-schema__row">
+          <div className="admin-schema__node admin-schema__node--standalone" title="Standalone">
+            <span className="admin-schema__node-label">LicenseLevel</span>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__group">
+            <div className="admin-schema__node">
+              <span className="admin-schema__node-label">Driver</span>
+            </div>
+            <span className="admin-schema__plus">+</span>
+            <div className="admin-schema__node">
+              <span className="admin-schema__node-label">LicenseLevel</span>
+            </div>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__node" title="DriverLicense = Driver + LicenseLevel">
+            <span className="admin-schema__node-label">DriverLicense</span>
+          </div>
+        </div>
+        <div className="admin-schema__row">
+          <div className="admin-schema__node admin-schema__node--standalone" title="Standalone">
+            <span className="admin-schema__node-label">TaskDefinition</span>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__group">
+            <div className="admin-schema__node">
+              <span className="admin-schema__node-label">Driver</span>
+            </div>
+            <span className="admin-schema__plus">+</span>
+            <div className="admin-schema__node">
+              <span className="admin-schema__node-label">TaskDefinition</span>
+            </div>
+            <span className="admin-schema__plus">(±Part.)</span>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__node" title="TaskCompletion: Driver + TaskDefinition, optional Participation">
+            <span className="admin-schema__node-label">TaskCompletion</span>
+          </div>
+        </div>
+        <div className="admin-schema__row">
+          <div className="admin-schema__node admin-schema__node--standalone" title="Per tier E0–E5">
+            <span className="admin-schema__node-label">TierProgressionRule</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AdminConstructors = ({ tab }) => {
   const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: 'E2', special_event: '', session_type: 'race' });
   const [eventLoading, setEventLoading] = useState(false);
   const [eventMsg, setEventMsg] = useState(null);
@@ -362,10 +466,15 @@ const AdminConstructors = () => {
       .finally(() => setUpdatePartLoading(false));
   };
 
+  const showEvents = tab === undefined || tab === 'events';
+  const showParticipations = tab === undefined || tab === 'participations';
+
   return (
     <div className="admin-constructors card">
-      <h3 className="admin-constructors__title">Constructors (driver flow)</h3>
+      {!tab && <h3 className="admin-constructors__title">Constructors (driver flow)</h3>}
 
+      {showEvents && (
+      <>
       <section className="admin-constructors__block">
         <h4 className="admin-constructors__subtitle">Create Event</h4>
         <p className="admin-constructors__hint">Classification is created automatically when event is created (1 event = 1 classification).</p>
@@ -552,7 +661,11 @@ const AdminConstructors = () => {
           <button type="submit" className="btn primary admin-constructors__btn" disabled={updateEventLoading}>{updateEventLoading ? '…' : 'Update Event'}</button>
         </form>
       </section>
+      </>
+      )}
 
+      {showParticipations && (
+      <>
       <section className="admin-constructors__block">
         <h4 className="admin-constructors__subtitle">Create Participation</h4>
         <p className="admin-constructors__hint">Event must have a classification first (1 event = 1 classification).</p>
@@ -651,6 +764,8 @@ const AdminConstructors = () => {
           {updatePartMsg && <p className="admin-constructors__msg" role="status">{updatePartMsg}</p>}
         </form>
       </section>
+      </>
+      )}
     </div>
   );
 };
@@ -1717,6 +1832,7 @@ const TaskDefinitionsPanel = () => {
 };
 
 const AdminLookup = () => {
+  const [activeTab, setActiveTab] = useState('drivers');
   const [q, setQ] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1803,36 +1919,49 @@ const AdminLookup = () => {
 
   return (
     <div className="admin-lookup">
-      <form className="admin-lookup__form" onSubmit={handleSubmit} data-admin-lookup-form>
-        <label className="admin-lookup__label" htmlFor="admin-lookup-q">
-          UID / email
-        </label>
-        <div className="admin-lookup__row">
-          <input
-            id="admin-lookup-q"
-            type="text"
-            className="admin-lookup__input"
-            placeholder="driver_id or email"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            autoComplete="off"
-          />
-          <button type="submit" className="btn primary admin-lookup__btn" disabled={loading}>
-            {loading ? '…' : 'Search'}
+      <div className="admin-tabs" role="tablist" aria-label="Admin sections">
+        {TABS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === t}
+            aria-controls={`admin-tabpanel-${t}`}
+            id={`admin-tab-${t}`}
+            className={`admin-tabs__tab${activeTab === t ? ' admin-tabs__tab--active' : ''}`}
+            onClick={() => setActiveTab(t)}
+          >
+            {TAB_LABELS[t]}
           </button>
-        </div>
-      </form>
-      {error && <p className="admin-lookup__error" role="alert">{error}</p>}
+        ))}
+      </div>
 
-      <AdminConstructors />
-      <ClassificationsPanel />
-      <TierRulesPanel />
-      <LicenseLevelsPanel />
-      <LicenseAwardPanel />
-      <CrsDiagnosticPanel />
-      <TaskDefinitionsPanel />
-
-      {result && (
+      <div className="admin-tabpanels">
+        {activeTab === 'drivers' && (
+          <div id="admin-tabpanel-drivers" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-drivers">
+            <form className="admin-lookup__form" onSubmit={handleSubmit} data-admin-lookup-form>
+              <label className="admin-lookup__label" htmlFor="admin-lookup-q">
+                UID / email
+              </label>
+              <div className="admin-lookup__row">
+                <input
+                  id="admin-lookup-q"
+                  type="text"
+                  className="admin-lookup__input"
+                  placeholder="driver_id or email"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  autoComplete="off"
+                />
+                <button type="submit" className="btn primary admin-lookup__btn" disabled={loading}>
+                  {loading ? '…' : 'Search'}
+                </button>
+              </div>
+            </form>
+            {error && <p className="admin-lookup__error" role="alert">{error}</p>}
+            <LicenseAwardPanel />
+            <CrsDiagnosticPanel />
+            {result && (
         <div className="admin-lookup-result card">
           {result.driver && (
             <section className="admin-lookup-result__block">
@@ -1959,6 +2088,52 @@ const AdminLookup = () => {
           </section>
         </div>
       )}
+          </div>
+        )}
+
+        {activeTab === 'events' && (
+          <div id="admin-tabpanel-events" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-events">
+            <AdminConstructors tab="events" />
+          </div>
+        )}
+
+        {activeTab === 'classifications' && (
+          <div id="admin-tabpanel-classifications" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-classifications">
+            <ClassificationsPanel />
+          </div>
+        )}
+
+        {activeTab === 'participations' && (
+          <div id="admin-tabpanel-participations" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-participations">
+            <AdminConstructors tab="participations" />
+          </div>
+        )}
+
+        {activeTab === 'tasks' && (
+          <div id="admin-tabpanel-tasks" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-tasks">
+            <TaskDefinitionsPanel />
+          </div>
+        )}
+
+        {activeTab === 'licenses' && (
+          <div id="admin-tabpanel-licenses" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-licenses">
+            <LicenseLevelsPanel />
+            <LicenseAwardPanel />
+          </div>
+        )}
+
+        {activeTab === 'tier' && (
+          <div id="admin-tabpanel-tier" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-tier">
+            <TierRulesPanel />
+          </div>
+        )}
+
+        {activeTab === 'schema' && (
+          <div id="admin-tabpanel-schema" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-schema">
+            <ProjectSchemaPanel />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

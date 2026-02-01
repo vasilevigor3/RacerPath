@@ -24,8 +24,14 @@ def create_driver(
 ):
     if not payload.sim_games:
         raise HTTPException(status_code=400, detail="At least one sim game is required")
-    driver = Driver(name=payload.name, primary_discipline=payload.primary_discipline)
-    driver.sim_games = payload.sim_games
+    if not payload.user_id:
+        raise HTTPException(status_code=400, detail="user_id is required; driver cannot exist without a user")
+    driver = Driver(
+        name=payload.name,
+        primary_discipline=payload.primary_discipline,
+        sim_games=payload.sim_games,
+        user_id=payload.user_id,
+    )
     session.add(driver)
     session.commit()
     session.refresh(driver)

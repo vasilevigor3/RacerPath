@@ -52,11 +52,11 @@ const renderAdminUserList = (users = []) => {
 
     const email = user.email ?? '—';
     const role = user.role ?? '—';
-    const completion = user.completion_percent != null ? `${user.completion_percent}%` : '—';
+    const profileCompletionStr = user.profile_completion_percent != null ? `${user.profile_completion_percent}%` : '—';
     const driverLabel = user.driver_id ? `Driver ${user.driver_id.slice(0, 8)}…` : '—';
 
     const span = document.createElement('span');
-    span.textContent = `${email} · ${role} · ${completion}`;
+    span.textContent = `${email} · ${role} · ${profileCompletionStr}`;
     li.appendChild(span);
     if (user.driver_id) {
       const link = document.createElement('button');

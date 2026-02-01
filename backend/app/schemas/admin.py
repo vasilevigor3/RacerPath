@@ -81,7 +81,7 @@ class AdminUserRead(BaseModel):
     active: bool
     created_at: datetime
     profile_id: str | None
-    completion_percent: int
+    profile_completion_percent: int
     level: str
     driver_id: str | None
 

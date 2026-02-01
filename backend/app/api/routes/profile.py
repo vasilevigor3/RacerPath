@@ -42,18 +42,18 @@ def _compute_completion(profile: UserProfile | None) -> tuple[int, List[str], st
             if value in (None, ""):
                 missing.append(field)
 
-    completion = int(round((len(REQUIRED_FIELDS) - len(missing)) / len(REQUIRED_FIELDS) * 100))
-    if completion >= 85:
+    profile_completion = int(round((len(REQUIRED_FIELDS) - len(missing)) / len(REQUIRED_FIELDS) * 100))
+    if profile_completion >= 85:
         level = "Elite"
-    elif completion >= 60:
+    elif profile_completion >= 60:
         level = "Advanced"
     else:
         level = "Rookie"
-    return completion, missing, level
+    return profile_completion, missing, level
 
 
 def _build_read(profile: UserProfile | None, next_tier_progress_percent: int = 0) -> UserProfileRead:
-    completion, missing, level = _compute_completion(profile)
+    profile_completion, missing, level = _compute_completion(profile)
     if not profile:
         return UserProfileRead(
             id="",
@@ -69,7 +69,7 @@ def _build_read(profile: UserProfile | None, next_tier_progress_percent: int = 0
             goals=None,
             created_at=datetime.now(timezone.utc),
             updated_at=None,
-            completion_percent=completion,
+            profile_completion_percent=profile_completion,
             next_tier_progress_percent=next_tier_progress_percent,
             missing_fields=missing,
             level=level,
@@ -88,7 +88,7 @@ def _build_read(profile: UserProfile | None, next_tier_progress_percent: int = 0
         goals=profile.goals,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
-        completion_percent=completion,
+        profile_completion_percent=profile_completion,
         next_tier_progress_percent=next_tier_progress_percent,
         missing_fields=missing,
         level=level,
@@ -128,12 +128,12 @@ def upsert_my_profile(
         driver.sim_games = profile.sim_platforms
     session.commit()
     session.refresh(profile)
-    completion, missing, _ = _compute_completion(profile)
+    profile_completion, missing, _ = _compute_completion(profile)
     if driver:
         suffix = (driver.primary_discipline or "gt").upper()
         if driver.sim_games:
             ensure_task_completion(session, driver.id, f"ONBOARD_GAMES_{suffix}")
-        if completion >= 100 or not missing:
+        if profile_completion >= 100 or not missing:
             ensure_task_completion(session, driver.id, f"ONBOARD_PROFILE_{suffix}")
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
         session.commit()

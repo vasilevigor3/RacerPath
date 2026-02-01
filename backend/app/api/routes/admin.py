@@ -50,6 +50,7 @@ from app.schemas.classification import ClassificationRead
 from app.schemas.participation import ParticipationRead, ParticipationAdminRead
 from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
+from app.services.next_tier import compute_next_tier_progress
 from app.services.tasks import ensure_task_completion
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -63,7 +64,8 @@ def get_profile(
     profile = session.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return _build_read(profile)
+    next_tier = compute_next_tier_progress(session, user_id)
+    return _build_read(profile, next_tier_progress_percent=next_tier)
 
 @router.put("/profiles/{user_id}", response_model=UserProfileRead)
 def update_profile(
@@ -89,16 +91,17 @@ def update_profile(
         driver.sim_games = profile.sim_platforms
     session.commit()
     session.refresh(profile)
-    completion, missing, _ = _compute_completion(profile)
+    profile_completion, missing, _ = _compute_completion(profile)
     if driver:
         suffix = (driver.primary_discipline or "gt").upper()
         if driver.sim_games:
             ensure_task_completion(session, driver.id, f"ONBOARD_GAMES_{suffix}")
-        if completion >= 100 or not missing:
+        if profile_completion >= 100 or not missing:
             ensure_task_completion(session, driver.id, f"ONBOARD_PROFILE_{suffix}")
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
         session.commit()
-    return _build_read(profile)
+    next_tier = compute_next_tier_progress(session, user_id)
+    return _build_read(profile, next_tier_progress_percent=next_tier)
 
 
 @router.get("/users", response_model=List[AdminUserRead])
@@ -124,7 +127,7 @@ def list_users(
     response = []
     for user in users:
         profile = profile_map.get(user.id)
-        completion, _, level = _compute_completion(profile)
+        profile_completion, _, level = _compute_completion(profile)
         driver = driver_map.get(user.id)
         response.append(
             AdminUserRead(
@@ -135,12 +138,12 @@ def list_users(
                 active=user.active,
                 created_at=user.created_at,
                 profile_id=profile.id if profile else None,
-                completion_percent=completion,
+                profile_completion_percent=profile_completion,
                 level=level,
                 driver_id=driver.id if driver else None,
             )
         )
-    return sorted(response, key=lambda row: row.completion_percent, reverse=True)
+    return sorted(response, key=lambda row: row.profile_completion_percent, reverse=True)
 
 
 @router.get("/users/{user_id}", response_model=AdminUserRead)
@@ -154,7 +157,7 @@ def get_user_detail(
         raise HTTPException(status_code=404, detail="User not found")
     profile = session.query(UserProfile).filter(UserProfile.user_id == user.id).first()
     driver = session.query(Driver).filter(Driver.user_id == user.id).first()
-    completion, _, level = _compute_completion(profile)
+    profile_completion, _, level = _compute_completion(profile)
     return AdminUserRead(
         id=user.id,
         name=user.name,
@@ -163,7 +166,7 @@ def get_user_detail(
         active=user.active,
         created_at=user.created_at,
         profile_id=profile.id if profile else None,
-        completion_percent=completion,
+        profile_completion_percent=profile_completion,
         level=level,
         driver_id=driver.id if driver else None,
     )

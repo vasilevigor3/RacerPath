@@ -134,7 +134,7 @@ const loadUserProfile = async (driver) => {
           ? 'Profile complete. Race to advance tier.'
           : `Missing ${missing.length} fields to advance.`;
     }
-    readinessState.profileCompletion = profile.completion_percent || 0;
+    readinessState.profileCompletion = profile.profile_completion_percent || 0;
     if (profileCtaButton) {
       const missing = profile.missing_fields || [];
       profileCtaButton.textContent = missing.length === 0 ? 'Edit profile' : 'Complete profile';

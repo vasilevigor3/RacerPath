@@ -15,6 +15,7 @@ from app.schemas.participation import ActiveParticipationRead, ParticipationCrea
 from app.services.tasks import evaluate_tasks
 from app.services.crs import recompute_crs
 from app.services.auth import require_user
+from app.utils.rig_compat import driver_rig_satisfies_event
 
 router = APIRouter(prefix="/participations", tags=["participations"])
 
@@ -42,6 +43,11 @@ def create_participation(
         raise HTTPException(
             status_code=400,
             detail="Event has no classification; participation requires the event to be classified first.",
+        )
+    if not driver_rig_satisfies_event(driver.rig_options, event.rig_options):
+        raise HTTPException(
+            status_code=400,
+            detail="Your rig does not meet the event's required rig (wheel/pedals). You cannot register.",
         )
     MAX_WITHDRAWALS = 3
     existing = (

@@ -2,6 +2,7 @@ import { apiFetch } from '../api/client.js';
 import { setList, setEventListWithRegister, setTaskListClickable, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
 import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
+import { driverRigSatisfiesEvent } from '../utils/rigCompat.js';
 import { readinessState } from '../state/session.js';
 import { updateReadiness } from '../ui/readiness.js';
 import { updateDriverSnapshotMeta, resetDriverSnapshot } from './driverSnapshot.js';
@@ -557,8 +558,10 @@ function showEventDetail(event, driver) {
   const isWithdrawn = state === 'withdrawn';
   const isRegistered = state === 'registered';
   const canReRegister = participationForEvent && isWithdrawn && withdrawCount < MAX_WITHDRAWALS;
-  const canRegister = tierMatch && licenseOk && (!participationForEvent || canReRegister);
+  const rigOk = driverRigSatisfiesEvent(driver?.rig_options, event.rig_options);
+  const canRegister = tierMatch && licenseOk && rigOk && (!participationForEvent || canReRegister);
   const maxWithdrawalsReached = participationForEvent && isWithdrawn && withdrawCount >= MAX_WITHDRAWALS;
+  const cannotRegisterReason = !tierMatch ? 'tier' : !licenseOk ? 'license' : !rigOk ? 'rig' : null;
   const canWithdraw = participationForEvent && isRegistered;
   const status = getEventStatus(event);
   const statusLabel = status ? EVENT_STATUS_LABELS[status] : '—';
@@ -578,6 +581,16 @@ function showEventDetail(event, driver) {
   `;
   const withdrawBtn = document.querySelector('[data-event-detail-withdraw]');
   const maxWithdrawalsMsg = document.querySelector('[data-event-detail-max-withdrawals]');
+  const noRegisterMsg = document.querySelector('[data-event-detail-no-register-message]');
+  if (noRegisterMsg) {
+    noRegisterMsg.classList.toggle('is-hidden', canRegister || maxWithdrawalsReached);
+    if (cannotRegisterReason) {
+      const text = cannotRegisterReason === 'tier' ? 'This event does not match your tier. You cannot register.'
+        : cannotRegisterReason === 'license' ? 'You do not meet the license requirement for this event. You cannot register.'
+          : 'Your rig does not meet this event\'s requirements. You cannot register.';
+      noRegisterMsg.textContent = text;
+    }
+  }
   if (registerBtn) {
     registerBtn.disabled = !canRegister;
     registerBtn.dataset.eventId = event.id;
@@ -593,7 +606,7 @@ function showEventDetail(event, driver) {
     maxWithdrawalsMsg.textContent = `You have reached the maximum number of withdrawals (${MAX_WITHDRAWALS}) for this event. You cannot register again.`;
   }
   if (actionsEl) {
-    actionsEl.classList.toggle('is-hidden', !canRegister && !canWithdraw && !maxWithdrawalsReached);
+    actionsEl.classList.toggle('is-hidden', !canRegister && !canWithdraw && !maxWithdrawalsReached && !cannotRegisterReason);
   }
   listView.classList.add('is-hidden');
   panel.classList.remove('is-hidden');
@@ -902,7 +915,7 @@ export const loadDashboardEvents = async (driver) => {
     return `${event.title} · ${sessionLabel} · ${event.format_type}${gameLabel}${timeLabel}${statusSuffix}`;
   };
   try {
-    const eventsUrl = `/api/events?driver_id=${driver.id}&same_tier=${sameTier}`;
+    const eventsUrl = `/api/events?driver_id=${driver.id}&same_tier=${sameTier}&rig_filter=${sameTier}`;
     const [eventsRes, upcomingRes] = await Promise.all([
       apiFetch(eventsUrl),
       apiFetch(`/api/events/upcoming?driver_id=${driver.id}&discipline=${driver.primary_discipline || 'gt'}`),
@@ -929,7 +942,7 @@ export const loadDashboardEvents = async (driver) => {
 
     if (dashboardEventsList) {
       const emptyText = driver.sim_games && driver.sim_games.length
-        ? 'No upcoming events (waiting to start).'
+        ? 'No recent or upcoming events.'
         : 'Add sim games to see events.';
       setEventListWithRegister(dashboardEventsList, dashboardEventsData, driver, emptyText, formatEventItem);
     }

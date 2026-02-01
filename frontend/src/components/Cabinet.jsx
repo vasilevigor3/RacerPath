@@ -260,6 +260,7 @@ const Cabinet = () => (
                 <button type="button" className="btn ghost event-detail-back" data-event-detail-back>Back</button>
                 <div className="event-detail-content" data-event-detail-content />
                 <div className="event-detail-actions" data-event-detail-actions>
+                  <p className="event-detail-no-register-message is-hidden muted" data-event-detail-no-register-message />
                   <button type="button" className="btn primary btn-register-event-panel" data-event-detail-register disabled>Register on event</button>
                   <button type="button" className="btn secondary btn-withdraw-event-panel is-hidden" data-event-detail-withdraw>Withdraw from event</button>
                   <p className="event-detail-max-withdrawals is-hidden" data-event-detail-max-withdrawals />

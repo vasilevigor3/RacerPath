@@ -15,6 +15,7 @@ from app.schemas.event import EventCreate, EventRead, EventUpdate
 from app.services.classifier import build_event_payload, classify_event, TIER_LABELS
 from app.services.auth import require_roles, require_user
 from app.utils.game_aliases import expand_driver_games_for_event_match
+from app.utils.rig_compat import driver_rig_satisfies_event
 from app.utils.special_events import special_slot_tier_conflict
 
 TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
@@ -96,6 +97,7 @@ def list_events(
     date_to: str | None = None,
     driver_id: str | None = None,
     same_tier: bool = False,
+    rig_filter: bool = True,
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
@@ -155,10 +157,20 @@ def list_events(
     for c in classifications:
         if c.event_id not in tier_by_event:
             tier_by_event[c.event_id] = c.event_tier
-    # Filter by driver tier using the same "latest" tier we display (avoids showing lower-tier events)
-    if driver_id and same_tier and driver:
+    # Filter by driver tier: same_tier = only exact match; else only events with tier >= driver tier (no E0 for E1+)
+    if driver_id and driver:
         driver_tier = getattr(driver, "tier", "E0") or "E0"
-        events = [e for e in events if (tier_by_event.get(e.id) or "E2") == driver_tier]
+        driver_tier_idx = TIER_ORDER.index(driver_tier) if driver_tier in TIER_ORDER else 0
+        if same_tier:
+            events = [e for e in events if (tier_by_event.get(e.id) or "E2") == driver_tier]
+        else:
+            events = [
+                e for e in events
+                if TIER_ORDER.index(tier_by_event.get(e.id) or "E2") >= driver_tier_idx
+            ]
+    # Filter by rig: only when rig_filter=True (e.g. Recent events can show all without rig filter)
+    if driver_id and driver and rig_filter:
+        events = [e for e in events if driver_rig_satisfies_event(driver.rig_options, e.rig_options)]
     return [
         EventRead.model_validate(e).model_copy(update={"event_tier": tier_by_event.get(e.id) or "E2"})
         for e in events
@@ -224,6 +236,8 @@ def list_upcoming_events(
         tier = tier_by_event.get(e.id)
         if tier != driver_tier:
             continue  # no classification or wrong tier — do not show
+        if not driver_rig_satisfies_event(driver.rig_options, e.rig_options):
+            continue  # event requires rig driver doesn't have
         out.append(
             EventRead.model_validate(e).model_copy(update={"event_tier": tier})
         )

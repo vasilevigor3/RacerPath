@@ -1,4 +1,4 @@
-import { apiFetch } from '../api/client.js';
+import { apiFetch, apiFetchWithRetry } from '../api/client.js';
 import {
   readinessState,
   getApiKey,
@@ -256,7 +256,15 @@ export const loadProfile = async () => {
   }
   if (loginStatus) loginStatus.textContent = 'Checking session...';
   try {
-    const res = await apiFetch('/api/auth/me');
+    const res = await apiFetchWithRetry(
+      '/api/auth/me',
+      {},
+      (attempt, delayMs) => {
+        if (loginStatus) {
+          loginStatus.textContent = `Server starting… retry in ${delayMs / 1000}s`;
+        }
+      }
+    );
     if (!res.ok) {
       setAuthVisibility(false);
       setOnboardingVisibility(false);

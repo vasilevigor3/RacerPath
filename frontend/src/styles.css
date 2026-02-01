@@ -746,11 +746,11 @@ footer {
   border-bottom: none;
 }
 
-/* Grid: several fields per row (horizontal grouping), columns fit content */
+/* Grid: fixed column width so 3–4 fields per row, no wide empty gaps */
 .admin-constructors__form {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, max-content));
-  gap: 4px 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 260px));
+  gap: 4px 6px;
   align-items: center;
 }
 
@@ -763,7 +763,7 @@ footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 2px 6px;
   min-width: 0;
 }
 
@@ -784,7 +784,7 @@ footer {
 .admin-constructors__input {
   flex: 1;
   min-width: 0;
-  padding: 5px 8px;
+  padding: 4px 6px;
   font-size: 0.8125rem;
   border: 1px solid var(--border, #ddd);
   border-radius: 4px;

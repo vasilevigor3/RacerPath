@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+# If you are here, fix this: delete DISCIPLINE_ALIASES, and use kartingn instead of offroad.check corresponding dependencies.
 DISCIPLINE_ALIASES = {"offroad": "karting"}
 
 TASK_SCOPE = Literal["global", "per_participation", "rolling_window", "periodic"]

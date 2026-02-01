@@ -50,6 +50,9 @@ const Cabinet = () => (
             <span className="pill" data-profile-tier>
               Tier: --
             </span>
+            <span className="pill" data-driver-snapshot-pill-crs>
+              CRS --
+            </span>
             <span className="pill" data-profile-platforms>
               Platforms: --
             </span>
@@ -315,9 +318,6 @@ const Cabinet = () => (
                   Behavior and consistency dominate readiness, not just pace.
                 </p>
                 <div className="pill-row">
-                  <span className="pill" data-driver-snapshot-pill-crs>
-                    CRS --
-                  </span>
                   <span className="pill" data-driver-snapshot-pill-profile>
                     Profile --%
                   </span>

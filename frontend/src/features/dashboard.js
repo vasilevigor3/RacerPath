@@ -114,7 +114,9 @@ export const loadDashboardStats = async (driver) => {
   if (statIncidents) statIncidents.textContent = incidentTotal.toString();
 
   if (dashboardParticipationsList) {
-    const items = participations.slice(0, 5).map((item) => {
+    const completedStatuses = ['finished', 'dnf', 'dsq'];
+    const completed = participations.filter((item) => completedStatuses.includes(item.status));
+    const items = completed.slice(0, 5).map((item) => {
       return `${item.discipline.toUpperCase()} - ${item.status} / ${item.event_id.slice(0, 8)}...`;
     });
     setList(dashboardParticipationsList, items, 'No participations loaded.');

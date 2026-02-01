@@ -212,6 +212,9 @@ const ProjectSchemaPanel = () => {
 };
 
 const AdminConstructors = ({ tab }) => {
+  const [raceOfDayLoading, setRaceOfDayLoading] = useState(false);
+  const [raceOfDayMsg, setRaceOfDayMsg] = useState(null);
+
   const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: 'E2', special_event: '', session_type: 'race' });
   const [eventLoading, setEventLoading] = useState(false);
   const [eventMsg, setEventMsg] = useState(null);
@@ -475,6 +478,40 @@ const AdminConstructors = ({ tab }) => {
 
       {showEvents && (
       <>
+      <section className="admin-constructors__block">
+        <h4 className="admin-constructors__subtitle">Race of the day</h4>
+        <p className="admin-constructors__hint">Delete current Race of the day event(s) with all participations and create a new one (E0, start in ~2h).</p>
+        <button
+          type="button"
+          className="btn secondary admin-constructors__btn"
+          disabled={raceOfDayLoading}
+          onClick={async () => {
+            setRaceOfDayMsg(null);
+            setRaceOfDayLoading(true);
+            try {
+              const res = await apiFetch('/api/admin/race-of-day/restart', { method: 'POST' });
+              const data = res.ok ? await res.json().catch(() => ({})) : null;
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                setRaceOfDayMsg(err?.detail || 'Restart failed.');
+                return;
+              }
+              setRaceOfDayMsg(
+                data
+                  ? `Restarted: deleted ${data.deleted_count ?? 0} event(s), created "${data.new_event_title ?? ''}" (id=${(data.new_event_id ?? '').slice(0, 8)}…, start=${data.new_event_start_utc ?? ''}).`
+                  : 'Restarted.'
+              );
+            } catch (e) {
+              setRaceOfDayMsg('Restart failed.');
+            } finally {
+              setRaceOfDayLoading(false);
+            }
+          }}
+        >
+          {raceOfDayLoading ? '…' : 'Restart Race of the day'}
+        </button>
+        {raceOfDayMsg && <p className="admin-constructors__msg" role="status">{raceOfDayMsg}</p>}
+      </section>
       <section className="admin-constructors__block">
         <h4 className="admin-constructors__subtitle">Create Event</h4>
         <p className="admin-constructors__hint">Classification is created automatically when event is created (1 event = 1 classification).</p>

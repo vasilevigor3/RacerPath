@@ -70,6 +70,7 @@ from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
 from app.services.next_tier import compute_next_tier_progress
 from app.services.tasks import ensure_task_completion
+from app.services.race_of_day import restart_race_of_day
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -411,6 +412,15 @@ def inspect_driver(
         sim_games=driver.sim_games or [],
         participations=summary,
     )
+
+
+@router.post("/race-of-day/restart")
+def post_race_of_day_restart(
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Delete current Race of the day event(s) with all relations, create a new one (E0)."""
+    return restart_race_of_day(session)
 
 
 @router.get("/events/{event_id}", response_model=AdminEventDetailRead)

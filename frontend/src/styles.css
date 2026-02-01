@@ -1045,6 +1045,10 @@ footer {
   margin-top: 32px;
 }
 
+#recommendations.section {
+  padding-top: 24px;
+}
+
 .section .grid-2,
 .section .grid-3,
 .section .grid-4 {

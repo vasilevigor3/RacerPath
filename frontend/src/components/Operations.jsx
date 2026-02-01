@@ -114,6 +114,7 @@ const AdminConstructors = () => {
 
   const [updateEventId, setUpdateEventId] = useState('');
   const [updateEventForm, setUpdateEventForm] = useState({
+    classification_id: '',
     title: '', source: '', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: '', special_event: '', session_type: 'race',
     schedule_type: 'weekly', event_type: 'circuit', format_type: 'sprint',
     team_size_min: '1', team_size_max: '1', duration_minutes: '0', grid_size_expected: '0', class_count: '1',
@@ -163,11 +164,14 @@ const AdminConstructors = () => {
       }
       const event = await eventRes.json();
       let eventTier = '';
+      let classificationId = '';
       if (classRes.ok) {
         const cls = await classRes.json();
         eventTier = cls.event_tier || '';
+        classificationId = cls.id || '';
       }
       setUpdateEventForm({
+        classification_id: classificationId,
         title: event.title || '',
         source: event.source || '',
         game: event.game || '',
@@ -364,6 +368,7 @@ const AdminConstructors = () => {
 
       <section className="admin-constructors__block">
         <h4 className="admin-constructors__subtitle">Create Event</h4>
+        <p className="admin-constructors__hint">Classification is created automatically when event is created (1 event = 1 classification).</p>
         <form onSubmit={createEvent} className="admin-constructors__form">
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Title</label>
@@ -432,6 +437,10 @@ const AdminConstructors = () => {
         </div>
         {updateEventMsg && <p className="admin-constructors__msg" role="status">{updateEventMsg}</p>}
         <form onSubmit={updateEventSubmit} className="admin-constructors__form">
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Classification ID</label>
+            <input type="text" value={updateEventForm.classification_id || ''} readOnly placeholder="—" className="admin-constructors__input admin-constructors__input--short" title="1 event = 1 classification (read-only)" />
+          </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Title</label>
             <input type="text" value={updateEventForm.title} onChange={(e) => setUpdateEventForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" className="admin-constructors__input" />
@@ -546,6 +555,7 @@ const AdminConstructors = () => {
 
       <section className="admin-constructors__block">
         <h4 className="admin-constructors__subtitle">Create Participation</h4>
+        <p className="admin-constructors__hint">Event must have a classification first (1 event = 1 classification).</p>
         <form onSubmit={createParticipation} className="admin-constructors__form">
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Driver ID</label>
@@ -579,7 +589,9 @@ const AdminConstructors = () => {
             <input type="number" min="0" value={partForm.laps_completed} onChange={(e) => setPartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--short" />
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={partLoading}>{partLoading ? '…' : 'Create Participation'}</button>
-          {partMsg && <p className="admin-constructors__msg" role="status">{partMsg}</p>}
+          {partMsg && (
+            <p className={`admin-constructors__msg${partMsg.startsWith('Participation created:') ? '' : ' admin-constructors__msg--error'}`} role="status">{partMsg}</p>
+          )}
         </form>
       </section>
 
@@ -639,6 +651,215 @@ const AdminConstructors = () => {
           {updatePartMsg && <p className="admin-constructors__msg" role="status">{updatePartMsg}</p>}
         </form>
       </section>
+    </div>
+  );
+};
+
+const ClassificationsPanel = () => {
+  const [classifications, setClassifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filterEventId, setFilterEventId] = useState('');
+  const [createForm, setCreateForm] = useState({
+    event_id: '', event_tier: 'E2', tier_label: 'E2', difficulty_score: '0', seriousness_score: '0', realism_score: '0',
+    classification_version: 'v1', inputs_hash: 'manual',
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createMsg, setCreateMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    event_tier: '', tier_label: '', difficulty_score: '', seriousness_score: '', realism_score: '',
+    classification_version: '', inputs_hash: '',
+  });
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMsg, setSaveMsg] = useState(null);
+
+  const loadClassifications = () => {
+    setLoading(true);
+    setError(null);
+    const q = filterEventId.trim() ? `?event_id=${encodeURIComponent(filterEventId.trim())}` : '';
+    apiFetch(`/api/admin/classifications${q}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Failed');
+        return res.json();
+      })
+      .then(setClassifications)
+      .catch((err) => setError(err?.message || 'Error'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadClassifications(); }, [filterEventId]);
+
+  const handleCreate = (e) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateMsg(null);
+    const body = {
+      event_id: createForm.event_id.trim(),
+      event_tier: createForm.event_tier.trim() || 'E2',
+      tier_label: createForm.tier_label.trim() || 'E2',
+      difficulty_score: parseFloat(createForm.difficulty_score) || 0,
+      seriousness_score: parseFloat(createForm.seriousness_score) || 0,
+      realism_score: parseFloat(createForm.realism_score) || 0,
+      discipline_compatibility: {},
+      caps_applied: [],
+      classification_version: createForm.classification_version.trim() || 'v1',
+      inputs_hash: createForm.inputs_hash.trim() || 'manual',
+      inputs_snapshot: {},
+    };
+    apiFetch('/api/admin/classifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText))))
+      .then(() => {
+        setCreateMsg('Created');
+        setCreateForm({ event_id: '', event_tier: 'E2', tier_label: 'E2', difficulty_score: '0', seriousness_score: '0', realism_score: '0', classification_version: 'v1', inputs_hash: 'manual' });
+        loadClassifications();
+      })
+      .catch((err) => setCreateMsg(err?.message || 'Error'))
+      .finally(() => setCreateLoading(false));
+  };
+
+  const startEdit = (c) => {
+    setEditingId(c.id);
+    setEditForm({
+      event_tier: c.event_tier || '',
+      tier_label: c.tier_label || '',
+      difficulty_score: String(c.difficulty_score ?? ''),
+      seriousness_score: String(c.seriousness_score ?? ''),
+      realism_score: String(c.realism_score ?? ''),
+      classification_version: c.classification_version || '',
+      inputs_hash: c.inputs_hash || '',
+    });
+    setSaveMsg(null);
+  };
+
+  const handleUpdate = (e) => {
+    e.preventDefault();
+    if (!editingId) return;
+    setSaveLoading(true);
+    setSaveMsg(null);
+    const body = {};
+    if (editForm.event_tier !== '') body.event_tier = editForm.event_tier.trim();
+    if (editForm.tier_label !== '') body.tier_label = editForm.tier_label.trim();
+    if (editForm.difficulty_score !== '') body.difficulty_score = parseFloat(editForm.difficulty_score);
+    if (editForm.seriousness_score !== '') body.seriousness_score = parseFloat(editForm.seriousness_score);
+    if (editForm.realism_score !== '') body.realism_score = parseFloat(editForm.realism_score);
+    if (editForm.classification_version !== '') body.classification_version = editForm.classification_version.trim();
+    if (editForm.inputs_hash !== '') body.inputs_hash = editForm.inputs_hash.trim();
+    apiFetch(`/api/admin/classifications/${encodeURIComponent(editingId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText))))
+      .then(() => {
+        setSaveMsg('Saved');
+        loadClassifications();
+        setEditingId(null);
+      })
+      .catch((err) => setSaveMsg(err?.message || 'Error'))
+      .finally(() => setSaveLoading(false));
+  };
+
+  return (
+    <div className="admin-constructors card">
+      <h3 className="admin-constructors__title">Classifications (constructor)</h3>
+      <p className="admin-constructors__hint">1 event = 1 classification. Required for participation and CRS. Create event first, then add classification if not auto-created.</p>
+      <div className="admin-constructors__row">
+        <label className="admin-constructors__label">Filter by event_id</label>
+        <input type="text" value={filterEventId} onChange={(e) => setFilterEventId(e.target.value)} placeholder="event uuid" className="admin-constructors__input admin-constructors__input--short" />
+      </div>
+      {loading && <p className="admin-constructors__msg">Loading…</p>}
+      {error && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{error}</p>}
+      {!loading && !error && (
+        <>
+          <section className="admin-constructors__block">
+            <h4 className="admin-constructors__subtitle">Create classification</h4>
+            <form onSubmit={handleCreate} className="admin-constructors__form">
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Event ID</label>
+                <input type="text" value={createForm.event_id} onChange={(e) => setCreateForm((f) => ({ ...f, event_id: e.target.value }))} placeholder="event uuid" className="admin-constructors__input" required />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Tier / Tier label</label>
+                <select value={createForm.event_tier} onChange={(e) => setCreateForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                  {EVENT_TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input type="text" value={createForm.tier_label} onChange={(e) => setCreateForm((f) => ({ ...f, tier_label: e.target.value }))} placeholder="E2" className="admin-constructors__input admin-constructors__input--short" />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">difficulty / seriousness / realism</label>
+                <input type="number" step="0.1" min="0" max="100" value={createForm.difficulty_score} onChange={(e) => setCreateForm((f) => ({ ...f, difficulty_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                <input type="number" step="0.1" min="0" max="100" value={createForm.seriousness_score} onChange={(e) => setCreateForm((f) => ({ ...f, seriousness_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                <input type="number" step="0.1" min="0" max="100" value={createForm.realism_score} onChange={(e) => setCreateForm((f) => ({ ...f, realism_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">classification_version / inputs_hash</label>
+                <input type="text" value={createForm.classification_version} onChange={(e) => setCreateForm((f) => ({ ...f, classification_version: e.target.value }))} placeholder="v1" className="admin-constructors__input admin-constructors__input--short" />
+                <input type="text" value={createForm.inputs_hash} onChange={(e) => setCreateForm((f) => ({ ...f, inputs_hash: e.target.value }))} placeholder="manual" className="admin-constructors__input admin-constructors__input--short" required />
+              </div>
+              <button type="submit" className="btn primary admin-constructors__btn" disabled={createLoading}>{createLoading ? '…' : 'Create'}</button>
+              {createMsg && <span className="admin-constructors__msg" role="status">{createMsg}</span>}
+            </form>
+          </section>
+          <section className="admin-constructors__block">
+            <h4 className="admin-constructors__subtitle">Classifications</h4>
+            <table className="admin-constructors__table" role="grid">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>event_id</th>
+                  <th>event_tier</th>
+                  <th>difficulty_score</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {classifications.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.id}</td>
+                    <td>{c.event_id}</td>
+                    <td>{c.event_tier}</td>
+                    <td>{c.difficulty_score}</td>
+                    <td><button type="button" className="btn ghost admin-constructors__btn" onClick={() => startEdit(c)}>Edit</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          {editingId && (
+            <section className="admin-constructors__block">
+              <h4 className="admin-constructors__subtitle">Edit classification</h4>
+              <form onSubmit={handleUpdate} className="admin-constructors__form">
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">event_tier / tier_label</label>
+                  <select value={editForm.event_tier} onChange={(e) => setEditForm((f) => ({ ...f, event_tier: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                    {EVENT_TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <input type="text" value={editForm.tier_label} onChange={(e) => setEditForm((f) => ({ ...f, tier_label: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">difficulty / seriousness / realism</label>
+                  <input type="number" step="0.1" min="0" max="100" value={editForm.difficulty_score} onChange={(e) => setEditForm((f) => ({ ...f, difficulty_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                  <input type="number" step="0.1" min="0" max="100" value={editForm.seriousness_score} onChange={(e) => setEditForm((f) => ({ ...f, seriousness_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                  <input type="number" step="0.1" min="0" max="100" value={editForm.realism_score} onChange={(e) => setEditForm((f) => ({ ...f, realism_score: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">classification_version / inputs_hash</label>
+                  <input type="text" value={editForm.classification_version} onChange={(e) => setEditForm((f) => ({ ...f, classification_version: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                  <input type="text" value={editForm.inputs_hash} onChange={(e) => setEditForm((f) => ({ ...f, inputs_hash: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                </div>
+                <button type="submit" className="btn primary admin-constructors__btn" disabled={saveLoading}>{saveLoading ? '…' : 'Save'}</button>
+                <button type="button" className="btn ghost admin-constructors__btn" onClick={() => setEditingId(null)}>Cancel</button>
+                {saveMsg && <span className="admin-constructors__msg" role="status">{saveMsg}</span>}
+              </form>
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 };
@@ -1517,6 +1738,7 @@ const AdminLookup = () => {
       {error && <p className="admin-lookup__error" role="alert">{error}</p>}
 
       <AdminConstructors />
+      <ClassificationsPanel />
       <TierRulesPanel />
       <LicenseLevelsPanel />
       <LicenseAwardPanel />

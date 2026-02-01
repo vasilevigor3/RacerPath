@@ -63,7 +63,7 @@ from app.schemas.license import (
 from app.services.licenses import check_eligibility, award_license
 from app.models.enums.event_enums import EventStatus
 from app.schemas.event import EventRead
-from app.schemas.classification import ClassificationRead
+from app.schemas.classification import ClassificationRead, ClassificationCreate, ClassificationUpdate
 from app.schemas.participation import ParticipationRead, ParticipationAdminRead
 from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
@@ -750,6 +750,72 @@ def admin_license_award(
     if not awarded:
         raise HTTPException(status_code=400, detail="Award failed unexpectedly")
     return awarded
+
+
+# --- Classifications (admin) ---
+
+
+@router.get("/classifications", response_model=List[ClassificationRead])
+def list_classifications_admin(
+    event_id: str | None = None,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """List classifications. Optional filter by event_id."""
+    query = session.query(Classification)
+    if event_id:
+        query = query.filter(Classification.event_id == event_id)
+    return query.order_by(Classification.created_at.desc()).all()
+
+
+@router.post("/classifications", response_model=ClassificationRead)
+def create_classification_admin(
+    payload: ClassificationCreate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Create a classification (1 event = 1 classification; event must exist)."""
+    event = session.query(Event).filter(Event.id == payload.event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    existing = session.query(Classification).filter(Classification.event_id == payload.event_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Event already has a classification")
+    classification = Classification(**payload.model_dump())
+    session.add(classification)
+    session.commit()
+    session.refresh(classification)
+    return classification
+
+
+@router.get("/classifications/{classification_id}", response_model=ClassificationRead)
+def get_classification_admin(
+    classification_id: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    classification = session.query(Classification).filter(Classification.id == classification_id).first()
+    if not classification:
+        raise HTTPException(status_code=404, detail="Classification not found")
+    return classification
+
+
+@router.patch("/classifications/{classification_id}", response_model=ClassificationRead)
+def update_classification_admin(
+    classification_id: str,
+    payload: ClassificationUpdate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    classification = session.query(Classification).filter(Classification.id == classification_id).first()
+    if not classification:
+        raise HTTPException(status_code=404, detail="Classification not found")
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        setattr(classification, key, value)
+    session.commit()
+    session.refresh(classification)
+    return classification
 
 
 # --- Task definitions (admin: list with license links, CRUD) ---

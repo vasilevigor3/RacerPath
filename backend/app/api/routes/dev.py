@@ -73,7 +73,10 @@ def dev_recompute_driver(
     crs_list: List[CRSHistoryRead] = []
     rec_list: List[RecommendationRead] = []
     for disc in disciplines:
-        crs = recompute_crs(session, driver_id, disc, trigger_participation_id)
+        try:
+            crs = recompute_crs(session, driver_id, disc, trigger_participation_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         crs_list.append(crs)
         rec, special_events = recompute_recommendations(session, driver_id, disc, trigger_participation_id)
         rec_list.append(RecommendationRead.model_validate(rec).model_copy(update={"special_events": special_events}))

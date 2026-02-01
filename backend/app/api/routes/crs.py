@@ -26,7 +26,10 @@ def compute_crs(
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    return record_crs(session, driver_id, discipline)
+    try:
+        return record_crs(session, driver_id, discipline)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/history", response_model=List[CRSHistoryRead])

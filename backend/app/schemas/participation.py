@@ -59,6 +59,7 @@ class ParticipationCreate(BaseModel):
 
 class ParticipationRead(ParticipationCreate):
     id: str
+    classification_id: str | None = None
     duration_minutes: int | None = None
     created_at: datetime
 

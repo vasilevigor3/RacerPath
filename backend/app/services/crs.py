@@ -45,6 +45,19 @@ def _latest_classification(session: Session, event_id: str) -> Classification | 
     )
 
 
+def _classification_for_participation(
+    session: Session, participation: Participation
+) -> Classification | None:
+    """Classification for this participation: by classification_id if set, else by event_id."""
+    if participation.classification_id:
+        return (
+            session.query(Classification)
+            .filter(Classification.id == participation.classification_id)
+            .first()
+        )
+    return _latest_classification(session, participation.event_id)
+
+
 def _participation_score(participation: Participation) -> float:
     score = 100.0
     score -= participation.incidents_count * 4.0
@@ -83,8 +96,13 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
 
     for participation in participations:
         base_score = _participation_score(participation)
-        classification = _latest_classification(session, participation.event_id)
-        tier = classification.event_tier if classification else "E2"
+        classification = _classification_for_participation(session, participation)
+        if not classification:
+            raise ValueError(
+                f"Event {participation.event_id} has no classification; "
+                "CRS requires a classification for every participation."
+            )
+        tier = classification.event_tier
         weight = TIER_WEIGHTS.get(tier, 1.0)
         weighted_scores.append(base_score * weight)
         weights.append(weight)

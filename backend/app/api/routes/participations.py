@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
+from app.models.classification import Classification
 from app.models.driver import Driver
 from app.models.event import Event
 from app.models.incident import Incident
@@ -31,6 +32,16 @@ def create_participation(
     event = session.query(Event).filter(Event.id == payload.event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    classification = (
+        session.query(Classification)
+        .filter(Classification.event_id == payload.event_id)
+        .first()
+    )
+    if not classification:
+        raise HTTPException(
+            status_code=400,
+            detail="Event has no classification; participation requires the event to be classified first.",
+        )
     existing = (
         session.query(Participation)
         .filter(
@@ -43,6 +54,7 @@ def create_participation(
         raise HTTPException(status_code=400, detail="Participation already exists")
 
     participation = Participation(**payload.model_dump())
+    participation.classification_id = classification.id
     session.add(participation)
     session.commit()
     session.refresh(participation)

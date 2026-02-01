@@ -1,4 +1,5 @@
-"""Dev/admin endpoints: task complete by code, driver recompute CRS+recommendations."""
+"""Dev/admin endpoints: task complete by code, driver recompute CRS+recommendations, mock session/finish."""
+from datetime import datetime, timezone
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,9 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.models.driver import Driver
+from app.models.participation import Participation, ParticipationState, ParticipationStatus
 from app.models.task_definition import TaskDefinition
 from app.models.user import User
 from app.schemas.crs import CRSHistoryRead
+from app.schemas.participation import ParticipationRead
 from app.schemas.recommendation import RecommendationRead
 from app.schemas.task import TaskCompletionRead, TaskCompleteRequest
 from app.services.auth import require_roles, require_user
@@ -81,3 +84,63 @@ def dev_recompute_driver(
         rec, special_events = recompute_recommendations(session, driver_id, disc, trigger_participation_id)
         rec_list.append(RecommendationRead.model_validate(rec).model_copy(update={"special_events": special_events}))
     return {"crs": crs_list, "recommendations": rec_list}
+
+
+# ---- Mock external integration: driver joined session / finished race ----
+
+@router.post("/participations/{participation_id}/mock-join", response_model=ParticipationRead)
+def mock_participation_join(
+    participation_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_roles("admin")),
+):
+    """Mock: simulate external integration — driver joined server/session. Sets participation_state=started, started_at=now."""
+    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    if not part:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    if part.participation_state != ParticipationState.registered:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Participation state must be 'registered' to mock join (current: {part.participation_state}).",
+        )
+    now = datetime.now(timezone.utc)
+    part.participation_state = ParticipationState.started
+    part.started_at = now
+    session.commit()
+    session.refresh(part)
+    return part
+
+
+@router.post("/participations/{participation_id}/mock-finish", response_model=ParticipationRead)
+def mock_participation_finish(
+    participation_id: str,
+    status: str = "finished",
+    session: Session = Depends(get_session),
+    user: User = Depends(require_roles("admin")),
+):
+    """Mock: simulate external integration — driver finished race. Sets participation_state=completed, finished_at=now, status (finished/dnf/dsq)."""
+    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    if not part:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    if part.participation_state != ParticipationState.started:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Participation state must be 'started' to mock finish (current: {part.participation_state}).",
+        )
+    if part.started_at is None:
+        raise HTTPException(status_code=400, detail="started_at must be set before mock finish.")
+    valid_statuses = {"finished", "dnf", "dsq"}
+    if status not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"status must be one of {valid_statuses}.",
+        )
+    now = datetime.now(timezone.utc)
+    if now < part.started_at:
+        raise HTTPException(status_code=400, detail="finished_at cannot be before started_at.")
+    part.participation_state = ParticipationState.completed
+    part.finished_at = now
+    part.status = ParticipationStatus(status)
+    session.commit()
+    session.refresh(part)
+    return part

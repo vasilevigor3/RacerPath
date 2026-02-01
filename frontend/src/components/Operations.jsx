@@ -1933,6 +1933,26 @@ const AdminLookup = () => {
     if (query) await doLookup(query);
   };
 
+  const mockJoinParticipation = async (partId) => {
+    const res = await apiFetch(`/api/dev/participations/${encodeURIComponent(partId)}/mock-join`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.detail || res.statusText || 'Mock join failed');
+    }
+    const query = q.trim();
+    if (query) await doLookup(query);
+  };
+
+  const mockFinishParticipation = async (partId, status = 'finished') => {
+    const res = await apiFetch(`/api/dev/participations/${encodeURIComponent(partId)}/mock-finish?status=${encodeURIComponent(status)}`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.detail || res.statusText || 'Mock finish failed');
+    }
+    const query = q.trim();
+    if (query) await doLookup(query);
+  };
+
   const fetchParticipation = (e) => {
     e.preventDefault();
     const id = partId.trim();
@@ -2039,22 +2059,42 @@ const AdminLookup = () => {
                       <span className="admin-lookup-result__part-meta">{p.event_title ?? p.event_id?.slice(0, 8)} · {p.participation_state ?? '—'}</span>
                       <span className="admin-lookup-result__part-date">{formatDate(p.started_at) || '—'}</span>
                       {p.participation_state === 'registered' && (
-                        <button
-                          type="button"
-                          className="btn ghost admin-lookup-result__part-btn"
-                          onClick={() => updateParticipationState(p.id, { participation_state: 'started', started_at: new Date().toISOString() }).catch((e) => window.alert(e?.message || 'Failed'))}
-                        >
-                          Mark as started
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="btn ghost admin-lookup-result__part-btn"
+                            onClick={() => updateParticipationState(p.id, { participation_state: 'started', started_at: new Date().toISOString() }).catch((e) => window.alert(e?.message || 'Failed'))}
+                          >
+                            Mark as started
+                          </button>
+                          <button
+                            type="button"
+                            className="btn ghost admin-lookup-result__part-btn"
+                            title="Mock: simulate driver joined session (external integration)"
+                            onClick={() => mockJoinParticipation(p.id).catch((e) => window.alert(e?.message || 'Failed'))}
+                          >
+                            Mock join
+                          </button>
+                        </>
                       )}
                       {p.participation_state === 'started' && (
-                        <button
-                          type="button"
-                          className="btn ghost admin-lookup-result__part-btn"
-                          onClick={() => updateParticipationState(p.id, { participation_state: 'completed', finished_at: new Date().toISOString(), status: 'finished' }).catch((e) => window.alert(e?.message || 'Failed'))}
-                        >
-                          Mark as completed
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="btn ghost admin-lookup-result__part-btn"
+                            onClick={() => updateParticipationState(p.id, { participation_state: 'completed', finished_at: new Date().toISOString(), status: 'finished' }).catch((e) => window.alert(e?.message || 'Failed'))}
+                          >
+                            Mark as completed
+                          </button>
+                          <button
+                            type="button"
+                            className="btn ghost admin-lookup-result__part-btn"
+                            title="Mock: simulate driver finished race (external integration)"
+                            onClick={() => mockFinishParticipation(p.id, 'finished').catch((e) => window.alert(e?.message || 'Failed'))}
+                          >
+                            Mock finish
+                          </button>
+                        </>
                       )}
                     </li>
                   ))}

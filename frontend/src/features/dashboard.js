@@ -490,7 +490,13 @@ let lastDriverForTasks = null;
 let lastTaskDefinitions = [];
 let lastTaskCompletions = [];
 
-const EVENT_STATUS_LABELS = { waiting_start: 'Waiting to start', started: 'Started', finished: 'Finished' };
+const EVENT_STATUS_LABELS = {
+  waiting_start: 'Waiting to start',
+  started: 'Started',
+  finished: 'Finished',
+  completed: 'Completed',
+  in_progress: 'In progress',
+};
 
 const LICENSE_REQUIREMENT_RANK = { none: 0, entry: 1, rookie: 2, intermediate: 3, pro: 4 };
 
@@ -780,9 +786,17 @@ export const loadDashboardEvents = async (driver) => {
     const gameLabel = event.game ? ` / ${event.game}` : '';
     const timeLabel = event.start_time_utc ? ` • ${formatDateTime(event.start_time_utc)}` : '';
     let statusSuffix = '';
-    if (forRecent && event.start_time_utc) {
-      const status = getEventStatus(event);
-      if (status) statusSuffix = ` • ${EVENT_STATUS_LABELS[status]}`;
+    if (forRecent) {
+      const participation = lastDriverParticipations.find((p) => p.event_id === event.id);
+      const partState = participation ? String(participation.participation_state || '').toLowerCase() : '';
+      if (partState === 'completed') {
+        statusSuffix = ` • ${EVENT_STATUS_LABELS.completed}`;
+      } else if (partState === 'started') {
+        statusSuffix = ` • ${EVENT_STATUS_LABELS.in_progress}`;
+      } else if (event.start_time_utc) {
+        const status = getEventStatus(event);
+        if (status) statusSuffix = ` • ${EVENT_STATUS_LABELS[status]}`;
+      }
     }
     return `${event.title} · ${sessionLabel} · ${event.format_type}${gameLabel}${timeLabel}${statusSuffix}`;
   };

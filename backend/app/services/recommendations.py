@@ -46,13 +46,15 @@ def _period_for_special_slot(special_value: str, now: datetime) -> tuple[datetim
 def _driver_already_participated_special_in_period(
     session: Session, driver_id: str, special_value: str, period_start: datetime, period_end: datetime
 ) -> bool:
-    """True if driver has at least one participation (not withdrawn) in an event with this special_event and start_time_utc in [period_start, period_end]."""
+    """True if driver has at least one participation where they actually ran the race (started or completed, not just registered/withdrawn) in an event with this special_event and start_time_utc in [period_start, period_end]."""
     exists = (
         session.query(Participation.id)
         .join(Event, Participation.event_id == Event.id)
         .filter(
             Participation.driver_id == driver_id,
-            Participation.participation_state != ParticipationState.withdrawn,
+            Participation.participation_state.in_(
+                (ParticipationState.started, ParticipationState.completed)
+            ),
             Event.special_event == special_value,
             Event.start_time_utc.isnot(None),
             Event.start_time_utc >= period_start,

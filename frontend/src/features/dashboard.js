@@ -13,7 +13,9 @@ const statLicenses = document.querySelector('[data-stat-licenses]');
 const statIncidents = document.querySelector('[data-stat-incidents]');
 const statRiskFlags = document.querySelector('[data-stat-risk-flags]');
 const dashboardParticipationsList = document.querySelector('[data-dashboard-participations]');
-const riskFlagsList = document.querySelector('[data-risk-flags]');
+const riskFlagsTabList = document.querySelector('[data-risk-flags-tab-list]');
+const riskFlagsDetailPanel = document.querySelector('[data-risk-flags-detail]');
+const riskFlagsListView = document.querySelector('[data-risk-flags-list-view]');
 const tasksCompletedList = document.querySelector('[data-tasks-completed]');
 const tasksPendingList = document.querySelector('[data-tasks-pending]');
 const recommendationList = document.querySelector('[data-recommendation-list]');
@@ -64,9 +66,8 @@ export const loadDashboardStats = async (driver) => {
     if (dashboardParticipationsList) {
       setList(dashboardParticipationsList, [], 'No participations loaded.');
     }
-    if (riskFlagsList) {
-      setList(riskFlagsList, ['Create a driver profile to unlock stats.'], 'No risks yet.');
-    }
+    lastRiskFlagsWithDetails = [];
+    setRiskFlagsTabList([]);
     if (statRiskFlags) statRiskFlags.textContent = '--';
     resetDriverSnapshot();
     updateReadiness();
@@ -119,19 +120,58 @@ export const loadDashboardStats = async (driver) => {
     setList(dashboardParticipationsList, items, 'No participations loaded.');
   }
 
-  const riskFlags = [];
+  const riskFlagsWithDetails = [];
   if (participations.length === 0) {
-    riskFlags.push('No participation data yet.');
+    riskFlagsWithDetails.push({
+      type: 'no_data',
+      message: 'No participation data yet.',
+      explanation: 'Complete at least one event to see risk flags and stats.',
+      events: []
+    });
   } else {
     const avgIncidents = incidentTotal / participations.length;
-    const dnfRate =
-      participations.filter((item) => item.status === 'dnf' || item.status === 'dsq').length /
-      participations.length;
-    if (avgIncidents > 1.5) riskFlags.push('High incident rate - prioritize clean races.');
-    if (dnfRate > 0.2) riskFlags.push('DNF rate above 20% - focus on finishing.');
-    if (avgIncidents <= 1.5 && dnfRate <= 0.2) riskFlags.push('No critical risks detected.');
+    const dnfCount = participations.filter((item) => item.status === 'dnf' || item.status === 'dsq').length;
+    const dnfRate = dnfCount / participations.length;
+    const dnfParticipations = participations.filter((item) => item.status === 'dnf' || item.status === 'dsq');
+    const highIncidentParticipations = participations.filter((p) => (p.incidents_count || 0) > 0);
+    if (avgIncidents > 1.5) {
+      riskFlagsWithDetails.push({
+        type: 'high_incidents',
+        message: 'High incident rate - prioritize clean races.',
+        explanation: `Your average incidents per race is ${avgIncidents.toFixed(1)} (above 1.5). Cleaner driving will improve your CRS and license progress.`,
+        events: highIncidentParticipations.map((p) => ({
+          event_id: p.event_id,
+          event_title: p.event_title || (p.event_id != null ? String(p.event_id).slice(0, 8) : '') || '—'
+        }))
+      });
+    }
+    if (dnfRate > 0.2) {
+      riskFlagsWithDetails.push({
+        type: 'high_dnf',
+        message: 'DNF rate above 20% - focus on finishing.',
+        explanation: `${Math.round(dnfRate * 100)}% of your races ended in DNF/DSQ (${dnfCount} of ${participations.length}). Finishing races consistently improves your standing.`,
+        events: dnfParticipations.map((p) => ({
+          event_id: p.event_id,
+          event_title: p.event_title || (p.event_id != null ? String(p.event_id).slice(0, 8) : '') || '—'
+        }))
+      });
+    }
+    if (avgIncidents <= 1.5 && dnfRate <= 0.2) {
+      riskFlagsWithDetails.push({
+        type: 'no_critical',
+        message: 'No critical risks detected.',
+        explanation: 'Your incident rate and finish rate are within safe limits. Keep up the consistency.',
+        events: []
+      });
+    }
   }
-  if (riskFlagsList) setList(riskFlagsList, riskFlags, 'No risks yet.');
+  lastRiskFlagsWithDetails = riskFlagsWithDetails;
+  const riskFlags = riskFlagsWithDetails.map((r) => r.message);
+  try {
+    setRiskFlagsTabList(riskFlagsWithDetails);
+  } catch (tabErr) {
+    console.warn('setRiskFlagsTabList failed:', tabErr);
+  }
   if (statRiskFlags) {
     const isNoCritical =
       riskFlags.length === 1 && riskFlags[0] === 'No critical risks detected.';
@@ -462,6 +502,8 @@ export const loadLicenseProgress = async (driver) => {
   }
 };
 
+let lastRiskFlagsWithDetails = [];
+
 let lastDriverForEvents = null;
 let lastDriverForActiveRace = null;
 let lastDashboardEventsData = [];
@@ -569,6 +611,50 @@ function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function setRiskFlagsTabList(items) {
+  const listEl = riskFlagsTabList || document.querySelector('[data-risk-flags-tab-list]');
+  if (!listEl) return;
+  if (!items || items.length === 0) {
+    listEl.innerHTML = '<li>Log in to see risk flags.</li>';
+    return;
+  }
+  listEl.innerHTML = items
+    .map(
+      (item, i) =>
+        `<li class="risk-flag-item"><button type="button" class="btn-link risk-flag-item__text" data-risk-index="${i}">${escapeHtml(item.message)}</button></li>`
+    )
+    .join('');
+}
+
+function showRiskFlagDetail(index) {
+  const item = lastRiskFlagsWithDetails[index];
+  if (!item || !riskFlagsDetailPanel || !riskFlagsListView) return;
+  const titleEl = riskFlagsDetailPanel.querySelector('[data-risk-flags-detail-title]');
+  const explanationEl = riskFlagsDetailPanel.querySelector('[data-risk-flags-detail-explanation]');
+  const eventsEl = riskFlagsDetailPanel.querySelector('[data-risk-flags-detail-events]');
+  if (titleEl) titleEl.textContent = item.message;
+  if (explanationEl) explanationEl.textContent = item.explanation;
+  if (eventsEl) {
+    if (!item.events || item.events.length === 0) {
+      eventsEl.innerHTML = '<li>—</li>';
+    } else {
+      eventsEl.innerHTML = item.events
+        .map(
+          (e) =>
+            `<li><button type="button" class="btn-link risk-flag-event-link" data-event-id="${escapeHtml(String(e.event_id ?? ''))}">${escapeHtml(String(e.event_title ?? '—'))}</button></li>`
+        )
+        .join('');
+    }
+  }
+  riskFlagsListView.classList.add('is-hidden');
+  riskFlagsDetailPanel.classList.remove('is-hidden');
+}
+
+function hideRiskFlagDetail() {
+  if (riskFlagsListView) riskFlagsListView.classList.remove('is-hidden');
+  if (riskFlagsDetailPanel) riskFlagsDetailPanel.classList.add('is-hidden');
+}
+
 const registerOnEvent = async (driverId, eventId) => {
   const driver = lastDriverForEvents;
   if (!driver || driver.id !== driverId) return;
@@ -629,6 +715,39 @@ function initDashboardEventsRegisterDelegation() {
   if (document.body.dataset.dashboardEventsRegisterDelegation) return;
   document.body.dataset.dashboardEventsRegisterDelegation = '1';
   document.body.addEventListener('click', async (e) => {
+    const riskItem = e.target.closest('[data-risk-index]');
+    if (riskItem) {
+      const list = e.target.closest('[data-risk-flags-tab-list]');
+      if (list) {
+        e.preventDefault();
+        const index = parseInt(riskItem.getAttribute('data-risk-index'), 10);
+        if (!Number.isNaN(index)) showRiskFlagDetail(index);
+        return;
+      }
+    }
+    const riskDetailBack = e.target.closest('[data-risk-flags-detail-back]');
+    if (riskDetailBack) {
+      e.preventDefault();
+      hideRiskFlagDetail();
+      return;
+    }
+    const riskEventLink = e.target.closest('.risk-flag-event-link');
+    if (riskEventLink) {
+      e.preventDefault();
+      const eventId = riskEventLink.getAttribute('data-event-id');
+      const driver = lastDriverForEvents;
+      if (eventId && driver) {
+        try {
+          const res = await apiFetch(`/api/events/${encodeURIComponent(eventId)}`);
+          if (!res.ok) return;
+          const event = await res.json();
+          const eventsTab = document.querySelector('[data-tab-button="events"]');
+          if (eventsTab) eventsTab.click();
+          showEventDetail(event, driver);
+        } catch (_) {}
+      }
+      return;
+    }
     const recList = e.target.closest('[data-recommendation-list]');
     const recItem = recList ? e.target.closest('.rec-item[data-event-id]') : null;
     if (recItem && recList) {

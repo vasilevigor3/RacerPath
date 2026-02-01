@@ -112,7 +112,7 @@ const Cabinet = () => (
             className="stat-card is-link"
             type="button"
             data-stat-target="risk-flags"
-            data-tab-target="overview"
+            data-tab-target="risk-flags"
             data-focus-target="risk-flags-card"
           >
             <span className="stat-label">Risk flags</span>
@@ -139,6 +139,9 @@ const Cabinet = () => (
           <button className="tab-button" type="button" data-tab-button="incidents">
             Incidents
           </button>
+          <button className="tab-button" type="button" data-tab-button="risk-flags">
+            Risk flags
+          </button>
           <button className="tab-button" type="button" data-tab-button="profile">
             Profile
           </button>
@@ -162,14 +165,6 @@ const Cabinet = () => (
               </ul>
             </div>
           </div>
-          <div className="grid-2">
-            <div className="card compact" data-focus-id="risk-flags-card">
-              <p className="card-title">Risk flags</p>
-              <ul className="list" data-risk-flags>
-                <li>No risks yet.</li>
-              </ul>
-            </div>
-          </div>
         </div>
 
         <div className="tab-panel" data-tab-panel="licenses">
@@ -190,6 +185,24 @@ const Cabinet = () => (
             <p className="card-title">My incidents</p>
             <ul className="list" data-incident-list>
               <li>Log in to see incidents.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="tab-panel" data-tab-panel="risk-flags">
+          <div data-risk-flags-list-view className="card compact" data-focus-id="risk-flags-card">
+            <p className="card-title">Risk flags</p>
+            <ul className="list" data-risk-flags-tab-list>
+              <li>Log in to see risk flags.</li>
+            </ul>
+          </div>
+          <div className="risk-flag-detail-panel is-hidden" data-risk-flags-detail>
+            <button type="button" className="btn ghost" data-risk-flags-detail-back>Back</button>
+            <h3 className="risk-flag-detail-title" data-risk-flags-detail-title>—</h3>
+            <p className="risk-flag-detail-explanation muted" data-risk-flags-detail-explanation>—</p>
+            <p className="card-title" style={{ marginTop: '1rem' }}>Related events</p>
+            <ul className="list" data-risk-flags-detail-events>
+              <li>—</li>
             </ul>
           </div>
         </div>

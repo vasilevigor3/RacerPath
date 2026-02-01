@@ -178,7 +178,7 @@ export const loadEvents = async () => {
       .slice(0, 5)
       .map(
         (event) =>
-          `<li><strong>${event.title}</strong> - ${event.format_type} / ${event.duration_minutes}m (${event.game || 'Any'})</li>`
+          `<li><strong>${event.title}</strong> - ${event.session_type === 'training' ? 'Training' : 'Race'} • ${event.format_type} / ${event.duration_minutes}m (${event.game || 'Any'})</li>`
       )
       .join('');
   } catch (err) {

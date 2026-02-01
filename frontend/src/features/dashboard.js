@@ -435,6 +435,7 @@ export const loadDashboardEvents = async (driver) => {
   };
   const EVENT_STATUS_LABELS = { waiting_start: 'Waiting to start', started: 'Started', finished: 'Finished' };
   const formatEventItem = (event, forRecent = false) => {
+    const sessionLabel = event.session_type === 'training' ? 'Training' : 'Race';
     const gameLabel = event.game ? ` / ${event.game}` : '';
     const timeLabel = event.start_time_utc ? ` • ${formatDateTime(event.start_time_utc)}` : '';
     let statusSuffix = '';
@@ -442,7 +443,7 @@ export const loadDashboardEvents = async (driver) => {
       const status = getEventStatus(event);
       if (status) statusSuffix = ` • ${EVENT_STATUS_LABELS[status]}`;
     }
-    return `${event.title} - ${event.format_type}${gameLabel}${timeLabel}${statusSuffix}`;
+    return `${event.title} · ${sessionLabel} · ${event.format_type}${gameLabel}${timeLabel}${statusSuffix}`;
   };
   try {
     const eventsUrl = `/api/events?driver_id=${driver.id}&same_tier=${sameTier}`;

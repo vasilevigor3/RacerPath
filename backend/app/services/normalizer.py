@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.schemas.event import EventCreate
 
 
+ALLOWED_SESSION_TYPE = {"race", "training"}
 ALLOWED_SCHEDULE = {"daily", "weekly", "seasonal", "special"}
 ALLOWED_EVENT_TYPE = {"circuit", "rally_stage", "rallycross", "karting", "offroad", "historic"}
 ALLOWED_FORMAT = {"sprint", "endurance", "series", "time_trial"}
@@ -87,6 +88,13 @@ def normalize_raw_event(source: str, payload: Dict[str, Any]) -> Tuple[Dict[str,
         "source": source,
         "game": base.get("game") or base.get("sim") or base.get("platform"),
         "start_time_utc": base.get("start_time_utc") or base.get("start_time"),
+        "session_type": _normalize_enum(
+            base.get("session_type"),
+            ALLOWED_SESSION_TYPE,
+            "race",
+            errors,
+            "session_type",
+        ),
         "schedule_type": _normalize_enum(
             base.get("schedule_type") or base.get("schedule"),
             ALLOWED_SCHEDULE,

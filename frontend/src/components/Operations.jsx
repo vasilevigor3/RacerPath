@@ -78,6 +78,10 @@ const SPECIAL_EVENT_OPTIONS = [
   { value: 'race_of_month', label: 'Race of the month' },
   { value: 'race_of_year', label: 'Race of the year' },
 ];
+const SESSION_TYPES = [
+  { value: 'race', label: 'Race' },
+  { value: 'training', label: 'Training' },
+];
 const SCHEDULE_TYPES = ['weekly', 'daily', 'tournament', 'special'];
 const EVENT_TYPES = ['circuit', 'rally', 'drift', 'time_attack'];
 const FORMAT_TYPES = ['sprint', 'endurance', 'hotlap'];
@@ -104,13 +108,13 @@ const toDatetimeLocal = (iso) => {
 };
 
 const AdminConstructors = () => {
-  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: 'E2', special_event: '' });
+  const [eventForm, setEventForm] = useState({ title: '', source: 'admin', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: 'E2', special_event: '', session_type: 'race' });
   const [eventLoading, setEventLoading] = useState(false);
   const [eventMsg, setEventMsg] = useState(null);
 
   const [updateEventId, setUpdateEventId] = useState('');
   const [updateEventForm, setUpdateEventForm] = useState({
-    title: '', source: '', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: '', special_event: '',
+    title: '', source: '', game: '', country: '', city: '', start_time_utc: '', finished_time_utc: '', event_tier: '', special_event: '', session_type: 'race',
     schedule_type: 'weekly', event_type: 'circuit', format_type: 'sprint',
     team_size_min: '1', team_size_max: '1', duration_minutes: '0', grid_size_expected: '0', class_count: '1',
     damage_model: 'off', penalties: 'off', fuel_usage: 'off', tire_wear: 'off',
@@ -172,6 +176,7 @@ const AdminConstructors = () => {
         start_time_utc: toDatetimeLocal(event.start_time_utc),
         finished_time_utc: toDatetimeLocal(event.finished_time_utc),
         event_tier: eventTier,
+        session_type: event.session_type || 'race',
         schedule_type: event.schedule_type || 'weekly',
         event_type: event.event_type || 'circuit',
         format_type: event.format_type || 'sprint',
@@ -227,6 +232,7 @@ const AdminConstructors = () => {
     }
     if (f.event_tier?.trim()) body.event_tier = f.event_tier.trim();
     if (f.special_event !== undefined) body.special_event = f.special_event?.trim() || null;
+    if (f.session_type !== undefined) body.session_type = f.session_type || 'race';
     if (f.schedule_type) body.schedule_type = f.schedule_type;
     if (f.event_type) body.event_type = f.event_type;
     if (f.format_type) body.format_type = f.format_type;
@@ -270,6 +276,7 @@ const AdminConstructors = () => {
       city: eventForm.city?.trim() || null,
       event_tier: (eventForm.event_tier && eventForm.event_tier.trim()) ? eventForm.event_tier.trim() : 'E2',
       special_event: eventForm.special_event?.trim() || null,
+      session_type: eventForm.session_type || 'race',
       start_time_utc: (() => {
         const v = eventForm.start_time_utc?.trim();
         if (!v) return null;
@@ -383,6 +390,14 @@ const AdminConstructors = () => {
             </select>
           </div>
           <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Event type (race/training)</label>
+            <select value={eventForm.session_type} onChange={(e) => setEventForm((f) => ({ ...f, session_type: e.target.value }))} className="admin-constructors__input">
+              {SESSION_TYPES.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="admin-constructors__row">
             <label className="admin-constructors__label">Start time (UTC)</label>
             <input type="datetime-local" value={eventForm.start_time_utc} onChange={(e) => setEventForm((f) => ({ ...f, start_time_utc: e.target.value }))} className="admin-constructors__input" />
           </div>
@@ -460,7 +475,12 @@ const AdminConstructors = () => {
             <input type="text" value={updateEventForm.city} onChange={(e) => setUpdateEventForm((f) => ({ ...f, city: e.target.value }))} placeholder="city" className="admin-constructors__input admin-constructors__input--short" />
           </div>
           <div className="admin-constructors__row">
-            <label className="admin-constructors__label">Schedule / Type / Format</label>
+            <label className="admin-constructors__label">Event type (race/training) / Schedule / Type / Format</label>
+            <select value={updateEventForm.session_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, session_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+              {SESSION_TYPES.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
             <select value={updateEventForm.schedule_type} onChange={(e) => setUpdateEventForm((f) => ({ ...f, schedule_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
               {SCHEDULE_TYPES.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>

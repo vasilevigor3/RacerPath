@@ -12,6 +12,7 @@ from app.models.driver import Driver
 from app.models.user_profile import UserProfile
 from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_user
+from app.services.next_tier import compute_next_tier_progress
 from app.services.tasks import ensure_task_completion
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -51,7 +52,7 @@ def _compute_completion(profile: UserProfile | None) -> tuple[int, List[str], st
     return completion, missing, level
 
 
-def _build_read(profile: UserProfile | None) -> UserProfileRead:
+def _build_read(profile: UserProfile | None, next_tier_progress_percent: int = 0) -> UserProfileRead:
     completion, missing, level = _compute_completion(profile)
     if not profile:
         return UserProfileRead(
@@ -69,7 +70,7 @@ def _build_read(profile: UserProfile | None) -> UserProfileRead:
             created_at=datetime.now(timezone.utc),
             updated_at=None,
             completion_percent=completion,
-            next_tier_progress_percent=0,
+            next_tier_progress_percent=next_tier_progress_percent,
             missing_fields=missing,
             level=level,
         )
@@ -88,7 +89,7 @@ def _build_read(profile: UserProfile | None) -> UserProfileRead:
         created_at=profile.created_at,
         updated_at=profile.updated_at,
         completion_percent=completion,
-        next_tier_progress_percent=0,
+        next_tier_progress_percent=next_tier_progress_percent,
         missing_fields=missing,
         level=level,
     )
@@ -100,7 +101,8 @@ def get_my_profile(
     user: User = Depends(require_user()),
 ):
     profile = session.query(UserProfile).filter(UserProfile.user_id == user.id).first()
-    return _build_read(profile)
+    next_tier = compute_next_tier_progress(session, user.id)
+    return _build_read(profile, next_tier_progress_percent=next_tier)
 
 
 @router.put("/me", response_model=UserProfileRead)
@@ -135,4 +137,5 @@ def upsert_my_profile(
             ensure_task_completion(session, driver.id, f"ONBOARD_PROFILE_{suffix}")
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
         session.commit()
-    return _build_read(profile)
+    next_tier = compute_next_tier_progress(session, user.id)
+    return _build_read(profile, next_tier_progress_percent=next_tier)

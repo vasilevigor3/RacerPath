@@ -125,7 +125,8 @@ const loadAdminEvents = async (filterOverrides = {}) => {
       li.className = 'admin-event-row';
       li.dataset.adminEventId = event.id;
       const span = document.createElement('span');
-      span.textContent = `${event.title ?? event.id} — ${event.format_type ?? '—'} (${event.game ?? '—'})`;
+      const sessionLabel = event.session_type === 'training' ? 'Training' : 'Race';
+      span.textContent = `${event.title ?? event.id} — ${sessionLabel} — ${event.format_type ?? '—'} (${event.game ?? '—'})`;
       li.appendChild(span);
       eventList.appendChild(li);
     });

@@ -15,6 +15,9 @@ EventTier = Literal["E0", "E1", "E2", "E3", "E4", "E5"]
 SPECIAL_EVENT_VALUES = ("race_of_day", "race_of_week", "race_of_month", "race_of_year")
 SpecialEvent = Literal["race_of_day", "race_of_week", "race_of_month", "race_of_year"]
 
+SESSION_TYPE_VALUES = ("race", "training")
+SessionType = Literal["race", "training"]
+
 
 class EventCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
@@ -29,6 +32,7 @@ class EventCreate(BaseModel):
 
     event_status: EventStatus = EventStatus.scheduled
 
+    session_type: SessionType = "race"
     schedule_type: ScheduleType = ScheduleType.weekly
     event_type: EventType = EventType.circuit
     format_type: FormatType = FormatType.sprint
@@ -83,6 +87,7 @@ class EventUpdate(BaseModel):
     event_tier: Optional[EventTier] = None
     special_event: Optional[SpecialEvent] = None
 
+    session_type: Optional[SessionType] = None
     schedule_type: Optional[ScheduleType] = None
     event_type: Optional[EventType] = None
     format_type: Optional[FormatType] = None

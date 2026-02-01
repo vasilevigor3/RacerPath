@@ -483,6 +483,7 @@ export const loadActivityFeed = async (driver) => {
 let lastDriverForEvents = null;
 let lastDriverForActiveRace = null;
 let lastDashboardEventsData = [];
+let lastUpcomingEventsData = [];
 let lastDriverParticipations = [];
 let lastDriverLicenseLevel = null;
 let lastDriverForTasks = null;
@@ -598,14 +599,23 @@ function initDashboardEventsRegisterDelegation() {
   document.body.dataset.dashboardEventsRegisterDelegation = '1';
   document.body.addEventListener('click', (e) => {
     const list = e.target.closest('[data-dashboard-events]');
-    const textBtn = list ? e.target.closest('.event-list-item__text') : null;
-    if (textBtn && list) {
+    const upcomingList = e.target.closest('[data-upcoming-events]');
+    const textBtn = (list || upcomingList) ? e.target.closest('.event-list-item__text') : null;
+    if (textBtn && (list || upcomingList)) {
       e.preventDefault();
       const eventId = textBtn.getAttribute('data-event-id');
       const driver = lastDriverForEvents;
       if (!eventId || !driver) return;
-      const event = lastDashboardEventsData.find((ev) => ev.id === eventId);
-      if (event) showEventDetail(event, driver);
+      const event = list
+        ? lastDashboardEventsData.find((ev) => ev.id === eventId)
+        : lastUpcomingEventsData.find((ev) => ev.id === eventId);
+      if (event) {
+        if (upcomingList) {
+          const eventsTab = document.querySelector('[data-tab-button="events"]');
+          if (eventsTab) eventsTab.click();
+        }
+        showEventDetail(event, driver);
+      }
       return;
     }
     const backBtn = e.target.closest('[data-event-detail-back]');
@@ -681,6 +691,7 @@ export const loadDashboardEvents = async (driver) => {
   if (!driver) {
     lastDriverForEvents = null;
     lastDashboardEventsData = [];
+    lastUpcomingEventsData = [];
     hideEventDetail();
     loadActiveRace(null);
     if (dashboardEventsList) setList(dashboardEventsList, [], 'Log in to load events.');
@@ -727,11 +738,12 @@ export const loadDashboardEvents = async (driver) => {
       .slice(0, 5);
     lastDashboardEventsData = dashboardEventsData;
 
-    let upcomingItems = [];
+    let upcomingEventsData = [];
     if (upcomingRes.ok) {
       const upcomingEvents = await upcomingRes.json();
-      upcomingItems = (Array.isArray(upcomingEvents) ? upcomingEvents : []).map((e) => formatEventItem(e, true));
+      upcomingEventsData = Array.isArray(upcomingEvents) ? upcomingEvents : [];
     }
+    lastUpcomingEventsData = upcomingEventsData;
 
     if (dashboardEventsList) {
       const emptyText = driver.sim_games && driver.sim_games.length
@@ -743,7 +755,7 @@ export const loadDashboardEvents = async (driver) => {
       const emptyText = driver.sim_games && driver.sim_games.length
         ? 'No upcoming events for your games.'
         : 'No upcoming events. Add sim games to see events.';
-      setList(upcomingEventsList, upcomingItems, emptyText);
+      setEventListWithRegister(upcomingEventsList, upcomingEventsData, driver, emptyText, formatEventItem);
     }
     loadActiveRace(driver);
   } catch (err) {

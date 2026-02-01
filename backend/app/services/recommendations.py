@@ -10,7 +10,7 @@ from app.services.crs import compute_inputs, compute_inputs_hash
 from app.models.crs_history import CRSHistory
 from app.models.event import Event
 from app.models.driver import Driver
-from app.models.participation import Participation
+from app.models.participation import Participation, ParticipationState
 from app.models.recommendation import Recommendation
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
@@ -46,12 +46,13 @@ def _period_for_special_slot(special_value: str, now: datetime) -> tuple[datetim
 def _driver_already_participated_special_in_period(
     session: Session, driver_id: str, special_value: str, period_start: datetime, period_end: datetime
 ) -> bool:
-    """True if driver has at least one participation in an event with this special_event and start_time_utc in [period_start, period_end]."""
+    """True if driver has at least one participation (not withdrawn) in an event with this special_event and start_time_utc in [period_start, period_end]."""
     exists = (
         session.query(Participation.id)
         .join(Event, Participation.event_id == Event.id)
         .filter(
             Participation.driver_id == driver_id,
+            Participation.participation_state != ParticipationState.withdrawn,
             Event.special_event == special_value,
             Event.start_time_utc.isnot(None),
             Event.start_time_utc >= period_start,

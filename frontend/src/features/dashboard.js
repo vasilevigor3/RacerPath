@@ -132,7 +132,11 @@ export const loadDashboardStats = async (driver) => {
     if (avgIncidents <= 1.5 && dnfRate <= 0.2) riskFlags.push('No critical risks detected.');
   }
   if (riskFlagsList) setList(riskFlagsList, riskFlags, 'No risks yet.');
-  if (statRiskFlags) statRiskFlags.textContent = riskFlags.length.toString();
+  if (statRiskFlags) {
+    const isNoCritical =
+      riskFlags.length === 1 && riskFlags[0] === 'No critical risks detected.';
+    statRiskFlags.textContent = isNoCritical ? '0' : riskFlags.length.toString();
+  }
   updateDriverSnapshotMeta({
     name: driver.name,
     discipline: driver.primary_discipline,

@@ -73,6 +73,17 @@ class AdminLookupRead(BaseModel):
     last_recommendation: AdminLookupRecommendationItem | None = None
 
 
+class AdminDriverCrsDiagnostic(BaseModel):
+    """Why CRS might be 0: no participations, events missing classification, or CRS never computed."""
+    driver_id: str
+    primary_discipline: str
+    participations_count: int = 0
+    events_missing_classification: list[str] = []
+    latest_crs_score: float | None = None
+    latest_crs_discipline: str | None = None
+    reason: str = ""
+
+
 class AdminUserRead(BaseModel):
     id: str
     name: str

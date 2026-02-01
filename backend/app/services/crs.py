@@ -36,26 +36,17 @@ def clamp_score(value: float) -> float:
     return max(0.0, min(100.0, value))
 
 
-def _latest_classification(session: Session, event_id: str) -> Classification | None:
-    return (
-        session.query(Classification)
-        .filter(Classification.event_id == event_id)
-        .order_by(Classification.created_at.desc())
-        .first()
-    )
-
-
 def _classification_for_participation(
     session: Session, participation: Participation
 ) -> Classification | None:
-    """Classification for this participation: by classification_id if set, else by event_id."""
-    if participation.classification_id:
-        return (
-            session.query(Classification)
-            .filter(Classification.id == participation.classification_id)
-            .first()
-        )
-    return _latest_classification(session, participation.event_id)
+    """Classification for this participation only by classification_id (no fallback to event_id)."""
+    if not participation.classification_id:
+        return None
+    return (
+        session.query(Classification)
+        .filter(Classification.id == participation.classification_id)
+        .first()
+    )
 
 
 def _participation_score(participation: Participation) -> float:
@@ -99,8 +90,8 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
         classification = _classification_for_participation(session, participation)
         if not classification:
             raise ValueError(
-                f"Event {participation.event_id} has no classification; "
-                "CRS requires a classification for every participation."
+                f"Participation {participation.id} (event {participation.event_id}) has no classification; "
+                "CRS requires participation.classification_id to be set (create participation with classified event)."
             )
         tier = classification.event_tier
         weight = TIER_WEIGHTS.get(tier, 1.0)

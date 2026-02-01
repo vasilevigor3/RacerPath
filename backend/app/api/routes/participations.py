@@ -13,6 +13,7 @@ from app.models.user import User
 from app.schemas.incident import IncidentCreate, IncidentRead
 from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead
 from app.services.tasks import evaluate_tasks
+from app.services.crs import recompute_crs
 from app.services.auth import require_user
 
 router = APIRouter(prefix="/participations", tags=["participations"])
@@ -59,6 +60,15 @@ def create_participation(
     session.commit()
     session.refresh(participation)
     evaluate_tasks(session, driver.id, participation.id)
+    try:
+        recompute_crs(
+            session,
+            driver.id,
+            participation.discipline.value if hasattr(participation.discipline, "value") else participation.discipline,
+            trigger_participation_id=participation.id,
+        )
+    except ValueError:
+        pass
     return participation
 
 

@@ -1380,6 +1380,93 @@ const LicenseAwardPanel = () => {
   );
 };
 
+const CrsDiagnosticPanel = () => {
+  const [driverId, setDriverId] = useState('');
+  const [email, setEmail] = useState('');
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [computeLoading, setComputeLoading] = useState(false);
+  const [computeMsg, setComputeMsg] = useState(null);
+
+  const handleCheck = (e) => {
+    e.preventDefault();
+    if (!driverId.trim() && !email.trim()) return;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    setComputeMsg(null);
+    const params = new URLSearchParams();
+    if (driverId.trim()) params.set('driver_id', driverId.trim());
+    if (email.trim()) params.set('email', email.trim());
+    apiFetch(`/api/admin/driver-crs-diagnostic?${params.toString()}`)
+      .then((res) => {
+        if (!res.ok) return res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText)));
+        return res.json();
+      })
+      .then(setResult)
+      .catch((err) => setError(err?.message || 'Error'))
+      .finally(() => setLoading(false));
+  };
+
+  const handleComputeCrs = () => {
+    if (!result?.driver_id || !result?.primary_discipline) return;
+    setComputeLoading(true);
+    setComputeMsg(null);
+    const params = new URLSearchParams({ driver_id: result.driver_id, discipline: result.primary_discipline });
+    apiFetch(`/api/crs/compute?${params.toString()}`, { method: 'POST' })
+      .then((res) => {
+        if (!res.ok) return res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText)));
+        return res.json();
+      })
+      .then((data) => {
+        setComputeMsg(`CRS computed: score ${data.score}`);
+        setResult((prev) => prev ? { ...prev, latest_crs_score: data.score, latest_crs_discipline: data.discipline, reason: 'OK' } : prev);
+      })
+      .catch((err) => setComputeMsg(err?.message || 'Error'))
+      .finally(() => setComputeLoading(false));
+  };
+
+  return (
+    <div className="admin-constructors card">
+      <h3 className="admin-constructors__title">CRS diagnostic</h3>
+      <p className="admin-constructors__hint">Check why CRS might be 0: no participations, events missing classification, or CRS never computed. CRS is also auto-recomputed when a participation is created.</p>
+      <form onSubmit={handleCheck} className="admin-constructors__form">
+        <div className="admin-constructors__row">
+          <label className="admin-constructors__label">Driver ID</label>
+          <input type="text" value={driverId} onChange={(e) => setDriverId(e.target.value)} placeholder="driver uuid" className="admin-constructors__input admin-constructors__input--short" />
+        </div>
+        <div className="admin-constructors__row">
+          <label className="admin-constructors__label">or Email</label>
+          <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" className="admin-constructors__input admin-constructors__input--short" />
+        </div>
+        <button type="submit" className="btn primary admin-constructors__btn" disabled={loading}>{loading ? '…' : 'Check'}</button>
+      </form>
+      {error && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{error}</p>}
+      {result && (
+        <section className="admin-constructors__block">
+          <h4 className="admin-constructors__subtitle">Result</h4>
+          <p><strong>Reason:</strong> {result.reason}</p>
+          <dl className="admin-lookup-result__dl">
+            <div><dt>driver_id</dt><dd>{result.driver_id}</dd></div>
+            <div><dt>primary_discipline</dt><dd>{result.primary_discipline}</dd></div>
+            <div><dt>participations_count</dt><dd>{result.participations_count}</dd></div>
+            <div><dt>latest_crs_score</dt><dd>{result.latest_crs_score != null ? result.latest_crs_score : '—'}</dd></div>
+            <div><dt>latest_crs_discipline</dt><dd>{result.latest_crs_discipline ?? '—'}</dd></div>
+          </dl>
+          {result.events_missing_classification?.length > 0 && (
+            <p><strong>events_missing_classification:</strong> {result.events_missing_classification.join(', ')}</p>
+          )}
+          <div className="admin-constructors__row">
+            <button type="button" className="btn primary admin-constructors__btn" onClick={handleComputeCrs} disabled={computeLoading}>{computeLoading ? '…' : 'Calculate CRS'}</button>
+            {computeMsg && <span className="admin-constructors__msg" role="status">{computeMsg}</span>}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
 const TASK_SCOPES = ['global', 'per_participation', 'rolling_window', 'periodic'];
 
 const TaskDefinitionsPanel = () => {
@@ -1742,6 +1829,7 @@ const AdminLookup = () => {
       <TierRulesPanel />
       <LicenseLevelsPanel />
       <LicenseAwardPanel />
+      <CrsDiagnosticPanel />
       <TaskDefinitionsPanel />
 
       {result && (

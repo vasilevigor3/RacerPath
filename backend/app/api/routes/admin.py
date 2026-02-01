@@ -21,6 +21,7 @@ from app.models.recommendation import Recommendation
 from app.models.tier_progression_rule import TierProgressionRule
 from app.schemas.admin import (
     AdminLookupRead,
+    AdminDriverCrsDiagnostic,
     AdminLookupUser,
     AdminLookupDriver,
     AdminLookupParticipationItem,
@@ -750,6 +751,69 @@ def admin_license_award(
     if not awarded:
         raise HTTPException(status_code=400, detail="Award failed unexpectedly")
     return awarded
+
+
+@router.get("/driver-crs-diagnostic", response_model=AdminDriverCrsDiagnostic)
+def driver_crs_diagnostic(
+    email: str | None = None,
+    driver_id: str | None = None,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Diagnose why CRS might be 0: no participations, events missing classification, or CRS never computed."""
+    did = _resolve_driver_id(session, driver_id, email)
+    driver = session.query(Driver).filter(Driver.id == did).first()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    discipline = driver.primary_discipline or "gt"
+
+    participations = (
+        session.query(Participation)
+        .filter(Participation.driver_id == did, Participation.discipline == discipline)
+        .all()
+    )
+    participations_count = len(participations)
+
+    events_missing_classification: list[str] = []
+    for p in participations:
+        classification = (
+            session.query(Classification)
+            .filter(Classification.event_id == p.event_id)
+            .first()
+        )
+        if not classification:
+            events_missing_classification.append(p.event_id)
+
+    last_crs = (
+        session.query(CRSHistory)
+        .filter(CRSHistory.driver_id == did, CRSHistory.discipline == discipline)
+        .order_by(CRSHistory.computed_at.desc())
+        .first()
+    )
+    latest_crs_score = last_crs.score if last_crs else None
+    latest_crs_discipline = last_crs.discipline if last_crs else None
+
+    if participations_count == 0:
+        reason = "No participations for this driver in discipline " + discipline + "; CRS is 0 or never computed."
+    elif events_missing_classification:
+        reason = (
+            f"{len(events_missing_classification)} event(s) have no classification; "
+            "add classification for those events then call POST /api/crs/compute or POST /api/dev/recompute."
+        )
+    elif latest_crs_score is None:
+        reason = "CRS was never computed; call POST /api/crs/compute?driver_id=...&discipline=... or POST /api/dev/recompute."
+    else:
+        reason = "OK" if latest_crs_score > 0 else "CRS was computed and is 0 (e.g. no participations at compute time)."
+
+    return AdminDriverCrsDiagnostic(
+        driver_id=did,
+        primary_discipline=discipline,
+        participations_count=participations_count,
+        events_missing_classification=events_missing_classification,
+        latest_crs_score=latest_crs_score,
+        latest_crs_discipline=latest_crs_discipline,
+        reason=reason,
+    )
 
 
 # --- Classifications (admin) ---

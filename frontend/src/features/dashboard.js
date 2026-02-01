@@ -471,7 +471,7 @@ export const loadDashboardEvents = async (driver) => {
     let upcomingItems = [];
     if (upcomingRes.ok) {
       const upcomingEvents = await upcomingRes.json();
-      upcomingItems = (Array.isArray(upcomingEvents) ? upcomingEvents : []).map(formatEventItem);
+      upcomingItems = (Array.isArray(upcomingEvents) ? upcomingEvents : []).map((e) => formatEventItem(e, true));
     }
 
     if (dashboardEventsList) {

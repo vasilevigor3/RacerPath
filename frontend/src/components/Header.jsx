@@ -11,9 +11,6 @@ const Header = () => (
       <a href="#dashboards" className="is-hidden" data-admin-only>
         Dashboards
       </a>
-      <a href="#recommendations" data-driver-only>
-        Recommendations
-      </a>
     </nav>
     <div className="header-actions">
       <button className="btn primary" type="button" data-scroll-target="#auth" data-auth-only>

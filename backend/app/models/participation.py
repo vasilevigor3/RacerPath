@@ -68,6 +68,7 @@ class Participation(Base):
     laps_completed: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     incidents_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     penalties_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    withdraw_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     pace_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
     consistency_score: Mapped[float | None] = mapped_column(Float, nullable=True)

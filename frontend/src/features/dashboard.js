@@ -520,8 +520,16 @@ function showEventDetail(event, driver) {
   const reqRank = LICENSE_REQUIREMENT_RANK[reqLicense] ?? 0;
   const driverLicenseRank = reqRank === 0 ? 1 : (LICENSE_REQUIREMENT_RANK[(lastDriverLicenseLevel ?? '').toLowerCase()] ?? 0);
   const licenseOk = reqRank === 0 || driverLicenseRank >= reqRank;
-  const alreadyRegistered = lastDriverParticipations.some((p) => p.event_id === event.id);
-  const canRegister = tierMatch && licenseOk && !alreadyRegistered;
+  const MAX_WITHDRAWALS = 3;
+  const participationForEvent = lastDriverParticipations.find((p) => p.event_id === event.id);
+  const state = participationForEvent ? String(participationForEvent.participation_state || '').toLowerCase() : '';
+  const withdrawCount = participationForEvent ? (Number(participationForEvent.withdraw_count) || 0) : 0;
+  const isWithdrawn = state === 'withdrawn';
+  const isRegistered = state === 'registered';
+  const canReRegister = participationForEvent && isWithdrawn && withdrawCount < MAX_WITHDRAWALS;
+  const canRegister = tierMatch && licenseOk && (!participationForEvent || canReRegister);
+  const maxWithdrawalsReached = participationForEvent && isWithdrawn && withdrawCount >= MAX_WITHDRAWALS;
+  const canWithdraw = participationForEvent && isRegistered;
   const status = getEventStatus(event);
   const statusLabel = status ? EVENT_STATUS_LABELS[status] : '—';
   content.innerHTML = `
@@ -538,13 +546,24 @@ function showEventDetail(event, driver) {
       ${event.city ? `<div><dt>City</dt><dd>${escapeHtml(event.city)}</dd></div>` : ''}
     </dl>
   `;
+  const withdrawBtn = document.querySelector('[data-event-detail-withdraw]');
+  const maxWithdrawalsMsg = document.querySelector('[data-event-detail-max-withdrawals]');
   if (registerBtn) {
     registerBtn.disabled = !canRegister;
     registerBtn.dataset.eventId = event.id;
     registerBtn.dataset.driverId = driver?.id ?? '';
+    registerBtn.classList.toggle('is-hidden', !canRegister);
+  }
+  if (withdrawBtn) {
+    withdrawBtn.classList.toggle('is-hidden', !canWithdraw);
+    withdrawBtn.dataset.participationId = participationForEvent && canWithdraw ? participationForEvent.id : '';
+  }
+  if (maxWithdrawalsMsg) {
+    maxWithdrawalsMsg.classList.toggle('is-hidden', !maxWithdrawalsReached);
+    maxWithdrawalsMsg.textContent = `You have reached the maximum number of withdrawals (${MAX_WITHDRAWALS}) for this event. You cannot register again.`;
   }
   if (actionsEl) {
-    actionsEl.classList.toggle('is-hidden', !canRegister);
+    actionsEl.classList.toggle('is-hidden', !canRegister && !canWithdraw && !maxWithdrawalsReached);
   }
   listView.classList.add('is-hidden');
   panel.classList.remove('is-hidden');
@@ -591,6 +610,30 @@ const registerOnEvent = async (driverId, eventId) => {
     }
   } catch (err) {
     if (typeof window !== 'undefined' && window.alert) window.alert('Register failed.');
+  }
+};
+
+const withdrawFromEvent = async (participationId) => {
+  if (!participationId) return;
+  try {
+    const res = await apiFetch(`/api/participations/${encodeURIComponent(participationId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participation_state: 'withdrawn' }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = Array.isArray(err.detail) ? err.detail : (err.detail || 'Withdraw failed.');
+      if (typeof window !== 'undefined' && window.alert) window.alert(typeof msg === 'string' ? msg : msg.detail || 'Withdraw failed.');
+      return;
+    }
+    hideEventDetail();
+    if (lastDriverForEvents) {
+      await loadDashboardStats(lastDriverForEvents);
+      await loadDashboardEvents(lastDriverForEvents);
+    }
+  } catch (err) {
+    if (typeof window !== 'undefined' && window.alert) window.alert('Withdraw failed.');
   }
 };
 
@@ -647,6 +690,13 @@ function initDashboardEventsRegisterDelegation() {
       const eventId = registerBtn.dataset.eventId;
       const driverId = registerBtn.dataset.driverId;
       if (eventId && driverId) registerOnEvent(driverId, eventId);
+      return;
+    }
+    const withdrawBtn = e.target.closest('.btn-withdraw-event-panel:not(.is-hidden)');
+    if (withdrawBtn) {
+      e.preventDefault();
+      const participationId = withdrawBtn.dataset.participationId;
+      if (participationId) withdrawFromEvent(participationId);
     }
   });
 }

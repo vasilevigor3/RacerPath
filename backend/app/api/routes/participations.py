@@ -8,10 +8,10 @@ from app.models.classification import Classification
 from app.models.driver import Driver
 from app.models.event import Event
 from app.models.incident import Incident
-from app.models.participation import Participation, ParticipationState
+from app.models.participation import Participation, ParticipationState, ParticipationStatus
 from app.models.user import User
 from app.schemas.incident import IncidentCreate, IncidentRead
-from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead
+from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead, ParticipationWithdrawUpdate
 from app.services.tasks import evaluate_tasks
 from app.services.crs import recompute_crs
 from app.services.auth import require_user
@@ -43,6 +43,7 @@ def create_participation(
             status_code=400,
             detail="Event has no classification; participation requires the event to be classified first.",
         )
+    MAX_WITHDRAWALS = 3
     existing = (
         session.query(Participation)
         .filter(
@@ -52,6 +53,17 @@ def create_participation(
         .first()
     )
     if existing:
+        if existing.participation_state == ParticipationState.withdrawn:
+            if existing.withdraw_count >= MAX_WITHDRAWALS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Max withdrawals reached ({MAX_WITHDRAWALS}). You cannot register again for this event.",
+                )
+            existing.participation_state = ParticipationState.registered
+            existing.status = ParticipationStatus.dns
+            session.commit()
+            session.refresh(existing)
+            return existing
         raise HTTPException(status_code=400, detail="Participation already exists")
 
     participation = Participation(**payload.model_dump())
@@ -145,6 +157,33 @@ def get_participation(
         driver = session.query(Driver).filter(Driver.id == participation.driver_id).first()
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
+    return participation
+
+
+@router.patch("/{participation_id}", response_model=ParticipationRead)
+def update_participation_withdraw(
+    participation_id: str,
+    payload: ParticipationWithdrawUpdate,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Driver withdraws from event: set participation_state to withdrawn (only when currently registered)."""
+    participation = session.query(Participation).filter(Participation.id == participation_id).first()
+    if not participation:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    if user.role not in {"admin"}:
+        driver = session.query(Driver).filter(Driver.id == participation.driver_id).first()
+        if not driver or driver.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+    if participation.participation_state != ParticipationState.registered:
+        raise HTTPException(
+            status_code=400,
+            detail="Can only withdraw when participation state is registered.",
+        )
+    participation.participation_state = ParticipationState.withdrawn
+    participation.withdraw_count = (participation.withdraw_count or 0) + 1
+    session.commit()
+    session.refresh(participation)
     return participation
 
 

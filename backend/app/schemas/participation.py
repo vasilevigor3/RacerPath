@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict
+from typing import Dict, Literal
 
 from pydantic import BaseModel, Field
 
@@ -61,9 +61,15 @@ class ParticipationRead(ParticipationCreate):
     id: str
     classification_id: str | None = None
     duration_minutes: int | None = None
+    withdraw_count: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ParticipationWithdrawUpdate(BaseModel):
+    """Driver can only set participation_state to withdrawn (opt out of event)."""
+    participation_state: Literal["withdrawn"] = "withdrawn"
 
 
 class ActiveParticipationRead(ParticipationRead):

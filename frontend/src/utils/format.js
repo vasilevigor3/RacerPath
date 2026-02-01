@@ -18,7 +18,7 @@ export const formatDateTime = (value) => {
   return Number.isNaN(date.getTime()) ? 'TBD' : date.toLocaleString();
 };
 
-/** Returns "Starts in: Xd Xh Xm" or "Starts in: Xh Xm Xs" or "Register now — starts soon!" (past = "Started") */
+/** Returns "Starts in: Xd Xh Xm Xs" or "Starts in: Xh Xm Xs" or "Register now — starts soon!" (past = "Started") */
 export const formatCountdown = (startTimeUtc) => {
   if (!startTimeUtc) return '';
   const start = new Date(startTimeUtc);
@@ -30,8 +30,7 @@ export const formatCountdown = (startTimeUtc) => {
   const min = Math.floor(ms / 60000) % 60;
   const hours = Math.floor(ms / 3600000) % 24;
   const days = Math.floor(ms / 86400000);
-  if (days > 0) return `Starts in: ${days}d ${hours}h ${min}m`;
+  if (days > 0) return `Starts in: ${days}d ${hours}h ${min}m ${sec}s`;
   if (hours > 0) return `Starts in: ${hours}h ${min}m ${sec}s`;
-  if (min > 0) return `Starts in: ${min}m ${sec}s`;
-  return 'Register now — starts soon!';
+  return `Starts in: ${min}m ${sec}s`;
 };

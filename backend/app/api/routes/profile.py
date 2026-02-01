@@ -69,6 +69,7 @@ def _build_read(profile: UserProfile | None) -> UserProfileRead:
             created_at=datetime.now(timezone.utc),
             updated_at=None,
             completion_percent=completion,
+            next_tier_progress_percent=0,
             missing_fields=missing,
             level=level,
         )
@@ -87,6 +88,7 @@ def _build_read(profile: UserProfile | None) -> UserProfileRead:
         created_at=profile.created_at,
         updated_at=profile.updated_at,
         completion_percent=completion,
+        next_tier_progress_percent=0,
         missing_fields=missing,
         level=level,
     )

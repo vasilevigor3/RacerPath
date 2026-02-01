@@ -22,6 +22,7 @@ class UserProfileRead(UserProfileUpsert):
     created_at: datetime
     updated_at: datetime | None
     completion_percent: int
+    next_tier_progress_percent: int = Field(default=0, ge=0, le=100)
     missing_fields: List[str]
     level: str
 

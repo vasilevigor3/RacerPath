@@ -43,6 +43,15 @@ const Cabinet = () => (
           <p className="muted" data-profile-user-id>
             Driver ID: --
           </p>
+          <div className="progress">
+            <div className="progress-label">Next tier</div>
+            <div className="progress-track">
+              <div className="progress-fill" data-profile-next-tier style={{ width: '0%' }}></div>
+            </div>
+            <div className="progress-meta" data-profile-next-tier-meta>
+              Complete profile and races to advance.
+            </div>
+          </div>
           <div className="pill-row">
             <span className="pill" data-profile-discipline>
               Discipline: --

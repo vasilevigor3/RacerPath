@@ -10,7 +10,7 @@ from app.db.session import get_session
 from app.models.user import User
 from app.models.driver import Driver
 from app.models.user_profile import UserProfile
-from app.schemas.profile import UserProfileRead, UserProfileUpsert
+from app.schemas.profile import NextTierData, UserProfileRead, UserProfileUpsert
 from app.services.auth import require_user
 from app.services.next_tier import compute_next_tier_progress
 from app.services.tasks import ensure_task_completion
@@ -52,8 +52,13 @@ def _compute_completion(profile: UserProfile | None) -> tuple[int, List[str], st
     return profile_completion, missing, level
 
 
-def _build_read(profile: UserProfile | None, next_tier_progress_percent: int = 0) -> UserProfileRead:
+def _build_read(
+    profile: UserProfile | None,
+    next_tier_progress_percent: int = 0,
+    next_tier_data: dict | None = None,
+) -> UserProfileRead:
     profile_completion, missing, level = _compute_completion(profile)
+    tier_data = NextTierData(**next_tier_data) if next_tier_data else None
     if not profile:
         return UserProfileRead(
             id="",
@@ -71,6 +76,7 @@ def _build_read(profile: UserProfile | None, next_tier_progress_percent: int = 0
             updated_at=None,
             profile_completion_percent=profile_completion,
             next_tier_progress_percent=next_tier_progress_percent,
+            next_tier_data=tier_data,
             missing_fields=missing,
             level=level,
         )
@@ -90,6 +96,7 @@ def _build_read(profile: UserProfile | None, next_tier_progress_percent: int = 0
         updated_at=profile.updated_at,
         profile_completion_percent=profile_completion,
         next_tier_progress_percent=next_tier_progress_percent,
+        next_tier_data=tier_data,
         missing_fields=missing,
         level=level,
     )
@@ -101,8 +108,8 @@ def get_my_profile(
     user: User = Depends(require_user()),
 ):
     profile = session.query(UserProfile).filter(UserProfile.user_id == user.id).first()
-    next_tier = compute_next_tier_progress(session, user.id)
-    return _build_read(profile, next_tier_progress_percent=next_tier)
+    next_tier, next_tier_data = compute_next_tier_progress(session, user.id)
+    return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)
 
 
 @router.put("/me", response_model=UserProfileRead)
@@ -137,5 +144,5 @@ def upsert_my_profile(
             ensure_task_completion(session, driver.id, f"ONBOARD_PROFILE_{suffix}")
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
         session.commit()
-    next_tier = compute_next_tier_progress(session, user.id)
-    return _build_read(profile, next_tier_progress_percent=next_tier)
+    next_tier, next_tier_data = compute_next_tier_progress(session, user.id)
+    return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)

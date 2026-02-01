@@ -128,11 +128,23 @@ const loadUserProfile = async (driver) => {
       profile.next_tier_progress_percent != null ? profile.next_tier_progress_percent : 0;
     if (profileNextTier) profileNextTier.style.width = `${nextTierPercent}%`;
     if (profileNextTierMeta) {
-      const missing = profile.missing_fields || [];
-      profileNextTierMeta.textContent =
-        missing.length === 0
-          ? 'Profile complete. Race to advance tier.'
-          : `Missing ${missing.length} fields to advance.`;
+      const data = profile.next_tier_data;
+      if (data && (data.events_required > 0 || (data.missing_license_codes && data.missing_license_codes.length))) {
+        const parts = [];
+        if (data.events_required > 0) {
+          parts.push(`${data.events_done}/${data.events_required} events (difficulty > ${data.difficulty_threshold})`);
+        }
+        if (data.missing_license_codes && data.missing_license_codes.length) {
+          parts.push(`Missing licenses: ${data.missing_license_codes.join(', ')}`);
+        }
+        profileNextTierMeta.textContent = parts.join('. ') || 'Complete requirements to advance tier.';
+      } else {
+        const missing = profile.missing_fields || [];
+        profileNextTierMeta.textContent =
+          missing.length === 0
+            ? (nextTierPercent >= 100 ? 'Tier complete.' : 'Profile complete. Race to advance tier.')
+            : `Missing ${missing.length} fields to advance.`;
+      }
     }
     readinessState.profileCompletion = profile.profile_completion_percent || 0;
     if (profileCtaButton) {

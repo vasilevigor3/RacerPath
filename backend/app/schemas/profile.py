@@ -4,6 +4,15 @@ from typing import List, Literal
 from pydantic import BaseModel, Field
 
 
+class NextTierData(BaseModel):
+    """What's missing to progress to next driver tier."""
+
+    events_done: int = 0
+    events_required: int = 0
+    difficulty_threshold: float = 0.0
+    missing_license_codes: List[str] = Field(default_factory=list)
+
+
 class UserProfileUpsert(BaseModel):
     full_name: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=80)
@@ -23,6 +32,7 @@ class UserProfileRead(UserProfileUpsert):
     updated_at: datetime | None
     profile_completion_percent: int
     next_tier_progress_percent: int = Field(default=0, ge=0, le=100)
+    next_tier_data: NextTierData | None = None
     missing_fields: List[str]
     level: str
 

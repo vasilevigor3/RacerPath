@@ -16,6 +16,7 @@ from app.models.incident import Incident
 from app.models.driver_license import DriverLicense
 from app.models.crs_history import CRSHistory
 from app.models.recommendation import Recommendation
+from app.models.tier_progression_rule import TierProgressionRule
 from app.schemas.admin import (
     AdminLookupRead,
     AdminLookupUser,
@@ -42,6 +43,8 @@ from app.schemas.admin import (
     AdminIncidentParticipationRef,
     AdminIncidentEventRef,
     AdminIncidentDriverRef,
+    TierProgressionRuleRead,
+    TierProgressionRuleUpdate,
 )
 from app.schemas.driver import DriverRead
 from app.models.enums.event_enums import EventStatus
@@ -64,8 +67,8 @@ def get_profile(
     profile = session.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    next_tier = compute_next_tier_progress(session, user_id)
-    return _build_read(profile, next_tier_progress_percent=next_tier)
+    next_tier, next_tier_data = compute_next_tier_progress(session, user_id)
+    return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)
 
 @router.put("/profiles/{user_id}", response_model=UserProfileRead)
 def update_profile(
@@ -100,8 +103,8 @@ def update_profile(
             ensure_task_completion(session, driver.id, f"ONBOARD_PROFILE_{suffix}")
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
         session.commit()
-    next_tier = compute_next_tier_progress(session, user_id)
-    return _build_read(profile, next_tier_progress_percent=next_tier)
+    next_tier, next_tier_data = compute_next_tier_progress(session, user_id)
+    return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)
 
 
 @router.get("/users", response_model=List[AdminUserRead])
@@ -548,3 +551,59 @@ def get_incident_detail(
         event=AdminIncidentEventRef(id=event.id, title=event.title, game=event.game) if event else None,
         driver=AdminIncidentDriverRef(id=driver.id, name=driver.name) if driver else None,
     )
+
+
+# --- Tier progression rules (admin) ---
+
+VALID_TIERS = ("E0", "E1", "E2", "E3", "E4", "E5")
+
+
+@router.get("/tier-rules", response_model=List[TierProgressionRuleRead])
+def list_tier_rules(
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """List all tier progression rules. Missing tiers are not returned (use PATCH to create)."""
+    return session.query(TierProgressionRule).order_by(TierProgressionRule.tier).all()
+
+
+@router.get("/tier-rules/{tier}", response_model=TierProgressionRuleRead)
+def get_tier_rule(
+    tier: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    tier = tier.strip().upper()
+    if tier not in VALID_TIERS:
+        raise HTTPException(status_code=400, detail="Invalid tier")
+    rule = session.query(TierProgressionRule).filter(TierProgressionRule.tier == tier).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Tier rule not found")
+    return rule
+
+
+@router.patch("/tier-rules/{tier}", response_model=TierProgressionRuleRead)
+def update_tier_rule(
+    tier: str,
+    payload: TierProgressionRuleUpdate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Create or update tier rule: min_events and difficulty_threshold for next_tier_progress_percent."""
+    tier = tier.strip().upper()
+    if tier not in VALID_TIERS:
+        raise HTTPException(status_code=400, detail="Invalid tier")
+    rule = session.query(TierProgressionRule).filter(TierProgressionRule.tier == tier).first()
+    if not rule:
+        rule = TierProgressionRule(tier=tier, min_events=5, difficulty_threshold=0.0, required_license_codes=[])
+        session.add(rule)
+    data = payload.model_dump(exclude_unset=True)
+    if "min_events" in data:
+        rule.min_events = max(0, data["min_events"])
+    if "difficulty_threshold" in data:
+        rule.difficulty_threshold = float(data["difficulty_threshold"])
+    if "required_license_codes" in data:
+        rule.required_license_codes = list(data["required_license_codes"]) if data["required_license_codes"] is not None else []
+    session.commit()
+    session.refresh(rule)
+    return rule

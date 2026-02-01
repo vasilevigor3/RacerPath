@@ -212,3 +212,18 @@ class AdminIncidentDetailRead(BaseModel):
     participation: AdminIncidentParticipationRef
     event: AdminIncidentEventRef | None = None
     driver: AdminIncidentDriverRef | None = None
+
+
+class TierProgressionRuleRead(BaseModel):
+    tier: str
+    min_events: int
+    difficulty_threshold: float
+    required_license_codes: list[str] = []
+
+    model_config = {"from_attributes": True}
+
+
+class TierProgressionRuleUpdate(BaseModel):
+    min_events: int | None = None
+    difficulty_threshold: float | None = None
+    required_license_codes: list[str] | None = None

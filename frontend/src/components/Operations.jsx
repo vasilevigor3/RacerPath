@@ -643,6 +643,161 @@ const AdminConstructors = () => {
   );
 };
 
+const TierRulesPanel = () => {
+  const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editingTier, setEditingTier] = useState(null);
+  const [editForm, setEditForm] = useState({ min_events: '', difficulty_threshold: '', required_license_codes: '' });
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMsg, setSaveMsg] = useState(null);
+
+  const loadRules = () => {
+    setLoading(true);
+    setError(null);
+    apiFetch('/api/admin/tier-rules')
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Failed');
+        return res.json();
+      })
+      .then(setRules)
+      .catch((err) => setError(err?.message || 'Error'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadRules(); }, []);
+
+  const startEdit = (rule) => {
+    setEditingTier(rule.tier);
+    setEditForm({ min_events: String(rule.min_events), difficulty_threshold: String(rule.difficulty_threshold) });
+    setSaveMsg(null);
+  };
+
+  const saveRule = (e) => {
+    e.preventDefault();
+    const tier = editingTier?.trim();
+    if (!tier) return;
+    setSaveLoading(true);
+    setSaveMsg(null);
+    const body = {};
+    if (editForm.min_events !== '') body.min_events = parseInt(editForm.min_events, 10);
+    if (editForm.difficulty_threshold !== '') body.difficulty_threshold = parseFloat(editForm.difficulty_threshold);
+    if (editForm.required_license_codes !== undefined) {
+      body.required_license_codes = editForm.required_license_codes.trim() ? editForm.required_license_codes.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    }
+    apiFetch(`/api/admin/tier-rules/${encodeURIComponent(tier)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText))))
+      .then(() => {
+        setSaveMsg('Saved');
+        loadRules();
+        setEditingTier(null);
+      })
+      .catch((err) => setSaveMsg(err?.message || 'Error'))
+      .finally(() => setSaveLoading(false));
+  };
+
+  const ensureRule = (tier) => {
+    const existing = rules.find((r) => r.tier === tier);
+    if (existing) startEdit(existing);
+    else {
+      setEditingTier(tier);
+      setEditForm({ min_events: '5', difficulty_threshold: '0' });
+      setSaveMsg(null);
+    }
+  };
+
+  return (
+    <div className="admin-constructors card">
+      <h3 className="admin-constructors__title">Tier progression (next_tier_progress_percent)</h3>
+      <p className="admin-constructors__hint">Rules per tier: min_events with difficulty_score &gt; threshold; required_license_codes (comma-separated). E5 = 100%.</p>
+      {loading && <p className="admin-constructors__msg">Loading…</p>}
+      {error && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{error}</p>}
+      {!loading && !error && (
+        <>
+          <section className="admin-constructors__block">
+            <h4 className="admin-constructors__subtitle">Rules</h4>
+            <table className="admin-constructors__table" role="grid">
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  <th>min_events</th>
+                  <th>difficulty_threshold</th>
+                  <th>required_license_codes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {EVENT_TIERS.map((tier) => {
+                  const rule = rules.find((r) => r.tier === tier);
+                  const codes = rule?.required_license_codes && Array.isArray(rule.required_license_codes) ? rule.required_license_codes.join(', ') : '—';
+                  return (
+                    <tr key={tier}>
+                      <td>{tier}</td>
+                      <td>{rule ? rule.min_events : '—'}</td>
+                      <td>{rule ? rule.difficulty_threshold : '—'}</td>
+                      <td>{codes}</td>
+                      <td>
+                        <button type="button" className="btn ghost admin-constructors__btn" onClick={() => ensureRule(tier)}>Edit</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+          {editingTier && (
+            <section className="admin-constructors__block">
+              <h4 className="admin-constructors__subtitle">Edit tier {editingTier}</h4>
+              <form onSubmit={saveRule} className="admin-constructors__form">
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">min_events</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.min_events}
+                    onChange={(e) => setEditForm((f) => ({ ...f, min_events: e.target.value }))}
+                    className="admin-constructors__input"
+                    placeholder="5"
+                  />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">difficulty_threshold</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editForm.difficulty_threshold}
+                    onChange={(e) => setEditForm((f) => ({ ...f, difficulty_threshold: e.target.value }))}
+                    className="admin-constructors__input"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">required_license_codes (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={editForm.required_license_codes}
+                    onChange={(e) => setEditForm((f) => ({ ...f, required_license_codes: e.target.value }))}
+                    className="admin-constructors__input"
+                    placeholder="GT_E1, GT_ROOKIE"
+                  />
+                </div>
+                <button type="submit" className="btn primary admin-constructors__btn" disabled={saveLoading}>{saveLoading ? '…' : 'Save'}</button>
+                <button type="button" className="btn ghost admin-constructors__btn" onClick={() => setEditingTier(null)}>Cancel</button>
+                {saveMsg && <span className="admin-constructors__msg" role="status">{saveMsg}</span>}
+              </form>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 const AdminLookup = () => {
   const [q, setQ] = useState('');
   const [result, setResult] = useState(null);
@@ -752,6 +907,7 @@ const AdminLookup = () => {
       {error && <p className="admin-lookup__error" role="alert">{error}</p>}
 
       <AdminConstructors />
+      <TierRulesPanel />
 
       {result && (
         <div className="admin-lookup-result card">

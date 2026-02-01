@@ -17,6 +17,7 @@ from app.models.audit_log import AuditLog
 from app.models.real_world_format import RealWorldFormat
 from app.models.real_world_readiness import RealWorldReadiness
 from app.models.anti_gaming import AntiGamingReport
+from app.models.tier_progression_rule import TierProgressionRule
 
 __all__ = [
     "Base",
@@ -38,4 +39,5 @@ __all__ = [
     "RealWorldFormat",
     "RealWorldReadiness",
     "AntiGamingReport",
+    "TierProgressionRule",
 ]

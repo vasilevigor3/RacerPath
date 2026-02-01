@@ -313,9 +313,12 @@ footer {
 }
 
 .readiness-score {
-  font-size: 2.4rem;
-  font-weight: 700;
-  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.progress-label .readiness-score {
+  font-size: 1em;
+  margin-left: 0.25em;
 }
 
 .license-card h3 {

@@ -37,6 +37,15 @@ const Cabinet = () => (
               Complete profile and races to advance.
             </div>
           </div>
+          <div className="progress">
+            <div className="progress-label">Readiness index <span className="readiness-score" data-readiness-score>--</span></div>
+            <div className="progress-track">
+              <div className="progress-fill" data-readiness-fill style={{ width: '0%' }}></div>
+            </div>
+            <div className="progress-meta" data-readiness-note>
+              Complete tasks to increase readiness.
+            </div>
+          </div>
           <div className="pill-row">
             <span className="pill" data-profile-discipline>
               Discipline: --
@@ -156,23 +165,6 @@ const Cabinet = () => (
               <ul className="list" data-risk-flags>
                 <li>No risks yet.</li>
               </ul>
-            </div>
-          </div>
-          <div className="grid-2">
-            <div className="card readiness-card">
-              <p className="card-title">Readiness index</p>
-              <div className="readiness-score" data-readiness-score>
-                --
-              </div>
-              <div className="progress">
-                <div className="progress-label">Readiness progress</div>
-                <div className="progress-track">
-                  <div className="progress-fill" data-readiness-fill style={{ width: '0%' }}></div>
-                </div>
-                <div className="progress-meta" data-readiness-note>
-                  Complete tasks to increase readiness.
-                </div>
-              </div>
             </div>
           </div>
         </div>

@@ -54,9 +54,6 @@ const Cabinet = () => (
               Platforms: --
             </span>
           </div>
-          <p className="muted" data-profile-goals>
-            Set goals to unlock the next level.
-          </p>
           <button className="btn ghost" type="button" data-tab-jump="profile" data-profile-cta-button>
             Complete profile
           </button>
@@ -205,13 +202,6 @@ const Cabinet = () => (
                 <li>No activity yet.</li>
               </ul>
             </div>
-          </div>
-          <div className="card compact">
-            <p className="card-title">Goals &amp; guidance</p>
-            <p className="muted" data-profile-goals-display>
-              System goals will appear after your first recommendations.
-            </p>
-            <p className="muted">Focus on clean finishes and consistent sessions to unlock the next readiness tiers.</p>
           </div>
         </div>
 

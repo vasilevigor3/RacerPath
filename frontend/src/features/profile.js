@@ -39,8 +39,6 @@ const profileDiscipline = document.querySelector('[data-profile-discipline]');
 const profileTier = document.querySelector('[data-profile-tier]');
 const profilePlatforms = document.querySelector('[data-profile-platforms]');
 const profileUserId = document.querySelector('[data-profile-user-id]');
-const profileGoals = document.querySelector('[data-profile-goals]');
-const profileGoalsDisplay = document.querySelector('[data-profile-goals-display]');
 const profileCtaButton = document.querySelector('[data-profile-cta-button]');
 const profileChecklist = document.querySelector('[data-profile-checklist]');
 const profileCompletion = document.querySelector('[data-profile-completion]');
@@ -94,10 +92,6 @@ export const setProfileEmpty = (message, options = {}) => {
   if (profileTier) profileTier.textContent = 'Tier: --';
   if (profilePlatforms) profilePlatforms.textContent = 'Platforms: --';
   setProfileIdLabel('--', 'Driver ID');
-  if (profileGoals) profileGoals.textContent = 'System goals will appear after your first recommendations.';
-  if (profileGoalsDisplay) {
-    profileGoalsDisplay.textContent = 'System goals will appear after your first recommendations.';
-  }
   if (profileCtaButton) profileCtaButton.textContent = 'Complete profile';
   if (licenseCurrent) licenseCurrent.textContent = '--';
   if (licenseNext) licenseNext.textContent = '--';
@@ -144,9 +138,7 @@ const loadUserProfile = async (driver) => {
     const playerId = driver ? driver.id : currentUserId;
     setProfileIdLabel(playerId, driver ? 'Driver ID' : 'User ID');
     setCurrentProfileGoals(profile.goals || null);
-    const systemGoals = profile.goals || 'System goals will appear after your first recommendations.';
-    if (profileGoals) profileGoals.textContent = systemGoals;
-    if (profileGoalsDisplay) profileGoalsDisplay.textContent = systemGoals;
+    const systemGoals = profile.goals || '';
     if (profileCompletion) profileCompletion.style.width = `${profile.completion_percent || 0}%`;
     if (profileLevel) profileLevel.textContent = profile.level || 'Rookie';
     readinessState.profileCompletion = profile.completion_percent || 0;

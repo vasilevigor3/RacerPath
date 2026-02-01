@@ -882,8 +882,18 @@ footer {
   word-break: break-all;
 }
 
+.admin-lookup-result__part-meta {
+  color: var(--muted, #666);
+  font-size: 0.85em;
+}
+
 .admin-lookup-result__part-date {
   color: var(--muted, #666);
+}
+
+.admin-lookup-result__part-btn {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .admin-lookup-result__empty {

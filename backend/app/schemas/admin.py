@@ -29,7 +29,9 @@ class AdminLookupParticipationItem(BaseModel):
     event_title: str | None
     event_game: str | None
     started_at: datetime | None
+    finished_at: datetime | None
     status: str
+    participation_state: str
     incidents_count: int
 
 

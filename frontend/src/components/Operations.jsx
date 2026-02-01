@@ -1885,10 +1885,8 @@ const AdminLookup = () => {
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const query = q.trim();
-    if (!query) return;
+  const doLookup = (query) => {
+    if (!query || !query.trim()) return Promise.resolve();
     setLoading(true);
     setError(null);
     setResult(null);
@@ -1896,20 +1894,43 @@ const AdminLookup = () => {
     setPartError(null);
     setIncidentData(null);
     setIncidentError(null);
-    apiFetch(`/api/admin/lookup?q=${encodeURIComponent(query)}`)
+    return apiFetch(`/api/admin/lookup?q=${encodeURIComponent(query.trim())}`)
       .then((res) => {
         if (!res.ok) throw new Error(res.statusText || 'Not found');
         return res.json();
       })
       .then((data) => {
         setResult(data);
+        return data;
       })
       .catch((err) => {
         setError(err?.message || 'Error');
+        throw err;
       })
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const query = q.trim();
+    if (!query) return;
+    doLookup(query);
+  };
+
+  const updateParticipationState = async (partId, payload) => {
+    const res = await apiFetch(`/api/admin/participations/${encodeURIComponent(partId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.detail || res.statusText || 'Update failed');
+    }
+    const query = q.trim();
+    if (query) await doLookup(query);
   };
 
   const fetchParticipation = (e) => {
@@ -2013,9 +2034,28 @@ const AdminLookup = () => {
               {result.participations?.length > 0 ? (
                 <ul className="admin-lookup-result__list admin-lookup-result__participations">
                   {result.participations.map((p) => (
-                    <li key={p.id}>
-                      <span className="admin-lookup-result__part-id">{p.id}</span>
-                      <span className="admin-lookup-result__part-date">{formatDate(p.started_at)}</span>
+                    <li key={p.id} className="admin-lookup-result__part-row">
+                      <span className="admin-lookup-result__part-id">{p.id.slice(0, 8)}…</span>
+                      <span className="admin-lookup-result__part-meta">{p.event_title ?? p.event_id?.slice(0, 8)} · {p.participation_state ?? '—'}</span>
+                      <span className="admin-lookup-result__part-date">{formatDate(p.started_at) || '—'}</span>
+                      {p.participation_state === 'registered' && (
+                        <button
+                          type="button"
+                          className="btn ghost admin-lookup-result__part-btn"
+                          onClick={() => updateParticipationState(p.id, { participation_state: 'started', started_at: new Date().toISOString() }).catch((e) => window.alert(e?.message || 'Failed'))}
+                        >
+                          Mark as started
+                        </button>
+                      )}
+                      {p.participation_state === 'started' && (
+                        <button
+                          type="button"
+                          className="btn ghost admin-lookup-result__part-btn"
+                          onClick={() => updateParticipationState(p.id, { participation_state: 'completed', finished_at: new Date().toISOString(), status: 'finished' }).catch((e) => window.alert(e?.message || 'Failed'))}
+                        >
+                          Mark as completed
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>

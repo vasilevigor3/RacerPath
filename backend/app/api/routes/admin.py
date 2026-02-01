@@ -256,7 +256,9 @@ def admin_lookup(
                 event_title=event.title if event else None,
                 event_game=event.game if event else None,
                 started_at=part.started_at,
+                finished_at=part.finished_at,
                 status=part.status.value if hasattr(part.status, "value") else str(part.status),
+                participation_state=part.participation_state.value if hasattr(part.participation_state, "value") else str(part.participation_state),
                 incidents_count=incidents_count,
             )
         )
@@ -521,7 +523,7 @@ def update_participation(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    """Update participation fields (status, participation_state, position, laps, started_at, finished_at)."""
+    """Update participation fields (status, participation_state, position, laps, started_at, finished_at). Dates are validated: finished_at >= started_at when both set; started requires started_at; completed requires started_at and finished_at."""
     part = session.query(Participation).filter(Participation.id == participation_id).first()
     if not part:
         raise HTTPException(status_code=404, detail="Participation not found")
@@ -532,6 +534,37 @@ def update_participation(
         data["participation_state"] = ParticipationState(data["participation_state"])
     for key, value in data.items():
         setattr(part, key, value)
+
+    # Date validation
+    if part.started_at is not None and part.finished_at is not None:
+        if part.finished_at < part.started_at:
+            raise HTTPException(
+                status_code=400,
+                detail="finished_at must be greater than or equal to started_at.",
+            )
+    if part.participation_state == ParticipationState.started:
+        if part.started_at is None:
+            raise HTTPException(
+                status_code=400,
+                detail="participation_state=started requires started_at to be set.",
+            )
+    if part.participation_state == ParticipationState.completed:
+        if part.started_at is None:
+            raise HTTPException(
+                status_code=400,
+                detail="participation_state=completed requires started_at to be set.",
+            )
+        if part.finished_at is None:
+            raise HTTPException(
+                status_code=400,
+                detail="participation_state=completed requires finished_at to be set.",
+            )
+        if part.finished_at < part.started_at:
+            raise HTTPException(
+                status_code=400,
+                detail="finished_at must be greater than or equal to started_at.",
+            )
+
     session.commit()
     session.refresh(part)
     return part

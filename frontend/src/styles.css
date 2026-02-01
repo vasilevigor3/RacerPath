@@ -746,18 +746,12 @@ footer {
   border-bottom: none;
 }
 
+/* Grid: several fields per row (horizontal grouping), columns fit content */
 .admin-constructors__form {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(220px, max-content));
   gap: 4px 12px;
   align-items: center;
-}
-
-@media (min-width: 900px) {
-  .admin-constructors__form {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px 14px;
-  }
 }
 
 .admin-constructors__form > .admin-constructors__btn,
@@ -769,7 +763,7 @@ footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 

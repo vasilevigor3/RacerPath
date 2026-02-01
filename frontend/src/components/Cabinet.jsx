@@ -90,7 +90,7 @@ const Cabinet = () => (
             className="stat-card is-link"
             type="button"
             data-stat-target="licenses"
-            data-scroll-target="#dashboards"
+            data-tab-target="licenses"
             data-focus-target="licenses-card"
           >
             <span className="stat-label">Licenses</span>
@@ -124,6 +124,9 @@ const Cabinet = () => (
           <button className="tab-button" type="button" data-tab-button="events">
             Events
           </button>
+          <button className="tab-button" type="button" data-tab-button="licenses">
+            Licenses
+          </button>
           <button className="tab-button" type="button" data-tab-button="profile">
             Profile
           </button>
@@ -155,7 +158,7 @@ const Cabinet = () => (
               </ul>
             </div>
           </div>
-          <div className="grid-3">
+          <div className="grid-2">
             <div className="card readiness-card">
               <p className="card-title">Readiness index</p>
               <div className="readiness-score" data-readiness-score>
@@ -171,16 +174,19 @@ const Cabinet = () => (
                 </div>
               </div>
             </div>
-            <div className="card license-card">
-              <p className="card-title">License progress</p>
-              <p className="muted">Current license</p>
-              <h3 data-license-current>--</h3>
-              <p className="muted">Next target</p>
-              <h4 data-license-next>--</h4>
-              <ul className="list" data-license-reqs>
-                <li>No requirements loaded.</li>
-              </ul>
-            </div>
+          </div>
+        </div>
+
+        <div className="tab-panel" data-tab-panel="licenses">
+          <div className="card license-card" data-focus-id="licenses-card">
+            <p className="card-title">License progress</p>
+            <p className="muted">Current license</p>
+            <h3 data-license-current>--</h3>
+            <p className="muted">Next target</p>
+            <h4 data-license-next>--</h4>
+            <ul className="list" data-license-reqs>
+              <li>No requirements loaded.</li>
+            </ul>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import { apiFetch } from '../api/client.js';
-import { setList, setEventListWithRegister, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
+import { setList, setEventListWithRegister, setTaskListClickable, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
 import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { readinessState } from '../state/session.js';
@@ -160,8 +160,137 @@ export const loadDashboardStats = async (driver) => {
   updateReadiness();
 };
 
+function taskEscapeHtml(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function showTaskDetail(task, driver) {
+  const listView = document.querySelector('[data-tasks-list-view]');
+  const panel = document.querySelector('[data-task-detail-panel]');
+  const content = document.querySelector('[data-task-detail-content]');
+  const actionsEl = document.querySelector('[data-task-detail-actions]');
+  const takeBtn = document.querySelector('[data-task-detail-take]');
+  const completeBtn = document.querySelector('[data-task-detail-complete]');
+  const declineBtn = document.querySelector('[data-task-detail-decline]');
+  if (!listView || !panel || !content) return;
+
+  const completedIds = new Set(
+    lastTaskCompletions.filter((c) => c.status === 'completed').map((c) => c.task_id)
+  );
+  const pendingTaskIds = new Set(
+    lastTaskCompletions.filter((c) => c.status === 'pending').map((c) => c.task_id)
+  );
+  const isCompleted = completedIds.has(task.id);
+  const isTaken = pendingTaskIds.has(task.id);
+  const canTake = !isCompleted && !isTaken;
+  const canComplete = isTaken;
+  const canDecline = isTaken || canTake;
+
+  content.innerHTML = `
+    <dl class="task-detail-dl">
+      <div><dt>Name</dt><dd>${taskEscapeHtml(task.name ?? '—')}</dd></div>
+      <div><dt>Discipline</dt><dd>${taskEscapeHtml(task.discipline ?? '—')}</dd></div>
+      <div><dt>Description</dt><dd>${taskEscapeHtml(task.description ?? '—')}</dd></div>
+      ${task.min_event_tier ? `<div><dt>Min event tier</dt><dd>${taskEscapeHtml(task.min_event_tier)}</dd></div>` : ''}
+      <div><dt>Status</dt><dd>${isCompleted ? 'Completed' : isTaken ? 'In progress' : 'Not taken'}</dd></div>
+    </dl>
+  `;
+
+  if (takeBtn) {
+    takeBtn.style.display = canTake ? '' : 'none';
+    takeBtn.dataset.taskId = task.id;
+    takeBtn.dataset.driverId = driver?.id ?? '';
+  }
+  if (completeBtn) {
+    completeBtn.style.display = canComplete ? '' : 'none';
+    completeBtn.dataset.taskId = task.id;
+    completeBtn.dataset.driverId = driver?.id ?? '';
+  }
+  if (declineBtn) {
+    declineBtn.style.display = canDecline ? '' : 'none';
+    declineBtn.dataset.taskId = task.id;
+    declineBtn.dataset.driverId = driver?.id ?? '';
+  }
+  if (actionsEl) actionsEl.classList.toggle('is-hidden', !canTake && !canComplete && !canDecline);
+
+  listView.classList.add('is-hidden');
+  panel.classList.remove('is-hidden');
+}
+
+function hideTaskDetail() {
+  const listView = document.querySelector('[data-tasks-list-view]');
+  const panel = document.querySelector('[data-task-detail-panel]');
+  if (listView) listView.classList.remove('is-hidden');
+  if (panel) panel.classList.add('is-hidden');
+}
+
+async function taskAction(driverId, taskId, status) {
+  try {
+    const res = await apiFetch('/api/tasks/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ driver_id: driverId, task_id: taskId, status }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = Array.isArray(err.detail) ? err.detail.map((d) => d.msg).join(', ') : (err.detail || 'Action failed.');
+      if (typeof window !== 'undefined' && window.alert) window.alert(msg);
+      return;
+    }
+    hideTaskDetail();
+    if (lastDriverForTasks) await loadTasksOverview(lastDriverForTasks);
+  } catch (err) {
+    if (typeof window !== 'undefined' && window.alert) window.alert('Action failed.');
+  }
+}
+
+function initTaskDetailDelegation() {
+  if (document.body.dataset.taskDetailDelegation) return;
+  document.body.dataset.taskDetailDelegation = '1';
+  document.body.addEventListener('click', (e) => {
+    const taskRow = e.target.closest('.task-list-item__text[data-task-id]');
+    if (taskRow) {
+      e.preventDefault();
+      const taskId = taskRow.getAttribute('data-task-id');
+      const driver = lastDriverForTasks;
+      if (!taskId || !driver) return;
+      const task = lastTaskDefinitions.find((t) => t.id === taskId);
+      if (task) showTaskDetail(task, driver);
+      return;
+    }
+    if (e.target.closest('[data-task-detail-back]')) {
+      e.preventDefault();
+      hideTaskDetail();
+      return;
+    }
+    const takeBtn = e.target.closest('[data-task-detail-take]');
+    if (takeBtn && takeBtn.dataset.taskId) {
+      e.preventDefault();
+      taskAction(takeBtn.dataset.driverId, takeBtn.dataset.taskId, 'pending');
+      return;
+    }
+    const completeBtn = e.target.closest('[data-task-detail-complete]');
+    if (completeBtn && completeBtn.dataset.taskId) {
+      e.preventDefault();
+      taskAction(completeBtn.dataset.driverId, completeBtn.dataset.taskId, 'completed');
+      return;
+    }
+    const declineBtn = e.target.closest('[data-task-detail-decline]');
+    if (declineBtn && declineBtn.dataset.taskId) {
+      e.preventDefault();
+      taskAction(declineBtn.dataset.driverId, declineBtn.dataset.taskId, 'failed');
+      return;
+    }
+  });
+}
+
 export const loadTasksOverview = async (driver) => {
   if (!driver) {
+    lastDriverForTasks = null;
+    lastTaskDefinitions = [];
+    lastTaskCompletions = [];
+    hideTaskDetail();
     if (tasksCompletedList) setList(tasksCompletedList, [], 'No tasks completed yet.');
     if (tasksPendingList) setList(tasksPendingList, [], 'No pending tasks.');
     if (statTasks) statTasks.textContent = '0';
@@ -170,6 +299,7 @@ export const loadTasksOverview = async (driver) => {
     updateReadiness();
     return;
   }
+  lastDriverForTasks = driver;
   const discipline = driver.primary_discipline || 'gt';
   try {
     const [completionsRes, definitionsRes] = await Promise.all([
@@ -178,19 +308,18 @@ export const loadTasksOverview = async (driver) => {
     ]);
     const completions = completionsRes.ok ? await completionsRes.json() : [];
     const definitions = definitionsRes.ok ? await definitionsRes.json() : [];
-    const completedIds = new Set(completions.map((item) => item.task_id));
-    const filteredDefinitions = definitions.filter((task) => task.discipline === discipline);
-    const completedNames = filteredDefinitions
-      .filter((task) => completedIds.has(task.id))
-      .map((task) => task.name);
-    const pendingNames = filteredDefinitions
-      .filter((task) => !completedIds.has(task.id))
-      .map((task) => task.name);
+    lastTaskCompletions = completions;
+    lastTaskDefinitions = definitions;
 
-    if (tasksCompletedList) setList(tasksCompletedList, completedNames, 'No tasks completed yet.');
-    if (tasksPendingList) setList(tasksPendingList, pendingNames.slice(0, 6), 'No pending tasks.');
-    if (statTasks) statTasks.textContent = completedNames.length.toString();
-    readinessState.tasksCompleted = completedNames.length;
+    const completedIds = new Set(completions.filter((c) => c.status === 'completed').map((c) => c.task_id));
+    const filteredDefinitions = definitions.filter((task) => task.discipline === discipline);
+    const completedTasks = filteredDefinitions.filter((task) => completedIds.has(task.id));
+    const pendingTasks = filteredDefinitions.filter((task) => !completedIds.has(task.id));
+
+    if (tasksCompletedList) setTaskListClickable(tasksCompletedList, completedTasks, 'No tasks completed yet.');
+    if (tasksPendingList) setTaskListClickable(tasksPendingList, pendingTasks.slice(0, 15), 'No pending tasks.');
+    if (statTasks) statTasks.textContent = completedTasks.length.toString();
+    readinessState.tasksCompleted = completedTasks.length;
     readinessState.tasksTotal = filteredDefinitions.length;
     updateReadiness();
   } catch (err) {
@@ -356,6 +485,9 @@ let lastDriverForActiveRace = null;
 let lastDashboardEventsData = [];
 let lastDriverParticipations = [];
 let lastDriverLicenseLevel = null;
+let lastDriverForTasks = null;
+let lastTaskDefinitions = [];
+let lastTaskCompletions = [];
 
 const EVENT_STATUS_LABELS = { waiting_start: 'Waiting to start', started: 'Started', finished: 'Finished' };
 
@@ -626,4 +758,5 @@ export const loadDashboardEvents = async (driver) => {
 
 if (typeof document !== 'undefined') {
   initDashboardEventsRegisterDelegation();
+  initTaskDetailDelegation();
 }

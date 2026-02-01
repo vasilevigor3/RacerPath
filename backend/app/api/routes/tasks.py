@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -81,6 +82,26 @@ def create_task_completion(
             raise HTTPException(status_code=404, detail="Participation not found")
         if participation.driver_id != driver.id:
             raise HTTPException(status_code=403, detail="Participation mismatch")
+
+    # Global scope: at most one completion per (driver_id, task_id). Update existing instead of duplicate.
+    if payload.participation_id is None and payload.period_key is None:
+        existing = (
+            session.query(TaskCompletion)
+            .filter(
+                TaskCompletion.driver_id == payload.driver_id,
+                TaskCompletion.task_id == payload.task_id,
+                TaskCompletion.participation_id.is_(None),
+                TaskCompletion.period_key.is_(None),
+            )
+            .first()
+        )
+        if existing:
+            existing.status = payload.status
+            if payload.status == "completed":
+                existing.completed_at = payload.completed_at or existing.completed_at or datetime.now(timezone.utc)
+            session.commit()
+            session.refresh(existing)
+            return existing
 
     completion = TaskCompletion(**payload.model_dump())
     session.add(completion)

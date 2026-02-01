@@ -33,6 +33,26 @@ export const setEventListWithRegister = (listEl, events, driver, emptyText, form
     .join('');
 };
 
+/**
+ * Render tasks as clickable rows; click opens task detail panel.
+ * tasks: array of { id, name, ... }
+ * emptyText: string when empty
+ */
+export const setTaskListClickable = (listEl, tasks, emptyText) => {
+  if (!listEl) return;
+  if (!tasks || tasks.length === 0) {
+    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
+    return;
+  }
+  listEl.innerHTML = tasks
+    .map((task) => {
+      const name = escapeHtml(task.name ?? task.id);
+      const taskId = escapeHtml(task.id);
+      return `<li class="task-list-item"><button type="button" class="task-list-item__text btn-link" data-task-id="${taskId}">${name}</button></li>`;
+    })
+    .join('');
+};
+
 /** Slot label prefix -> slot value for matching items to special_events */
 const RACE_OF_PREFIX_TO_SLOT = {
   'Race of the day:': 'race_of_day',

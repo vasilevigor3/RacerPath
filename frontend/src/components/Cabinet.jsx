@@ -197,18 +197,27 @@ const Cabinet = () => (
         </div>
 
         <div className="tab-panel" data-tab-panel="tasks">
-          <div className="grid-2">
-            <div className="card compact">
+          <div data-tasks-list-view className="grid-2">
+            <div className="card compact card-tasks">
               <p className="card-title">Completed tasks</p>
               <ul className="list" data-tasks-completed>
                 <li>No tasks completed yet.</li>
               </ul>
             </div>
-            <div className="card compact">
+            <div className="card compact card-tasks">
               <p className="card-title">Pending tasks</p>
               <ul className="list" data-tasks-pending>
                 <li>No pending tasks.</li>
               </ul>
+            </div>
+          </div>
+          <div className="task-detail-panel is-hidden" data-task-detail-panel>
+            <button type="button" className="btn ghost task-detail-back" data-task-detail-back>Back</button>
+            <div className="task-detail-content" data-task-detail-content />
+            <div className="task-detail-actions" data-task-detail-actions>
+              <button type="button" className="btn primary btn-task-take" data-task-detail-take>Take task</button>
+              <button type="button" className="btn primary btn-task-complete" data-task-detail-complete>Complete</button>
+              <button type="button" className="btn ghost btn-task-decline" data-task-detail-decline>Decline</button>
             </div>
           </div>
         </div>

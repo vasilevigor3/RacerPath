@@ -227,3 +227,30 @@ class TierProgressionRuleUpdate(BaseModel):
     min_events: int | None = None
     difficulty_threshold: float | None = None
     required_license_codes: list[str] | None = None
+
+
+class AdminLicenseLevelRef(BaseModel):
+    """License level reference (code + discipline) for task–license link."""
+    level_code: str
+    discipline: str
+
+
+class AdminTaskDefinitionRead(BaseModel):
+    """Task definition with which license levels require this task (by code)."""
+    id: str
+    code: str
+    name: str
+    discipline: str
+    description: str
+    requirements: dict = {}
+    min_event_tier: str | None = None
+    active: bool = True
+    scope: str = "per_participation"
+    cooldown_days: int | None = None
+    period: str | None = None
+    window_size: int | None = None
+    window_unit: str | None = None
+    created_at: datetime
+    required_by_license_levels: list[AdminLicenseLevelRef] = []
+
+    model_config = {"from_attributes": True}

@@ -38,6 +38,21 @@ class TaskDefinitionRead(TaskDefinitionCreate):
     model_config = {"from_attributes": True}
 
 
+class TaskDefinitionUpdate(BaseModel):
+    code: str | None = Field(None, min_length=2, max_length=40)
+    name: str | None = Field(None, min_length=2, max_length=120)
+    discipline: Literal["formula", "gt", "rally", "karting", "historic", "offroad"] | None = None
+    description: str | None = Field(None, min_length=2, max_length=500)
+    requirements: Dict[str, str | int | float | bool] | None = None
+    min_event_tier: str | None = None
+    active: bool | None = None
+    scope: TASK_SCOPE | None = None
+    cooldown_days: int | None = Field(None, ge=0, le=365)
+    period: TASK_PERIOD | None = None
+    window_size: int | None = Field(None, ge=1, le=1000)
+    window_unit: Literal["participations", "days"] | None = None
+
+
 class TaskCompletionCreate(BaseModel):
     driver_id: str
     task_id: str

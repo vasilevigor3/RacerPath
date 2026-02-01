@@ -798,6 +798,616 @@ const TierRulesPanel = () => {
   );
 };
 
+const LicenseLevelsPanel = () => {
+  const [levels, setLevels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [createForm, setCreateForm] = useState({
+    discipline: 'gt',
+    code: '',
+    name: '',
+    description: '',
+    min_crs: '0',
+    required_task_codes: '',
+    active: true,
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createMsg, setCreateMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    discipline: '',
+    code: '',
+    name: '',
+    description: '',
+    min_crs: '',
+    required_task_codes: '',
+    active: true,
+  });
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMsg, setSaveMsg] = useState(null);
+  const [filterDiscipline, setFilterDiscipline] = useState('');
+
+  const loadLevels = () => {
+    setLoading(true);
+    setError(null);
+    const q = filterDiscipline ? `?discipline=${encodeURIComponent(filterDiscipline)}` : '';
+    apiFetch(`/api/admin/license-levels${q}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Failed');
+        return res.json();
+      })
+      .then(setLevels)
+      .catch((err) => setError(err?.message || 'Error'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadLevels(); }, [filterDiscipline]);
+
+  const handleCreate = (e) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateMsg(null);
+    const body = {
+      discipline: createForm.discipline,
+      code: createForm.code.trim(),
+      name: createForm.name.trim(),
+      description: createForm.description.trim(),
+      min_crs: parseFloat(createForm.min_crs) || 0,
+      required_task_codes: createForm.required_task_codes.trim()
+        ? createForm.required_task_codes.split(',').map((s) => s.trim()).filter(Boolean)
+        : [],
+      active: createForm.active,
+    };
+    apiFetch('/api/admin/license-levels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText))))
+      .then(() => {
+        setCreateMsg('Created');
+        setCreateForm({ discipline: 'gt', code: '', name: '', description: '', min_crs: '0', required_task_codes: '', active: true });
+        loadLevels();
+      })
+      .catch((err) => setCreateMsg(err?.message || 'Error'))
+      .finally(() => setCreateLoading(false));
+  };
+
+  const startEdit = (level) => {
+    setEditingId(level.id);
+    setEditForm({
+      discipline: level.discipline,
+      code: level.code,
+      name: level.name,
+      description: level.description,
+      min_crs: String(level.min_crs),
+      required_task_codes: Array.isArray(level.required_task_codes) ? level.required_task_codes.join(', ') : '',
+      active: level.active,
+    });
+    setSaveMsg(null);
+  };
+
+  const handleUpdate = (e) => {
+    e.preventDefault();
+    if (!editingId) return;
+    setSaveLoading(true);
+    setSaveMsg(null);
+    const body = {};
+    if (editForm.discipline) body.discipline = editForm.discipline;
+    if (editForm.code !== '') body.code = editForm.code.trim();
+    if (editForm.name !== '') body.name = editForm.name.trim();
+    if (editForm.description !== '') body.description = editForm.description.trim();
+    if (editForm.min_crs !== '') body.min_crs = parseFloat(editForm.min_crs);
+    if (editForm.required_task_codes !== undefined) {
+      body.required_task_codes = editForm.required_task_codes.trim()
+        ? editForm.required_task_codes.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
+    }
+    body.active = editForm.active;
+    apiFetch(`/api/admin/license-levels/${encodeURIComponent(editingId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText))))
+      .then(() => {
+        setSaveMsg('Saved');
+        loadLevels();
+        setEditingId(null);
+      })
+      .catch((err) => setSaveMsg(err?.message || 'Error'))
+      .finally(() => setSaveLoading(false));
+  };
+
+  return (
+    <div className="admin-constructors card">
+      <h3 className="admin-constructors__title">License levels</h3>
+      <p className="admin-constructors__hint">Levels define min_crs and required_task_codes for award. Only completions with participation_id count.</p>
+      <div className="admin-constructors__row">
+        <label className="admin-constructors__label">Filter by discipline</label>
+        <select value={filterDiscipline} onChange={(e) => setFilterDiscipline(e.target.value)} className="admin-constructors__input admin-constructors__input--short">
+          <option value="">All</option>
+          {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+      </div>
+      {loading && <p className="admin-constructors__msg">Loading…</p>}
+      {error && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{error}</p>}
+      {!loading && !error && (
+        <>
+          <section className="admin-constructors__block">
+            <h4 className="admin-constructors__subtitle">Create level</h4>
+            <form onSubmit={handleCreate} className="admin-constructors__form">
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Discipline</label>
+                <select value={createForm.discipline} onChange={(e) => setCreateForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                  {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Code</label>
+                <input type="text" value={createForm.code} onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. GT_ROOKIE" className="admin-constructors__input" required />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Name</label>
+                <input type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Rookie" className="admin-constructors__input" required />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Description</label>
+                <input type="text" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short description" className="admin-constructors__input" required />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">min_crs</label>
+                <input type="number" step="0.1" min="0" max="100" value={createForm.min_crs} onChange={(e) => setCreateForm((f) => ({ ...f, min_crs: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">required_task_codes (comma)</label>
+                <input type="text" value={createForm.required_task_codes} onChange={(e) => setCreateForm((f) => ({ ...f, required_task_codes: e.target.value }))} placeholder="finish_race, top10" className="admin-constructors__input" />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Active</label>
+                <input type="checkbox" checked={createForm.active} onChange={(e) => setCreateForm((f) => ({ ...f, active: e.target.checked }))} />
+              </div>
+              <button type="submit" className="btn primary admin-constructors__btn" disabled={createLoading}>{createLoading ? '…' : 'Create'}</button>
+              {createMsg && <span className="admin-constructors__msg" role="status">{createMsg}</span>}
+            </form>
+          </section>
+          <section className="admin-constructors__block">
+            <h4 className="admin-constructors__subtitle">Levels</h4>
+            <table className="admin-constructors__table" role="grid">
+              <thead>
+                <tr>
+                  <th>Discipline</th>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>min_crs</th>
+                  <th>required_task_codes</th>
+                  <th>Active</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {levels.map((lev) => (
+                  <tr key={lev.id}>
+                    <td>{lev.discipline}</td>
+                    <td>{lev.code}</td>
+                    <td>{lev.name}</td>
+                    <td>{lev.min_crs}</td>
+                    <td>{lev.required_task_codes && Array.isArray(lev.required_task_codes) ? lev.required_task_codes.join(', ') : '—'}</td>
+                    <td>{lev.active ? 'Yes' : 'No'}</td>
+                    <td>
+                      <button type="button" className="btn ghost admin-constructors__btn" onClick={() => startEdit(lev)}>Edit</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          {editingId && (
+            <section className="admin-constructors__block">
+              <h4 className="admin-constructors__subtitle">Edit level</h4>
+              <form onSubmit={handleUpdate} className="admin-constructors__form">
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Discipline</label>
+                  <select value={editForm.discipline} onChange={(e) => setEditForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                    {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Code</label>
+                  <input type="text" value={editForm.code} onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))} className="admin-constructors__input" required />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Name</label>
+                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="admin-constructors__input" required />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Description</label>
+                  <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="admin-constructors__input" required />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">min_crs</label>
+                  <input type="number" step="0.1" min="0" max="100" value={editForm.min_crs} onChange={(e) => setEditForm((f) => ({ ...f, min_crs: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">required_task_codes (comma)</label>
+                  <input type="text" value={editForm.required_task_codes} onChange={(e) => setEditForm((f) => ({ ...f, required_task_codes: e.target.value }))} className="admin-constructors__input" />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Active</label>
+                  <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm((f) => ({ ...f, active: e.target.checked }))} />
+                </div>
+                <button type="submit" className="btn primary admin-constructors__btn" disabled={saveLoading}>{saveLoading ? '…' : 'Save'}</button>
+                <button type="button" className="btn ghost admin-constructors__btn" onClick={() => setEditingId(null)}>Cancel</button>
+                {saveMsg && <span className="admin-constructors__msg" role="status">{saveMsg}</span>}
+              </form>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+const LicenseAwardPanel = () => {
+  const [driverId, setDriverId] = useState('');
+  const [email, setEmail] = useState('');
+  const [discipline, setDiscipline] = useState('gt');
+  const [checkResult, setCheckResult] = useState(null);
+  const [checkLoading, setCheckLoading] = useState(false);
+  const [awardLoading, setAwardLoading] = useState(false);
+  const [awardResult, setAwardResult] = useState(null);
+  const [awardError, setAwardError] = useState(null);
+
+  const params = () => {
+    const p = new URLSearchParams({ discipline });
+    if (driverId.trim()) p.set('driver_id', driverId.trim());
+    else if (email.trim()) p.set('email', email.trim());
+    return p.toString();
+  };
+
+  const handleCheck = (e) => {
+    e.preventDefault();
+    if (!driverId.trim() && !email.trim()) return;
+    setCheckLoading(true);
+    setCheckResult(null);
+    apiFetch(`/api/admin/license-award-check?${params()}`)
+      .then((res) => {
+        if (!res.ok) return res.json().then((d) => Promise.reject(new Error(d.detail?.message || d.detail || res.statusText)));
+        return res.json();
+      })
+      .then(setCheckResult)
+      .catch((err) => setCheckResult({ eligible: false, reasons: [err?.message || 'Error'] }))
+      .finally(() => setCheckLoading(false));
+  };
+
+  const handleAward = (e) => {
+    e.preventDefault();
+    if (!driverId.trim() && !email.trim()) return;
+    setAwardLoading(true);
+    setAwardResult(null);
+    setAwardError(null);
+    const body = { discipline };
+    if (driverId.trim()) body.driver_id = driverId.trim();
+    else body.email = email.trim();
+    apiFetch('/api/admin/license-award', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.json().then((d) => ({ res, d })))
+      .then(({ res, d }) => {
+        if (!res.ok) {
+          const msg = d.detail?.message || (Array.isArray(d.detail?.reasons) ? d.detail.reasons.join('; ') : '') || res.statusText;
+          setAwardError(d.detail?.reasons?.length ? { ...d.detail, message: msg } : msg);
+          return;
+        }
+        setAwardResult(d);
+        setAwardError(null);
+      })
+      .catch((err) => setAwardError(err?.message || 'Error'))
+      .finally(() => setAwardLoading(false));
+  };
+
+  return (
+    <div className="admin-constructors card">
+      <h3 className="admin-constructors__title">License award (by email or driver id)</h3>
+      <p className="admin-constructors__hint">Check eligibility or award next license. Only completions with participation_id count toward tasks.</p>
+      <form onSubmit={handleCheck} className="admin-constructors__form">
+        <div className="admin-constructors__row">
+          <label className="admin-constructors__label">Driver ID</label>
+          <input type="text" value={driverId} onChange={(e) => setDriverId(e.target.value)} placeholder="driver uuid" className="admin-constructors__input admin-constructors__input--short" />
+        </div>
+        <div className="admin-constructors__row">
+          <label className="admin-constructors__label">or Email</label>
+          <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" className="admin-constructors__input admin-constructors__input--short" />
+        </div>
+        <div className="admin-constructors__row">
+          <label className="admin-constructors__label">Discipline</label>
+          <select value={discipline} onChange={(e) => setDiscipline(e.target.value)} className="admin-constructors__input admin-constructors__input--short">
+            {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+        <button type="submit" className="btn primary admin-constructors__btn" disabled={checkLoading}>{checkLoading ? '…' : 'Check'}</button>
+        <button type="button" className="btn ghost admin-constructors__btn" onClick={handleAward} disabled={awardLoading}>{awardLoading ? '…' : 'Award'}</button>
+      </form>
+      {checkResult && (
+        <section className="admin-constructors__block">
+          <h4 className="admin-constructors__subtitle">Eligibility</h4>
+          <p><strong>Eligible:</strong> {checkResult.eligible ? 'Yes' : 'No'}{checkResult.next_level_code ? ` — next: ${checkResult.next_level_code}` : ''}</p>
+          {checkResult.current_crs != null && <p><strong>Current CRS:</strong> {checkResult.current_crs}</p>}
+          {checkResult.reasons?.length > 0 && <p><strong>Reasons:</strong> {checkResult.reasons.join('; ')}</p>}
+          {checkResult.completed_task_codes?.length >= 0 && <p><strong>Completed tasks:</strong> {checkResult.completed_task_codes?.length ? checkResult.completed_task_codes.join(', ') : '—'}</p>}
+          {checkResult.required_task_codes?.length >= 0 && <p><strong>Required for next:</strong> {checkResult.required_task_codes?.length ? checkResult.required_task_codes.join(', ') : '—'}</p>}
+        </section>
+      )}
+      {awardError && typeof awardError === 'object' && (
+        <section className="admin-constructors__block">
+          <h4 className="admin-constructors__subtitle admin-constructors__subtitle--error">Award error</h4>
+          <p>{awardError.message}</p>
+          {awardError.reasons?.length > 0 && <ul>{awardError.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+          {awardError.required_task_codes?.length > 0 && <p><strong>Required:</strong> {awardError.required_task_codes.join(', ')}</p>}
+        </section>
+      )}
+      {awardError && typeof awardError === 'string' && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{awardError}</p>}
+      {awardResult && (
+        <section className="admin-constructors__block">
+          <h4 className="admin-constructors__subtitle">Awarded</h4>
+          <p>License <strong>{awardResult.level_code}</strong> ({awardResult.discipline}) awarded at {formatDate(awardResult.awarded_at)}.</p>
+        </section>
+      )}
+    </div>
+  );
+};
+
+const TASK_SCOPES = ['global', 'per_participation', 'rolling_window', 'periodic'];
+
+const TaskDefinitionsPanel = () => {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filterDiscipline, setFilterDiscipline] = useState('');
+  const [createForm, setCreateForm] = useState({
+    code: '', name: '', discipline: 'gt', description: '', requirements: '{}', min_event_tier: '', active: true,
+    scope: 'per_participation', cooldown_days: '', period: '', window_size: '', window_unit: '',
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createMsg, setCreateMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    code: '', name: '', discipline: '', description: '', requirements: '', min_event_tier: '', active: true,
+    scope: 'per_participation', cooldown_days: '', period: '', window_size: '', window_unit: '',
+  });
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMsg, setSaveMsg] = useState(null);
+
+  const loadTasks = () => {
+    setLoading(true);
+    setError(null);
+    const q = filterDiscipline ? `?discipline=${encodeURIComponent(filterDiscipline)}` : '';
+    apiFetch(`/api/admin/task-definitions${q}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Failed');
+        return res.json();
+      })
+      .then(setTasks)
+      .catch((err) => setError(err?.message || 'Error'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadTasks(); }, [filterDiscipline]);
+
+  const handleCreate = (e) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateMsg(null);
+    let requirements = {};
+    try {
+      if (createForm.requirements.trim()) requirements = JSON.parse(createForm.requirements);
+    } catch (_) {}
+    const body = {
+      code: createForm.code.trim(),
+      name: createForm.name.trim(),
+      discipline: createForm.discipline,
+      description: createForm.description.trim(),
+      requirements,
+      min_event_tier: createForm.min_event_tier.trim() || null,
+      active: createForm.active,
+      scope: createForm.scope,
+      cooldown_days: createForm.cooldown_days.trim() ? parseInt(createForm.cooldown_days, 10) : null,
+      period: createForm.period.trim() || null,
+      window_size: createForm.window_size.trim() ? parseInt(createForm.window_size, 10) : null,
+      window_unit: createForm.window_unit.trim() || null,
+    };
+    apiFetch('/api/admin/task-definitions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText))))
+      .then(() => {
+        setCreateMsg('Created');
+        setCreateForm({ code: '', name: '', discipline: 'gt', description: '', requirements: '{}', min_event_tier: '', active: true, scope: 'per_participation', cooldown_days: '', period: '', window_size: '', window_unit: '' });
+        loadTasks();
+      })
+      .catch((err) => setCreateMsg(err?.message || 'Error'))
+      .finally(() => setCreateLoading(false));
+  };
+
+  const startEdit = (task) => {
+    setEditingId(task.id);
+    setEditForm({
+      code: task.code,
+      name: task.name,
+      discipline: task.discipline,
+      description: task.description,
+      requirements: typeof task.requirements === 'object' ? JSON.stringify(task.requirements, null, 2) : (task.requirements || '{}'),
+      min_event_tier: task.min_event_tier || '',
+      active: task.active,
+      scope: task.scope || 'per_participation',
+      cooldown_days: task.cooldown_days != null ? String(task.cooldown_days) : '',
+      period: task.period || '',
+      window_size: task.window_size != null ? String(task.window_size) : '',
+      window_unit: task.window_unit || '',
+    });
+    setSaveMsg(null);
+  };
+
+  const handleUpdate = (e) => {
+    e.preventDefault();
+    if (!editingId) return;
+    setSaveLoading(true);
+    setSaveMsg(null);
+    let requirements = undefined;
+    if (editForm.requirements.trim()) {
+      try {
+        requirements = JSON.parse(editForm.requirements);
+      } catch (_) {}
+    }
+    const body = {};
+    if (editForm.code !== '') body.code = editForm.code.trim();
+    if (editForm.name !== '') body.name = editForm.name.trim();
+    if (editForm.discipline) body.discipline = editForm.discipline;
+    if (editForm.description !== '') body.description = editForm.description.trim();
+    if (requirements !== undefined) body.requirements = requirements;
+    if (editForm.min_event_tier !== undefined) body.min_event_tier = editForm.min_event_tier.trim() || null;
+    body.active = editForm.active;
+    if (editForm.scope) body.scope = editForm.scope;
+    if (editForm.cooldown_days !== '') body.cooldown_days = editForm.cooldown_days.trim() ? parseInt(editForm.cooldown_days, 10) : null;
+    if (editForm.period !== undefined) body.period = editForm.period.trim() || null;
+    if (editForm.window_size !== '') body.window_size = editForm.window_size.trim() ? parseInt(editForm.window_size, 10) : null;
+    if (editForm.window_unit !== undefined) body.window_unit = editForm.window_unit.trim() || null;
+    apiFetch(`/api/admin/task-definitions/${encodeURIComponent(editingId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail || res.statusText))))
+      .then(() => {
+        setSaveMsg('Saved');
+        loadTasks();
+        setEditingId(null);
+      })
+      .catch((err) => setSaveMsg(err?.message || 'Error'))
+      .finally(() => setSaveLoading(false));
+  };
+
+  return (
+    <div className="admin-constructors card">
+      <h3 className="admin-constructors__title">Task definitions (constructor)</h3>
+      <p className="admin-constructors__hint">
+        Tasks are evaluated automatically when a driver joins an event (participation). No direct event–task link: definitions are per discipline; completions are tied to participation. Link to licenses: set <strong>required_task_codes</strong> on License levels (above); this table shows which license levels require each task.
+      </p>
+      <div className="admin-constructors__row">
+        <label className="admin-constructors__label">Filter by discipline</label>
+        <select value={filterDiscipline} onChange={(e) => setFilterDiscipline(e.target.value)} className="admin-constructors__input admin-constructors__input--short">
+          <option value="">All</option>
+          {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+      </div>
+      {loading && <p className="admin-constructors__msg">Loading…</p>}
+      {error && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{error}</p>}
+      {!loading && !error && (
+        <>
+          <section className="admin-constructors__block">
+            <h4 className="admin-constructors__subtitle">Create task</h4>
+            <form onSubmit={handleCreate} className="admin-constructors__form">
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Code</label>
+                <input type="text" value={createForm.code} onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))} placeholder="finish_race" className="admin-constructors__input" required />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Name / Discipline / Description</label>
+                <input type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="name" className="admin-constructors__input admin-constructors__input--short" required />
+                <select value={createForm.discipline} onChange={(e) => setCreateForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                  {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <input type="text" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="description" className="admin-constructors__input" required />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">requirements (JSON)</label>
+                <input type="text" value={createForm.requirements} onChange={(e) => setCreateForm((f) => ({ ...f, requirements: e.target.value }))} placeholder="{}" className="admin-constructors__input" />
+              </div>
+              <div className="admin-constructors__row">
+                <label className="admin-constructors__label">Scope / min_event_tier / active</label>
+                <select value={createForm.scope} onChange={(e) => setCreateForm((f) => ({ ...f, scope: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                  {TASK_SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <input type="text" value={createForm.min_event_tier} onChange={(e) => setCreateForm((f) => ({ ...f, min_event_tier: e.target.value }))} placeholder="E0" className="admin-constructors__input admin-constructors__input--short" />
+                <label><input type="checkbox" checked={createForm.active} onChange={(e) => setCreateForm((f) => ({ ...f, active: e.target.checked }))} /> Active</label>
+              </div>
+              <button type="submit" className="btn primary admin-constructors__btn" disabled={createLoading}>{createLoading ? '…' : 'Create'}</button>
+              {createMsg && <span className="admin-constructors__msg" role="status">{createMsg}</span>}
+            </form>
+          </section>
+          <section className="admin-constructors__block">
+            <h4 className="admin-constructors__subtitle">Tasks (required by license levels)</h4>
+            <table className="admin-constructors__table" role="grid">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Discipline</th>
+                  <th>Scope</th>
+                  <th>Required by licenses</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((t) => (
+                  <tr key={t.id}>
+                    <td>{t.code}</td>
+                    <td>{t.name}</td>
+                    <td>{t.discipline}</td>
+                    <td>{t.scope}</td>
+                    <td>{t.required_by_license_levels?.length ? t.required_by_license_levels.map((l) => `${l.discipline}:${l.level_code}`).join(', ') : '—'}</td>
+                    <td>
+                      <button type="button" className="btn ghost admin-constructors__btn" onClick={() => startEdit(t)}>Edit</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          {editingId && (
+            <section className="admin-constructors__block">
+              <h4 className="admin-constructors__subtitle">Edit task</h4>
+              <form onSubmit={handleUpdate} className="admin-constructors__form">
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Code / Name / Discipline</label>
+                  <input type="text" value={editForm.code} onChange={(e) => setEditForm((f) => ({ ...f, code: e.target.value }))} className="admin-constructors__input" required />
+                  <input type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="admin-constructors__input" required />
+                  <select value={editForm.discipline} onChange={(e) => setEditForm((f) => ({ ...f, discipline: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                    {DISCIPLINES.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Description</label>
+                  <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="admin-constructors__input" required />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">requirements (JSON)</label>
+                  <input type="text" value={editForm.requirements} onChange={(e) => setEditForm((f) => ({ ...f, requirements: e.target.value }))} className="admin-constructors__input" />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Scope / min_event_tier / active</label>
+                  <select value={editForm.scope} onChange={(e) => setEditForm((f) => ({ ...f, scope: e.target.value }))} className="admin-constructors__input admin-constructors__input--short">
+                    {TASK_SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <input type="text" value={editForm.min_event_tier} onChange={(e) => setEditForm((f) => ({ ...f, min_event_tier: e.target.value }))} className="admin-constructors__input admin-constructors__input--short" />
+                  <label><input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm((f) => ({ ...f, active: e.target.checked }))} /> Active</label>
+                </div>
+                <button type="submit" className="btn primary admin-constructors__btn" disabled={saveLoading}>{saveLoading ? '…' : 'Save'}</button>
+                <button type="button" className="btn ghost admin-constructors__btn" onClick={() => setEditingId(null)}>Cancel</button>
+                {saveMsg && <span className="admin-constructors__msg" role="status">{saveMsg}</span>}
+              </form>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 const AdminLookup = () => {
   const [q, setQ] = useState('');
   const [result, setResult] = useState(null);
@@ -908,6 +1518,9 @@ const AdminLookup = () => {
 
       <AdminConstructors />
       <TierRulesPanel />
+      <LicenseLevelsPanel />
+      <LicenseAwardPanel />
+      <TaskDefinitionsPanel />
 
       {result && (
         <div className="admin-lookup-result card">

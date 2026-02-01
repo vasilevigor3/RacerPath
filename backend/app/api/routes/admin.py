@@ -14,6 +14,8 @@ from app.models.participation import Participation, ParticipationStatus, Partici
 from app.models.user_profile import UserProfile
 from app.models.incident import Incident
 from app.models.driver_license import DriverLicense
+from app.models.license_level import LicenseLevel
+from app.models.task_definition import TaskDefinition
 from app.models.crs_history import CRSHistory
 from app.models.recommendation import Recommendation
 from app.models.tier_progression_rule import TierProgressionRule
@@ -45,8 +47,20 @@ from app.schemas.admin import (
     AdminIncidentDriverRef,
     TierProgressionRuleRead,
     TierProgressionRuleUpdate,
+    AdminTaskDefinitionRead,
+    AdminLicenseLevelRef,
 )
 from app.schemas.driver import DriverRead
+from app.schemas.task import TaskDefinitionCreate, TaskDefinitionUpdate
+from app.schemas.license import (
+    LicenseLevelCreate,
+    LicenseLevelRead,
+    LicenseLevelUpdate,
+    LicenseAwardCheckRead,
+    LicenseAwardRequest,
+    DriverLicenseRead,
+)
+from app.services.licenses import check_eligibility, award_license
 from app.models.enums.event_enums import EventStatus
 from app.schemas.event import EventRead
 from app.schemas.classification import ClassificationRead
@@ -607,3 +621,282 @@ def update_tier_rule(
     session.commit()
     session.refresh(rule)
     return rule
+
+
+# --- License levels (admin) ---
+
+
+@router.get("/license-levels", response_model=List[LicenseLevelRead])
+def list_license_levels(
+    discipline: str | None = None,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """List license levels. Optional filter by discipline."""
+    query = session.query(LicenseLevel)
+    if discipline:
+        query = query.filter(LicenseLevel.discipline == discipline)
+    return query.order_by(LicenseLevel.discipline, LicenseLevel.min_crs.asc()).all()
+
+
+@router.post("/license-levels", response_model=LicenseLevelRead)
+def create_license_level(
+    payload: LicenseLevelCreate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Create a license level."""
+    level = LicenseLevel(**payload.model_dump())
+    session.add(level)
+    session.commit()
+    session.refresh(level)
+    return level
+
+
+@router.get("/license-levels/{level_id}", response_model=LicenseLevelRead)
+def get_license_level(
+    level_id: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    level = session.query(LicenseLevel).filter(LicenseLevel.id == level_id).first()
+    if not level:
+        raise HTTPException(status_code=404, detail="License level not found")
+    return level
+
+
+@router.patch("/license-levels/{level_id}", response_model=LicenseLevelRead)
+def update_license_level(
+    level_id: str,
+    payload: LicenseLevelUpdate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    level = session.query(LicenseLevel).filter(LicenseLevel.id == level_id).first()
+    if not level:
+        raise HTTPException(status_code=404, detail="License level not found")
+    data = payload.model_dump(exclude_unset=True)
+    if "required_task_codes" in data and data["required_task_codes"] is not None:
+        level.required_task_codes = list(data["required_task_codes"])
+    for key, value in data.items():
+        if key != "required_task_codes" and value is not None:
+            setattr(level, key, value)
+    session.commit()
+    session.refresh(level)
+    return level
+
+
+def _resolve_driver_id(session: Session, driver_id: str | None, email: str | None) -> str:
+    """Resolve driver_id from driver_id or email. Raises HTTPException if not found."""
+    if driver_id and driver_id.strip():
+        driver = session.query(Driver).filter(Driver.id == driver_id.strip()).first()
+        if driver:
+            return driver.id
+        raise HTTPException(status_code=404, detail="Driver not found")
+    if email and email.strip():
+        user = session.query(User).filter(User.email == email.strip()).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found by email")
+        driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+        if not driver:
+            raise HTTPException(status_code=404, detail="No driver linked to this user")
+        return driver.id
+    raise HTTPException(status_code=400, detail="Provide driver_id or email")
+
+
+@router.get("/license-award-check", response_model=LicenseAwardCheckRead)
+def license_award_check(
+    discipline: str,
+    driver_id: str | None = None,
+    email: str | None = None,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Check eligibility for next license. Use driver_id or email."""
+    did = _resolve_driver_id(session, driver_id, email)
+    result = check_eligibility(session, did, discipline)
+    return LicenseAwardCheckRead(
+        eligible=result.eligible,
+        next_level_code=result.next_level_code,
+        reasons=result.reasons,
+        current_crs=result.current_crs,
+        completed_task_codes=result.completed_task_codes,
+        required_task_codes=result.required_task_codes,
+    )
+
+
+@router.post("/license-award", response_model=DriverLicenseRead)
+def admin_license_award(
+    payload: LicenseAwardRequest,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Award next license by driver_id or email. Returns 400 with reasons if not eligible."""
+    driver_id = _resolve_driver_id(session, payload.driver_id, payload.email)
+    result = check_eligibility(session, driver_id, payload.discipline)
+    if not result.eligible:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Not eligible for next license",
+                "reasons": result.reasons,
+                "next_level_code": result.next_level_code,
+                "current_crs": result.current_crs,
+                "completed_task_codes": result.completed_task_codes,
+                "required_task_codes": result.required_task_codes,
+            },
+        )
+    awarded = award_license(session, driver_id, payload.discipline)
+    if not awarded:
+        raise HTTPException(status_code=400, detail="Award failed unexpectedly")
+    return awarded
+
+
+# --- Task definitions (admin: list with license links, CRUD) ---
+
+
+def _required_by_license_levels(session: Session, task_code: str) -> list:
+    """License levels that have task_code in required_task_codes."""
+    from app.schemas.admin import AdminLicenseLevelRef
+    levels = (
+        session.query(LicenseLevel)
+        .filter(LicenseLevel.active.is_(True))
+        .all()
+    )
+    refs = []
+    for lev in levels:
+        codes = lev.required_task_codes or []
+        if task_code in codes:
+            refs.append(AdminLicenseLevelRef(level_code=lev.code, discipline=lev.discipline))
+    return refs
+
+
+@router.get("/task-definitions", response_model=List[AdminTaskDefinitionRead])
+def list_task_definitions_admin(
+    discipline: str | None = None,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """List task definitions with which license levels require each task (by code)."""
+    query = session.query(TaskDefinition)
+    if discipline:
+        query = query.filter(TaskDefinition.discipline == discipline)
+    tasks = query.order_by(TaskDefinition.discipline, TaskDefinition.code).all()
+    out = []
+    for t in tasks:
+        refs = _required_by_license_levels(session, t.code)
+        out.append(
+            AdminTaskDefinitionRead(
+                id=t.id,
+                code=t.code,
+                name=t.name,
+                discipline=t.discipline,
+                description=t.description,
+                requirements=t.requirements or {},
+                min_event_tier=t.min_event_tier,
+                active=t.active,
+                scope=t.scope or "per_participation",
+                cooldown_days=t.cooldown_days,
+                period=t.period,
+                window_size=t.window_size,
+                window_unit=t.window_unit,
+                created_at=t.created_at,
+                required_by_license_levels=refs,
+            )
+        )
+    return out
+
+
+@router.post("/task-definitions", response_model=AdminTaskDefinitionRead)
+def create_task_definition_admin(
+    payload: TaskDefinitionCreate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Create task definition."""
+    task = TaskDefinition(**payload.model_dump())
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    refs = _required_by_license_levels(session, task.code)
+    return AdminTaskDefinitionRead(
+        id=task.id,
+        code=task.code,
+        name=task.name,
+        discipline=task.discipline,
+        description=task.description,
+        requirements=task.requirements or {},
+        min_event_tier=task.min_event_tier,
+        active=task.active,
+        scope=task.scope or "per_participation",
+        cooldown_days=task.cooldown_days,
+        period=task.period,
+        window_size=task.window_size,
+        window_unit=task.window_unit,
+        created_at=task.created_at,
+        required_by_license_levels=refs,
+    )
+
+
+@router.get("/task-definitions/{task_id}", response_model=AdminTaskDefinitionRead)
+def get_task_definition_admin(
+    task_id: str,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    task = session.query(TaskDefinition).filter(TaskDefinition.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    refs = _required_by_license_levels(session, task.code)
+    return AdminTaskDefinitionRead(
+        id=task.id,
+        code=task.code,
+        name=task.name,
+        discipline=task.discipline,
+        description=task.description,
+        requirements=task.requirements or {},
+        min_event_tier=task.min_event_tier,
+        active=task.active,
+        scope=task.scope or "per_participation",
+        cooldown_days=task.cooldown_days,
+        period=task.period,
+        window_size=task.window_size,
+        window_unit=task.window_unit,
+        created_at=task.created_at,
+        required_by_license_levels=refs,
+    )
+
+
+@router.patch("/task-definitions/{task_id}", response_model=AdminTaskDefinitionRead)
+def update_task_definition_admin(
+    task_id: str,
+    payload: TaskDefinitionUpdate,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    task = session.query(TaskDefinition).filter(TaskDefinition.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        setattr(task, key, value)
+    session.commit()
+    session.refresh(task)
+    refs = _required_by_license_levels(session, task.code)
+    return AdminTaskDefinitionRead(
+        id=task.id,
+        code=task.code,
+        name=task.name,
+        discipline=task.discipline,
+        description=task.description,
+        requirements=task.requirements or {},
+        min_event_tier=task.min_event_tier,
+        active=task.active,
+        scope=task.scope or "per_participation",
+        cooldown_days=task.cooldown_days,
+        period=task.period,
+        window_size=task.window_size,
+        window_unit=task.window_unit,
+        created_at=task.created_at,
+        required_by_license_levels=refs,
+    )

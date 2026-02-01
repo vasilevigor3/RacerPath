@@ -111,15 +111,15 @@ const Cabinet = () => (
           <button
             className="stat-card is-link"
             type="button"
-            data-stat-target="incidents"
-            data-tab-target="incidents"
-            data-focus-target="incidents-card"
+            data-stat-target="risk-flags"
+            data-tab-target="overview"
+            data-focus-target="risk-flags-card"
           >
-            <span className="stat-label">Incidents</span>
-            <span className="stat-value" data-stat-incidents>
+            <span className="stat-label">Risk flags</span>
+            <span className="stat-value" data-stat-risk-flags>
               0
             </span>
-            <span className="stat-meta">Last 10 races</span>
+            <span className="stat-meta">Review</span>
           </button>
         </div>
 
@@ -163,7 +163,7 @@ const Cabinet = () => (
             </div>
           </div>
           <div className="grid-2">
-            <div className="card compact">
+            <div className="card compact" data-focus-id="risk-flags-card">
               <p className="card-title">Risk flags</p>
               <ul className="list" data-risk-flags>
                 <li>No risks yet.</li>

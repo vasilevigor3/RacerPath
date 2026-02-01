@@ -11,6 +11,7 @@ const statEvents = document.querySelector('[data-stat-events]');
 const statTasks = document.querySelector('[data-stat-tasks]');
 const statLicenses = document.querySelector('[data-stat-licenses]');
 const statIncidents = document.querySelector('[data-stat-incidents]');
+const statRiskFlags = document.querySelector('[data-stat-risk-flags]');
 const dashboardParticipationsList = document.querySelector('[data-dashboard-participations]');
 const riskFlagsList = document.querySelector('[data-risk-flags]');
 const tasksCompletedList = document.querySelector('[data-tasks-completed]');
@@ -66,6 +67,7 @@ export const loadDashboardStats = async (driver) => {
     if (riskFlagsList) {
       setList(riskFlagsList, ['Create a driver profile to unlock stats.'], 'No risks yet.');
     }
+    if (statRiskFlags) statRiskFlags.textContent = '--';
     resetDriverSnapshot();
     updateReadiness();
     return;
@@ -130,6 +132,7 @@ export const loadDashboardStats = async (driver) => {
     if (avgIncidents <= 1.5 && dnfRate <= 0.2) riskFlags.push('No critical risks detected.');
   }
   if (riskFlagsList) setList(riskFlagsList, riskFlags, 'No risks yet.');
+  if (statRiskFlags) statRiskFlags.textContent = riskFlags.length.toString();
   updateDriverSnapshotMeta({
     name: driver.name,
     discipline: driver.primary_discipline,

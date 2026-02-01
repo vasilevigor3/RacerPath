@@ -154,12 +154,6 @@ const Cabinet = () => (
                 <li>No risks yet.</li>
               </ul>
             </div>
-            <div className="card">
-              <p className="card-title">Profile progress</p>
-              <p className="muted" data-profile-cta>
-                Keep your profile updated to unlock higher readiness levels.
-              </p>
-            </div>
           </div>
           <div className="grid-3">
             <div className="card readiness-card">

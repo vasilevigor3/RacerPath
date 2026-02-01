@@ -40,7 +40,6 @@ const profileTier = document.querySelector('[data-profile-tier]');
 const profilePlatforms = document.querySelector('[data-profile-platforms]');
 const profileUserId = document.querySelector('[data-profile-user-id]');
 const profileCtaButton = document.querySelector('[data-profile-cta-button]');
-const profileChecklist = document.querySelector('[data-profile-checklist]');
 const profileCompletion = document.querySelector('[data-profile-completion]');
 const profileLevel = document.querySelector('[data-profile-level]');
 const profileMissing = document.querySelector('[data-profile-missing]');
@@ -56,16 +55,6 @@ const profileName = document.querySelector('[data-profile-name]');
 const profileRole = document.querySelector('[data-profile-role]');
 const profileDriver = document.querySelector('[data-profile-driver]');
 const loginStatus = document.querySelector('[data-login-status]');
-
-const fieldLabels = {
-  full_name: 'Full name',
-  country: 'Country',
-  city: 'City',
-  experience_years: 'Experience years',
-  primary_discipline: 'Primary discipline',
-  sim_platforms: 'Sim platforms',
-  goals: 'Goals'
-};
 
 let currentUserId = '';
 
@@ -158,10 +147,6 @@ const loadUserProfile = async (driver) => {
         profile.missing_fields && profile.missing_fields.length
           ? 'Complete missing fields to unlock your next level.'
           : 'Profile complete. Keep racing to progress.';
-    }
-    if (profileChecklist) {
-      const items = (profile.missing_fields || []).map((field) => `Add ${fieldLabels[field] || field}`);
-      setList(profileChecklist, items, 'Profile complete.');
     }
     if (profileForm) {
       const platforms = profile.sim_platforms || [];

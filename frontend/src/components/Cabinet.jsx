@@ -58,12 +58,6 @@ const Cabinet = () => (
             Complete profile
           </button>
         </div>
-        <div className="card compact">
-          <p className="card-title">Progress checklist</p>
-          <ul className="list" data-profile-checklist>
-            <li>Finish profile to reach Advanced</li>
-          </ul>
-        </div>
       </aside>
 
       <div className="dashboard-main">

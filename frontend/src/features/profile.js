@@ -23,12 +23,7 @@ import {
   loadActivityFeed
 } from './dashboard.js';
 import { loadIncidents } from './incidents.js';
-import {
-  updateDriverSnapshotMeta,
-  updateDriverSnapshotChallenges,
-  updateDriverSnapshotRisks,
-  resetDriverSnapshot
-} from './driverSnapshot.js';
+import { updateDriverSnapshotMeta, resetDriverSnapshot } from './driverSnapshot.js';
 import { refreshAdminPanel } from './admin.js';
 
 const dashboardName = document.querySelector('[data-dashboard-name]');

@@ -4,12 +4,7 @@ import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { readinessState } from '../state/session.js';
 import { updateReadiness } from '../ui/readiness.js';
-import {
-  updateDriverSnapshotMeta,
-  updateDriverSnapshotChallenges,
-  updateDriverSnapshotRisks,
-  resetDriverSnapshot
-} from './driverSnapshot.js';
+import { updateDriverSnapshotMeta, resetDriverSnapshot } from './driverSnapshot.js';
 
 const statCrs = document.querySelector('[data-stat-crs]');
 const statEvents = document.querySelector('[data-stat-events]');
@@ -135,7 +130,6 @@ export const loadDashboardStats = async (driver) => {
     if (avgIncidents <= 1.5 && dnfRate <= 0.2) riskFlags.push('No critical risks detected.');
   }
   if (riskFlagsList) setList(riskFlagsList, riskFlags, 'No risks yet.');
-  updateDriverSnapshotRisks(riskFlags);
   updateDriverSnapshotMeta({
     name: driver.name,
     discipline: driver.primary_discipline,
@@ -197,7 +191,6 @@ export const loadTasksOverview = async (driver) => {
     if (statTasks) statTasks.textContent = completedNames.length.toString();
     readinessState.tasksCompleted = completedNames.length;
     readinessState.tasksTotal = filteredDefinitions.length;
-    updateDriverSnapshotChallenges(pendingNames);
     updateReadiness();
   } catch (err) {
     if (tasksCompletedList) setList(tasksCompletedList, [], 'No tasks completed yet.');
@@ -205,7 +198,6 @@ export const loadTasksOverview = async (driver) => {
     if (statTasks) statTasks.textContent = '0';
     readinessState.tasksCompleted = 0;
     readinessState.tasksTotal = 0;
-    updateDriverSnapshotChallenges([]);
     updateReadiness();
   }
 };

@@ -305,56 +305,6 @@ const Cabinet = () => (
               </form>
             </div>
           </div>
-          <section id="profile" className="section reveal" data-driver-snapshot-section data-driver-only>
-            <div className="section-heading">
-              <h2>Driver snapshot</h2>
-              <p data-driver-snapshot-subtitle>Behavior and consistency dominate readiness, not just pace.</p>
-            </div>
-            <div className="grid-3">
-              <div className="card">
-                <p className="card-title">Driver profile</p>
-                <h3 data-driver-snapshot-name>--</h3>
-                <p className="muted" data-driver-snapshot-description>
-                  Behavior and consistency dominate readiness, not just pace.
-                </p>
-                <div className="pill-row">
-                  <span className="pill" data-driver-snapshot-pill-profile>
-                    Profile --%
-                  </span>
-                  <span className="pill" data-driver-snapshot-pill-tasks>
-                    Tasks --/--
-                  </span>
-                </div>
-                <div className="progress">
-                  <div className="progress-label">Readiness progress</div>
-                  <div className="progress-track">
-                    <div className="progress-fill" data-driver-snapshot-progress style={{ width: '0%' }}></div>
-                  </div>
-                  <div className="progress-meta" data-driver-snapshot-progress-meta>
-                    Complete your profile to unlock readiness.
-                  </div>
-                </div>
-              </div>
-              <div className="card">
-                <p className="card-title">Active challenges</p>
-                <ul className="list" data-driver-snapshot-challenges>
-                  <li>No active challenges yet.</li>
-                </ul>
-                <button className="btn ghost" type="button" data-driver-snapshot-review>
-                  Review challenges
-                </button>
-              </div>
-              <div className="card">
-                <p className="card-title">Risk flags</p>
-                <ul className="list" data-driver-snapshot-risks>
-                  <li>No risks detected.</li>
-                </ul>
-                <button className="btn ghost" type="button" data-driver-snapshot-risk>
-                  See mitigation plan
-                </button>
-              </div>
-            </div>
-          </section>
         </div>
       </div>
     </div>

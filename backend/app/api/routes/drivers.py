@@ -67,6 +67,11 @@ def create_my_driver(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
+    if (user.role or "").strip().lower() == "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin users cannot create a driver profile. Use the admin console to create drivers for other users.",
+        )
     if not payload.sim_games:
         raise HTTPException(status_code=400, detail="At least one sim game is required")
     existing = session.query(Driver).filter(Driver.user_id == user.id).first()

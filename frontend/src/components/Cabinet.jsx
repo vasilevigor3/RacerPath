@@ -112,7 +112,7 @@ const Cabinet = () => (
             className="stat-card is-link"
             type="button"
             data-stat-target="incidents"
-            data-scroll-target="#operations"
+            data-tab-target="incidents"
             data-focus-target="incidents-card"
           >
             <span className="stat-label">Incidents</span>
@@ -135,6 +135,9 @@ const Cabinet = () => (
           </button>
           <button className="tab-button" type="button" data-tab-button="licenses">
             Licenses
+          </button>
+          <button className="tab-button" type="button" data-tab-button="incidents">
+            Incidents
           </button>
           <button className="tab-button" type="button" data-tab-button="profile">
             Profile
@@ -178,6 +181,15 @@ const Cabinet = () => (
             <h4 data-license-next>--</h4>
             <ul className="list" data-license-reqs>
               <li>No requirements loaded.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="tab-panel" data-tab-panel="incidents">
+          <div className="card compact" data-focus-id="incidents-card">
+            <p className="card-title">My incidents</p>
+            <ul className="list" data-incident-list>
+              <li>Log in to see incidents.</li>
             </ul>
           </div>
         </div>

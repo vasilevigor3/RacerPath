@@ -124,6 +124,7 @@ def upsert_my_profile(
         session.add(profile)
 
     data = payload.model_dump(exclude_unset=True)
+    rig_options = data.pop("rig_options", None)
     for field, value in data.items():
         if field == "sim_platforms" and value is None:
             value = []
@@ -133,6 +134,8 @@ def upsert_my_profile(
     driver = session.query(Driver).filter(Driver.user_id == user.id).first()
     if profile.sim_platforms and driver:
         driver.sim_games = profile.sim_platforms
+    if driver and rig_options is not None:
+        driver.rig_options = rig_options
     session.commit()
     session.refresh(profile)
     profile_completion, missing, _ = _compute_completion(profile)

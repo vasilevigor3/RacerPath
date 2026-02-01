@@ -3,6 +3,7 @@ from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.schemas.driver import RigOptions
 from app.models.enums.event_enums import (EventStatus,
     ScheduleType, EventType, FormatType,
     DamageModel, RulesToggle, WeatherType,
@@ -67,6 +68,7 @@ class EventCreate(BaseModel):
     license_requirement: LicenseRequirement = LicenseRequirement.none
     official_event: bool = False
     assists_allowed: bool = False
+    rig_options: Optional[RigOptions] = Field(default=None, description="Required/minimum rig for event")
 
     @model_validator(mode="after")
     def validate_team_sizes(self):
@@ -122,6 +124,7 @@ class EventUpdate(BaseModel):
     license_requirement: Optional[LicenseRequirement] = None
     official_event: Optional[bool] = None
     assists_allowed: Optional[bool] = None
+    rig_options: Optional[RigOptions] = None
 
     @model_validator(mode="after")
     def validate_team_sizes(self):

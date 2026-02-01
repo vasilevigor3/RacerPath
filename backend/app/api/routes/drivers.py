@@ -9,7 +9,7 @@ from app.models.driver import Driver
 from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.schemas.crs import CRSHistoryRead
-from app.schemas.driver import DriverCreate, DriverRead
+from app.schemas.driver import DriverCreate, DriverRead, DriverUpdate
 from app.services.auth import require_roles, require_user
 from app.services.tasks import ensure_task_completion
 
@@ -82,6 +82,7 @@ def create_my_driver(
         primary_discipline=payload.primary_discipline,
         sim_games=payload.sim_games,
         user_id=user.id,
+        rig_options=payload.rig_options.model_dump() if payload.rig_options is not None else None,
     )
     session.add(driver)
     session.commit()
@@ -125,6 +126,24 @@ def get_driver_crs_history(
     if discipline:
         query = query.filter(CRSHistory.discipline == discipline)
     return query.order_by(CRSHistory.computed_at.desc()).all()
+
+
+@router.patch("/me", response_model=DriverRead)
+def update_my_driver(
+    payload: DriverUpdate,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver profile not found")
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        if hasattr(driver, key):
+            setattr(driver, key, value)
+    session.commit()
+    session.refresh(driver)
+    return driver
 
 
 @router.get("/{driver_id}", response_model=DriverRead)

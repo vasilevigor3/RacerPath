@@ -52,7 +52,7 @@ const bootstrapFeatures = async () => {
   incidentsModule.initIncidents();
   authModule.initAuth();
   onboardingModule.initOnboarding();
-  profileModule.initProfileForm();
+  setTimeout(() => profileModule.initProfileForm(), 0);
   crsModule.initCrs();
   recommendationsModule.initRecommendations();
   licensesModule.initLicenses();

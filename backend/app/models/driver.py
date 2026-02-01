@@ -24,4 +24,5 @@ class Driver(Base):
     sim_games: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     tier: Mapped[str] = mapped_column(String(10), nullable=False, default="E0")
+    rig_options: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

@@ -83,7 +83,12 @@ export const setProfileEmpty = (message, options = {}) => {
     const disciplineInput = profileForm.querySelector('#profileDiscipline');
     if (disciplineInput) disciplineInput.value = '';
     setCheckedValues(profileForm, 'profilePlatforms', []);
-    setCheckedValues(profileForm, 'rigOptions', []);
+    const wheelSelect = profileForm.querySelector('#profileWheelType');
+    const pedalsSelect = profileForm.querySelector('#profilePedalsClass');
+    const clutchCheck = profileForm.querySelector('#profileManualWithClutch');
+    if (wheelSelect) wheelSelect.value = '';
+    if (pedalsSelect) pedalsSelect.value = '';
+    if (clutchCheck) clutchCheck.checked = false;
   }
 };
 
@@ -156,7 +161,8 @@ const loadUserProfile = async (driver) => {
           ? 'Complete missing fields to unlock your next level.'
           : 'Profile complete. Keep racing to progress.';
     }
-    if (profileForm) {
+    const formEl = profileForm || document.querySelector('[data-profile-form]');
+    if (formEl) {
       const platforms = profile.sim_platforms || [];
       const fallbackPlatforms =
         platforms.length
@@ -164,12 +170,12 @@ const loadUserProfile = async (driver) => {
           : driver && driver.sim_games && driver.sim_games.length
             ? driver.sim_games
             : [];
-      const fullNameInput = profileForm.querySelector('#profileFullName');
-      const countryInput = profileForm.querySelector('#profileCountry');
-      const cityInput = profileForm.querySelector('#profileCity');
-      const ageInput = profileForm.querySelector('#profileAge');
-      const expInput = profileForm.querySelector('#profileExperience');
-      const disciplineInput = profileForm.querySelector('#profileDiscipline');
+      const fullNameInput = formEl.querySelector('#profileFullName');
+      const countryInput = formEl.querySelector('#profileCountry');
+      const cityInput = formEl.querySelector('#profileCity');
+      const ageInput = formEl.querySelector('#profileAge');
+      const expInput = formEl.querySelector('#profileExperience');
+      const disciplineInput = formEl.querySelector('#profileDiscipline');
       if (fullNameInput) {
         const fallbackName = profile.full_name || (driver ? driver.name : '') || getCurrentUserName() || '';
         fullNameInput.value = fallbackName;
@@ -181,12 +187,14 @@ const loadUserProfile = async (driver) => {
       if (disciplineInput) {
         disciplineInput.value = profile.primary_discipline || (driver ? driver.primary_discipline : '') || '';
       }
-      setCheckedValues(profileForm, 'profilePlatforms', fallbackPlatforms);
-      const rigSelections = (profile.rig || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-      setCheckedValues(profileForm, 'rigOptions', rigSelections);
+      setCheckedValues(formEl, 'profilePlatforms', fallbackPlatforms);
+      const ro = driver && driver.rig_options ? driver.rig_options : {};
+      const wheelSelect = formEl.querySelector('#profileWheelType');
+      const pedalsSelect = formEl.querySelector('#profilePedalsClass');
+      const clutchCheck = formEl.querySelector('#profileManualWithClutch');
+      if (wheelSelect) wheelSelect.value = ro.wheel_type || '';
+      if (pedalsSelect) pedalsSelect.value = ro.pedals_class || '';
+      if (clutchCheck) clutchCheck.checked = Boolean(ro.manual_with_clutch);
     }
     updateReadiness();
     const readinessLabel =
@@ -370,43 +378,55 @@ function onVisibilityChange() {
 }
 
 export const initProfileForm = () => {
-  if (!profileForm || !profileSaveStatus) return;
+  const form = document.querySelector('[data-profile-form]');
+  const statusEl = document.querySelector('[data-profile-save-status]');
+  if (!form || !statusEl) {
+    setTimeout(initProfileForm, 0);
+    return;
+  }
+  if (form.dataset.profileFormInitialized === '1') return;
+  form.dataset.profileFormInitialized = '1';
   document.addEventListener('visibilitychange', onVisibilityChange);
-  profileForm.addEventListener('submit', async (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!getApiKey()) {
-      profileSaveStatus.textContent = 'Log in first.';
+      statusEl.textContent = 'Log in first.';
       return;
     }
-    profileSaveStatus.textContent = 'Saving profile...';
-    const platforms = getCheckedValues(profileForm, 'profilePlatforms');
-    const rigOptions = getCheckedValues(profileForm, 'rigOptions');
-    const rigValue = rigOptions.length ? rigOptions.join(', ') : null;
+    statusEl.textContent = 'Saving profile...';
+    const platforms = getCheckedValues(form, 'profilePlatforms');
+    const wheelType = getFormValue(form, '#profileWheelType') || null;
+    const pedalsClass = getFormValue(form, '#profilePedalsClass') || null;
+    const manualWithClutch = form.querySelector('#profileManualWithClutch')?.checked ?? false;
     try {
       const res = await apiFetch('/api/profile/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: getFormValue(profileForm, '#profileFullName') || null,
-          country: getFormValue(profileForm, '#profileCountry') || null,
-          city: getFormValue(profileForm, '#profileCity') || null,
-          age: parseOptionalInt(getFormValue(profileForm, '#profileAge')),
-          experience_years: parseOptionalInt(getFormValue(profileForm, '#profileExperience')),
-          primary_discipline: getFormValue(profileForm, '#profileDiscipline') || null,
+          full_name: getFormValue(form, '#profileFullName') || null,
+          country: getFormValue(form, '#profileCountry') || null,
+          city: getFormValue(form, '#profileCity') || null,
+          age: parseOptionalInt(getFormValue(form, '#profileAge')),
+          experience_years: parseOptionalInt(getFormValue(form, '#profileExperience')),
+          primary_discipline: getFormValue(form, '#profileDiscipline') || null,
           sim_platforms: platforms,
-          rig: rigValue,
+          rig_options: {
+            wheel_type: wheelType,
+            pedals_class: pedalsClass,
+            manual_with_clutch: manualWithClutch
+          },
           goals: getCurrentProfileGoals()
         })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        profileSaveStatus.textContent = err.detail || 'Save failed.';
+        statusEl.textContent = err.detail || 'Save failed.';
         return;
       }
-      profileSaveStatus.textContent = 'Profile saved.';
+      statusEl.textContent = 'Profile saved.';
       await loadProfile();
     } catch (err) {
-      profileSaveStatus.textContent = 'Save failed.';
+      statusEl.textContent = 'Save failed.';
     }
   });
 };

@@ -79,6 +79,8 @@ class Event(Base):
     official_event: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     assists_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    rig_options: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

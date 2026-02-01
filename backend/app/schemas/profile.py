@@ -3,6 +3,8 @@ from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.driver import RigOptions
+
 
 class NextTierData(BaseModel):
     """What's missing to progress to next driver tier."""
@@ -22,6 +24,7 @@ class UserProfileUpsert(BaseModel):
     primary_discipline: Literal["formula", "gt", "rally", "karting", "historic"] | None = None
     sim_platforms: List[str] = Field(default_factory=list)
     rig: str | None = Field(default=None, max_length=120)
+    rig_options: RigOptions | None = Field(default=None, description="Driver rig: wheel_type, pedals_class, manual_with_clutch")
     goals: str | None = Field(default=None, max_length=240)
 
 

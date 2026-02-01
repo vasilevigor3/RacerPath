@@ -1,6 +1,6 @@
 import DisciplineSelect from './DisciplineSelect.jsx';
 import OptionGrid from './OptionGrid.jsx';
-import { RIG_OPTIONS, SIM_GAMES } from '../constants/uiData.js';
+import { SIM_GAMES, WHEEL_TYPES, PEDALS_CLASSES } from '../constants/uiData.js';
 
 const Cabinet = () => (
   <section id="cabinet" className="section dashboard reveal" data-driver-only>
@@ -319,7 +319,28 @@ const Cabinet = () => (
                 </div>
                 <div className="field-group">
                   <label>Rig options</label>
-                  <OptionGrid name="rigOptions" options={RIG_OPTIONS} />
+                  <div className="grid-2" style={{ gap: '0.75rem' }}>
+                    <div>
+                      <label htmlFor="profileWheelType" className="muted" style={{ fontSize: '0.85rem' }}>Wheel</label>
+                      <select id="profileWheelType" name="profileWheelType">
+                        {WHEEL_TYPES.map((o) => (
+                          <option key={o.value || 'empty'} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="profilePedalsClass" className="muted" style={{ fontSize: '0.85rem' }}>Pedals</label>
+                      <select id="profilePedalsClass" name="profilePedalsClass">
+                        {PEDALS_CLASSES.map((o) => (
+                          <option key={o.value || 'empty'} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <label className="checkbox-label" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input type="checkbox" name="profileManualWithClutch" id="profileManualWithClutch" value="1" />
+                    <span>Manual gearbox with clutch</span>
+                  </label>
                 </div>
                 <button className="btn primary" type="submit">
                   Save profile

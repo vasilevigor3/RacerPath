@@ -19,10 +19,15 @@ def _latest_crs(session: Session, driver_id: str, discipline: str) -> CRSHistory
 
 
 def _completed_task_codes(session: Session, driver_id: str) -> set[str]:
+    """Only completions tied to an event participation count toward license award."""
     task_ids = {
         completion.task_id
         for completion in session.query(TaskCompletion)
-        .filter(TaskCompletion.driver_id == driver_id, TaskCompletion.status == "completed")
+        .filter(
+            TaskCompletion.driver_id == driver_id,
+            TaskCompletion.status == "completed",
+            TaskCompletion.participation_id.isnot(None),
+        )
         .all()
     }
     if not task_ids:

@@ -452,7 +452,10 @@ const registerOnEvent = async (driverId, eventId) => {
       return;
     }
     hideEventDetail();
-    if (lastDriverForEvents) loadDashboardEvents(lastDriverForEvents);
+    if (lastDriverForEvents) {
+      await loadDashboardStats(lastDriverForEvents);
+      await loadDashboardEvents(lastDriverForEvents);
+    }
   } catch (err) {
     if (typeof window !== 'undefined' && window.alert) window.alert('Register failed.');
   }

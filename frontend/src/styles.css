@@ -414,6 +414,21 @@ footer {
   font-size: 0.95rem;
 }
 
+.license-task-code-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--link, #0066cc);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.license-task-code-link:hover {
+  color: var(--link-hover, #004499);
+}
+
 .license-detail-dl > div {
   display: grid;
   grid-template-columns: 100px 1fr;
@@ -1034,6 +1049,29 @@ footer {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.admin-task-codes-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.admin-task-code-link {
+  font-size: inherit;
+  padding: 2px 6px;
+  background: none;
+  border: none;
+  color: var(--link, #0066cc);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: 4px;
+}
+
+.admin-task-code-link:hover {
+  color: var(--link-hover, #004499);
 }
 
 .admin-lookup-result__part-id {

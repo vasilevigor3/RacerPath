@@ -1167,7 +1167,7 @@ const TierRulesPanel = () => {
   );
 };
 
-const LicenseLevelsPanel = () => {
+const LicenseLevelsPanel = ({ onTaskCodeClick }) => {
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1361,7 +1361,17 @@ const LicenseLevelsPanel = () => {
                     <td>{lev.code}</td>
                     <td>{lev.name}</td>
                     <td>{lev.min_crs}</td>
-                    <td>{lev.required_task_codes && Array.isArray(lev.required_task_codes) ? lev.required_task_codes.join(', ') : '—'}</td>
+                    <td>
+                      {lev.required_task_codes && Array.isArray(lev.required_task_codes) && lev.required_task_codes.length > 0
+                        ? <span className="admin-task-codes-list">
+                            {lev.required_task_codes.map((code) => (
+                              onTaskCodeClick
+                                ? <button key={code} type="button" className="admin-task-code-link" onClick={() => onTaskCodeClick(code)}>{code}</button>
+                                : <span key={code}>{code}</span>
+                            ))}
+                          </span>
+                        : '—'}
+                    </td>
                     <td>{lev.active ? 'Yes' : 'No'}</td>
                     <td>
                       <button type="button" className="btn ghost admin-constructors__btn" onClick={() => startEdit(lev)}>Edit</button>
@@ -1397,9 +1407,23 @@ const LicenseLevelsPanel = () => {
                   <label className="admin-constructors__label">min_crs</label>
                   <input type="number" step="0.1" min="0" max="100" value={editForm.min_crs} onChange={(e) => setEditForm((f) => ({ ...f, min_crs: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
                 </div>
+                <div className="admin-constructors__row admin-constructors__row--full">
+                  <label className="admin-constructors__label">Required tasks</label>
+                  <span className="admin-task-codes-list">
+                    {(() => {
+                      const codes = (editForm.required_task_codes || '').split(',').map((s) => s.trim()).filter(Boolean);
+                      if (!codes.length) return '—';
+                      return codes.map((code) => (
+                        onTaskCodeClick
+                          ? <button key={code} type="button" className="admin-task-code-link" onClick={() => onTaskCodeClick(code)}>{code}</button>
+                          : <span key={code}>{code}</span>
+                      ));
+                    })()}
+                  </span>
+                </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">required_task_codes (comma)</label>
-                  <input type="text" value={editForm.required_task_codes} onChange={(e) => setEditForm((f) => ({ ...f, required_task_codes: e.target.value }))} className="admin-constructors__input admin-constructors__input--uuid" />
+                  <input type="text" value={editForm.required_task_codes} onChange={(e) => setEditForm((f) => ({ ...f, required_task_codes: e.target.value }))} className="admin-constructors__input admin-constructors__input--uuid" placeholder="finish_race, top10" />
                 </div>
                 <div className="admin-constructors__row">
                   <label className="admin-constructors__label">Active</label>
@@ -1417,7 +1441,7 @@ const LicenseLevelsPanel = () => {
   );
 };
 
-const LicenseAwardPanel = () => {
+const LicenseAwardPanel = ({ onTaskCodeClick }) => {
   const [driverId, setDriverId] = useState('');
   const [email, setEmail] = useState('');
   const [discipline, setDiscipline] = useState('gt');
@@ -1514,7 +1538,17 @@ const LicenseAwardPanel = () => {
           <h4 className="admin-constructors__subtitle admin-constructors__subtitle--error">Award error</h4>
           <p>{awardError.message}</p>
           {awardError.reasons?.length > 0 && <ul>{awardError.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
-          {awardError.required_task_codes?.length > 0 && <p><strong>Required:</strong> {awardError.required_task_codes.join(', ')}</p>}
+          {awardError.required_task_codes?.length > 0 && (
+            <p><strong>Required:</strong>{' '}
+              <span className="admin-task-codes-list">
+                {awardError.required_task_codes.map((code) => (
+                  onTaskCodeClick
+                    ? <button key={code} type="button" className="admin-task-code-link" onClick={() => onTaskCodeClick(code)}>{code}</button>
+                    : <span key={code}>{code}</span>
+                ))}
+              </span>
+            </p>
+          )}
         </section>
       )}
       {awardError && typeof awardError === 'string' && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{awardError}</p>}
@@ -1651,6 +1685,15 @@ const TaskDefinitionsPanel = () => {
   };
 
   useEffect(() => { loadTasks(); }, [filterDiscipline]);
+
+  useEffect(() => {
+    if (!pendingTaskEditId || !tasks.length || !onClearPendingTaskEdit) return;
+    const task = tasks.find((t) => t.id === pendingTaskEditId);
+    if (task) {
+      startEdit(task);
+    }
+    onClearPendingTaskEdit();
+  }, [pendingTaskEditId, tasks]);
 
   const handleCreate = (e) => {
     e.preventDefault();
@@ -1891,6 +1934,32 @@ const AdminLookup = () => {
     finished_at: '',
   });
   const [partSaveLoading, setPartSaveLoading] = useState(false);
+
+  const [selectedTaskForCard, setSelectedTaskForCard] = useState(null);
+  const [pendingTaskEditId, setPendingTaskEditId] = useState(null);
+  const [taskCardLoading, setTaskCardLoading] = useState(false);
+
+  const openTaskCardByCode = (code) => {
+    if (!code || !code.trim()) return;
+    setTaskCardLoading(true);
+    setSelectedTaskForCard(null);
+    apiFetch('/api/admin/task-definitions')
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Failed');
+        return res.json();
+      })
+      .then((tasks) => {
+        const task = tasks.find((t) => (t.code || '').toLowerCase() === (code || '').trim().toLowerCase());
+        if (task) {
+          setSelectedTaskForCard(task);
+          setActiveTab('licenses');
+        } else {
+          window.alert(`Task with code "${code}" not found.`);
+        }
+      })
+      .catch((err) => window.alert(err?.message || 'Failed to load tasks'))
+      .finally(() => setTaskCardLoading(false));
+  };
 
   useEffect(() => {
     if (!partData?.participation) return;
@@ -2337,7 +2406,7 @@ const AdminLookup = () => {
           </section>
         </div>
       )}
-            <LicenseAwardPanel />
+            <LicenseAwardPanel onTaskCodeClick={openTaskCardByCode} />
             <CrsDiagnosticPanel />
           </div>
         )}
@@ -2362,14 +2431,38 @@ const AdminLookup = () => {
 
         {activeTab === 'tasks' && (
           <div id="admin-tabpanel-tasks" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-tasks">
-            <TaskDefinitionsPanel />
+            <TaskDefinitionsPanel pendingTaskEditId={pendingTaskEditId} onClearPendingTaskEdit={() => setPendingTaskEditId(null)} />
           </div>
         )}
 
         {activeTab === 'licenses' && (
           <div id="admin-tabpanel-licenses" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-licenses">
-            <LicenseLevelsPanel />
-            <LicenseAwardPanel />
+            {taskCardLoading && <p className="admin-constructors__msg">Loading task…</p>}
+            {selectedTaskForCard && (
+              <section className="admin-constructors__block admin-task-card">
+                <div className="admin-participation-card__head">
+                  <button type="button" className="btn ghost btn-back-arrow" aria-label="Back" onClick={() => setSelectedTaskForCard(null)}>←</button>
+                  <h4 className="admin-constructors__subtitle">Task</h4>
+                </div>
+                <dl className="admin-lookup-result__dl">
+                  <div><dt>Code</dt><dd>{selectedTaskForCard.code ?? '—'}</dd></div>
+                  <div><dt>Name</dt><dd>{selectedTaskForCard.name ?? '—'}</dd></div>
+                  <div><dt>Discipline</dt><dd>{selectedTaskForCard.discipline ?? '—'}</dd></div>
+                  <div><dt>Description</dt><dd>{selectedTaskForCard.description ?? '—'}</dd></div>
+                  <div><dt>Scope</dt><dd>{selectedTaskForCard.scope ?? '—'}</dd></div>
+                  {selectedTaskForCard.min_event_tier && <div><dt>Min event tier</dt><dd>{selectedTaskForCard.min_event_tier}</dd></div>}
+                  <div><dt>Active</dt><dd>{selectedTaskForCard.active ? 'Yes' : 'No'}</dd></div>
+                  {selectedTaskForCard.required_by_license_levels?.length > 0 && (
+                    <div><dt>Required by licenses</dt><dd>{selectedTaskForCard.required_by_license_levels.map((l) => `${l.discipline}:${l.level_code}`).join(', ')}</dd></div>
+                  )}
+                </dl>
+                <div className="admin-participation-card__actions">
+                  <button type="button" className="btn primary admin-constructors__btn" onClick={() => { setActiveTab('tasks'); setPendingTaskEditId(selectedTaskForCard.id); setSelectedTaskForCard(null); }}>Edit in Tasks tab</button>
+                </div>
+              </section>
+            )}
+            <LicenseLevelsPanel onTaskCodeClick={openTaskCardByCode} />
+            <LicenseAwardPanel onTaskCodeClick={openTaskCardByCode} />
           </div>
         )}
 

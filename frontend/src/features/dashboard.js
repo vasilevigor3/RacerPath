@@ -681,8 +681,11 @@ function showLicenseDetail(level) {
   const panel = document.querySelector('[data-license-detail-panel]');
   const content = document.querySelector('[data-license-detail-content]');
   if (!listView || !panel || !content) return;
-  const tasks = (level.required_task_codes || []).length
-    ? (level.required_task_codes || []).join(', ')
+  const codes = level.required_task_codes && Array.isArray(level.required_task_codes) ? level.required_task_codes : [];
+  const requiredTasksHtml = codes.length
+    ? codes
+        .map((code) => `<button type="button" class="btn-link license-task-code-link" data-license-task-code="${escapeHtml(code)}">${escapeHtml(code)}</button>`)
+        .join(', ')
     : '—';
   content.innerHTML = `
     <dl class="event-detail-dl license-detail-dl">
@@ -690,7 +693,7 @@ function showLicenseDetail(level) {
       <div><dt>Name</dt><dd>${escapeHtml(level.name ?? '—')}</dd></div>
       <div><dt>Description</dt><dd>${escapeHtml(level.description ?? '—')}</dd></div>
       <div><dt>Min CRS</dt><dd>${level.min_crs != null ? Number(level.min_crs) : '—'}</dd></div>
-      <div><dt>Required tasks</dt><dd>${escapeHtml(tasks)}</dd></div>
+      <div><dt>Required tasks</dt><dd>${requiredTasksHtml}</dd></div>
     </dl>
   `;
   listView.classList.add('is-hidden');
@@ -843,6 +846,31 @@ function initDashboardEventsRegisterDelegation() {
     if (licenseDetailBack) {
       e.preventDefault();
       hideLicenseDetail();
+      return;
+    }
+    const licenseTaskCodeBtn = e.target.closest('[data-license-task-code]');
+    if (licenseTaskCodeBtn) {
+      e.preventDefault();
+      const code = licenseTaskCodeBtn.getAttribute('data-license-task-code');
+      const driver = lastDriverForTasks || lastDriverForLicense;
+      if (!code || !driver) return;
+      const findTaskByCode = (defs) => (defs || []).find((t) => (t.code || '').toLowerCase() === (code || '').toLowerCase());
+      let task = findTaskByCode(lastTaskDefinitions);
+      if (!task && lastTaskDefinitions.length === 0) {
+        try {
+          const res = await apiFetch('/api/tasks/definitions');
+          if (res.ok) {
+            const defs = await res.json();
+            lastTaskDefinitions = defs;
+            task = findTaskByCode(defs);
+          }
+        } catch (_) {}
+      }
+      if (task) {
+        const tasksTab = document.querySelector('[data-tab-button="tasks"]');
+        if (tasksTab) tasksTab.click();
+        showTaskDetail(task, driver);
+      }
       return;
     }
     const riskEventLink = e.target.closest('.risk-flag-event-link');

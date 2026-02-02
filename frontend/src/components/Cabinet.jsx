@@ -145,14 +145,8 @@ const Cabinet = () => (
           <button className="tab-button" type="button" data-tab-button="teams">
             Teams
           </button>
-          <button className="tab-button" type="button" data-tab-button="event-creation">
-            Event creation
-          </button>
           <button className="tab-button" type="button" data-tab-button="garage">
             My car / garage
-          </button>
-          <button className="tab-button" type="button" data-tab-button="lessons">
-            Lessons
           </button>
           <button className="tab-button" type="button" data-tab-button="profile">
             Profile
@@ -298,23 +292,9 @@ const Cabinet = () => (
           </div>
         </div>
 
-        <div className="tab-panel" data-tab-panel="event-creation">
-          <div className="card compact">
-            <p className="card-title">Event creation</p>
-            <p className="muted">Coming soon.</p>
-          </div>
-        </div>
-
         <div className="tab-panel" data-tab-panel="garage">
           <div className="card compact">
             <p className="card-title">My car / garage</p>
-            <p className="muted">Coming soon.</p>
-          </div>
-        </div>
-
-        <div className="tab-panel" data-tab-panel="lessons">
-          <div className="card compact">
-            <p className="card-title">Lessons</p>
             <p className="muted">Coming soon.</p>
           </div>
         </div>

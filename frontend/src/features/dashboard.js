@@ -174,9 +174,10 @@ export const loadDashboardStats = async (driver) => {
     console.warn('setRiskFlagsTabList failed:', tabErr);
   }
   if (statRiskFlags) {
-    const isNoCritical =
-      riskFlags.length === 1 && riskFlags[0] === 'No critical risks detected.';
-    statRiskFlags.textContent = isNoCritical ? '0' : riskFlags.length.toString();
+    const actualRiskCount = riskFlagsWithDetails.filter(
+      (r) => r.type !== 'no_data' && r.type !== 'no_critical'
+    ).length;
+    statRiskFlags.textContent = actualRiskCount.toString();
   }
   updateDriverSnapshotMeta({
     name: driver.name,

@@ -19,6 +19,7 @@ const bootstrapFeatures = async () => {
     driversModule,
     participationsModule,
     incidentsModule,
+    penaltiesModule,
     authModule,
     onboardingModule,
     profileModule,
@@ -33,6 +34,7 @@ const bootstrapFeatures = async () => {
     import('./features/drivers.js'),
     import('./features/participations.js'),
     import('./features/incidents.js'),
+    import('./features/penalties.js'),
     import('./features/auth.js'),
     import('./features/onboarding.js'),
     import('./features/profile.js'),
@@ -63,6 +65,7 @@ const bootstrapFeatures = async () => {
   dashboardModule.loadDashboardEvents();
   participationsModule.loadParticipations();
   incidentsModule.loadIncidents();
+  penaltiesModule.loadPenalties();
   profileModule.loadProfile();
 
   tabsModule.setupTabs();

@@ -137,7 +137,10 @@ const Cabinet = () => (
             Licenses
           </button>
           <button className="tab-button" type="button" data-tab-button="incidents">
-            Incidents <span className="tab-count" data-incidents-total aria-label="Total incidents">0</span>
+            Incidents (<span className="tab-count" data-incidents-total aria-label="Total incidents">0</span>)
+          </button>
+          <button className="tab-button" type="button" data-tab-button="penalties">
+            Penalties (<span className="tab-count" data-penalties-total aria-label="Total penalties">0</span>)
           </button>
           <button className="tab-button" type="button" data-tab-button="risk-flags">
             Risk flags
@@ -208,6 +211,15 @@ const Cabinet = () => (
             <p className="card-title">My incidents (<span className="tab-count" data-incidents-total-card aria-label="Total incidents">0</span>)</p>
             <ul className="list" data-incident-list>
               <li>Log in to see incidents.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="tab-panel" data-tab-panel="penalties">
+          <div className="card compact" data-focus-id="penalties-card">
+            <p className="card-title">My penalties (<span className="tab-count" data-penalties-total-card aria-label="Total penalties">0</span>)</p>
+            <ul className="list" data-penalty-list>
+              <li>Log in to see penalties.</li>
             </ul>
           </div>
         </div>

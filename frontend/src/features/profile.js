@@ -22,6 +22,7 @@ import {
   loadLicenseProgress
 } from './dashboard.js';
 import { loadIncidents } from './incidents.js';
+import { loadPenalties } from './penalties.js';
 import { updateDriverSnapshotMeta, resetDriverSnapshot } from './driverSnapshot.js';
 import { refreshAdminPanel } from './admin.js';
 
@@ -339,6 +340,7 @@ export const loadProfile = async () => {
     await loadDashboardEvents(driver);
     await loadLicenseProgress(driver);
     await loadIncidents(driver);
+    await loadPenalties(driver);
     scheduleRecommendationsRefetchAtMidnight();
   } catch (err) {
     setAuthVisibility(false);

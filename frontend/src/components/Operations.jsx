@@ -1943,7 +1943,7 @@ const ParticipationIncPenRow = ({ participationId, onSet }) => {
       <button
         type="button"
         className="btn ghost admin-constructors__btn"
-        title="PATCH incidents_count / penalties_count (empty = random 0–5)"
+        title="Create N incidents + N penalties (POST; empty = random 0–5)"
         onClick={handleClick}
         disabled={loading}
       >
@@ -2091,11 +2091,18 @@ const AdminLookup = () => {
 
   const INCIDENT_TYPES_FOR_SET = ['Contact', 'Off-track', 'Track limits', 'Unsafe rejoin', 'Blocking', 'Avoidable contact', 'Mechanical', 'Other'];
 
+  const PENALTY_TYPES_FOR_SET = [
+    { penalty_type: 'time_penalty', time_seconds: 5 },
+    { penalty_type: 'time_penalty', time_seconds: 10 },
+    { penalty_type: 'drive_through' },
+    { penalty_type: 'stop_and_go', time_seconds: 10 },
+  ];
+
   const setParticipationIncidentsPenalties = async (partId, incStr, penStr, onDone) => {
     const incVal = (incStr ?? '').toString().trim();
     const penVal = (penStr ?? '').toString().trim();
     const incidentsToCreate = incVal !== '' ? Math.max(0, parseInt(incVal, 10) || 0) : Math.floor(Math.random() * 6);
-    const penalties_count = penVal !== '' ? Math.max(0, parseInt(penVal, 10) || 0) : Math.floor(Math.random() * 6);
+    const penaltiesToCreate = penVal !== '' ? Math.max(0, parseInt(penVal, 10) || 0) : Math.floor(Math.random() * 6);
     try {
       for (let i = 0; i < incidentsToCreate; i++) {
         const res = await apiFetch(`/api/participations/${encodeURIComponent(partId)}/incidents`, {
@@ -2113,7 +2120,24 @@ const AdminLookup = () => {
           throw new Error(err?.detail || res.statusText || 'Create incident failed');
         }
       }
-      await updateParticipationState(partId, { penalties_count });
+      for (let i = 0; i < penaltiesToCreate; i++) {
+        const preset = PENALTY_TYPES_FOR_SET[i % PENALTY_TYPES_FOR_SET.length];
+        const body = {
+          participation_id: partId,
+          penalty_type: preset.penalty_type,
+          lap: i + 1,
+        };
+        if (preset.time_seconds != null) body.time_seconds = preset.time_seconds;
+        const res = await apiFetch(`/api/participations/${encodeURIComponent(partId)}/penalties`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.detail || res.statusText || 'Create penalty failed');
+        }
+      }
       if (typeof onDone === 'function') onDone();
       if (q.trim()) await doLookup(q.trim());
     } catch (err) {

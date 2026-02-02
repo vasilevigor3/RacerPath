@@ -4,6 +4,7 @@ from app.models.event import Event
 from app.models.classification import Classification
 from app.models.participation import Participation
 from app.models.incident import Incident
+from app.models.penalty import Penalty
 from app.models.task_definition import TaskDefinition
 from app.models.task_completion import TaskCompletion
 from app.models.crs_history import CRSHistory
@@ -26,6 +27,7 @@ __all__ = [
     "Classification",
     "Participation",
     "Incident",
+    "Penalty",
     "TaskDefinition",
     "TaskCompletion",
     "CRSHistory",

@@ -6,15 +6,18 @@ from sqlalchemy.orm import Session
 from app.db.session import get_session
 from app.models.incident import Incident
 from app.models.participation import Participation, ParticipationState, ParticipationStatus
+from app.models.penalty import Penalty
 from app.models.user import User
 from app.repositories.classification import ClassificationRepository
 from app.repositories.driver import DriverRepository
 from app.repositories.event import EventRepository
 from app.repositories.incident import IncidentRepository
 from app.repositories.participation import ParticipationRepository
+from app.repositories.penalty import PenaltyRepository
 from app.repositories.task_completion import TaskCompletionRepository
 from app.schemas.incident import IncidentCreate, IncidentRead
 from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead, ParticipationWithdrawUpdate
+from app.schemas.penalty import PenaltyCreate, PenaltyRead, PenaltyTypeEnum
 from app.services.tasks import assign_tasks_on_registration, evaluate_tasks
 from app.services.crs import recompute_crs
 from app.services.auth import require_user
@@ -228,3 +231,53 @@ def list_incidents(
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
     return IncidentRepository(session).list_by_participation_id(participation_id)
+
+
+@router.post("/{participation_id}/penalties", response_model=PenaltyRead)
+def create_penalty(
+    participation_id: str,
+    payload: PenaltyCreate,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    if participation_id != payload.participation_id:
+        raise HTTPException(status_code=400, detail="Participation mismatch")
+
+    participation = ParticipationRepository(session).get_by_id(participation_id)
+    if not participation:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    if user.role not in {"admin"}:
+        driver = DriverRepository(session).get_by_id(participation.driver_id)
+        if not driver or driver.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+
+    penalty = Penalty(
+        participation_id=payload.participation_id,
+        penalty_type=payload.penalty_type.value,
+        time_seconds=payload.time_seconds,
+        lap=payload.lap,
+        description=payload.description,
+    )
+    PenaltyRepository(session).add(penalty)
+    participation.penalties_count += 1
+    if payload.penalty_type == PenaltyTypeEnum.dsq:
+        participation.status = ParticipationStatus.dsq
+    session.commit()
+    session.refresh(penalty)
+    return penalty
+
+
+@router.get("/{participation_id}/penalties", response_model=List[PenaltyRead])
+def list_penalties(
+    participation_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    participation = ParticipationRepository(session).get_by_id(participation_id)
+    if not participation:
+        raise HTTPException(status_code=404, detail="Participation not found")
+    if user.role not in {"admin"}:
+        driver = DriverRepository(session).get_by_id(participation.driver_id)
+        if not driver or driver.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+    return PenaltyRepository(session).list_by_participation_id(participation_id)

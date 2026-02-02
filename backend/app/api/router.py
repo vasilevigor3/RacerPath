@@ -13,6 +13,7 @@ from app.api.routes.drivers import router as drivers_router
 from app.api.routes.events import router as events_router
 from app.api.routes.ingest import router as ingest_router
 from app.api.routes.incidents import router as incidents_router
+from app.api.routes.penalties import router as penalties_router
 from app.api.routes.licenses import router as licenses_router
 from app.api.routes.metrics import router as metrics_router
 from app.api.routes.participations import router as participations_router
@@ -40,8 +41,9 @@ api_router.include_router(licenses_router)
 api_router.include_router(crs_router)
 api_router.include_router(recommendations_router)
 
-# Incidents
+# Incidents & penalties
 api_router.include_router(incidents_router)
+api_router.include_router(penalties_router)
 
 # Ingest & external
 api_router.include_router(ingest_router)

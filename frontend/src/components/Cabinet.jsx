@@ -137,7 +137,7 @@ const Cabinet = () => (
             Licenses
           </button>
           <button className="tab-button" type="button" data-tab-button="incidents">
-            Incidents
+            Incidents <span className="tab-count" data-incidents-total aria-label="Total incidents">0</span>
           </button>
           <button className="tab-button" type="button" data-tab-button="risk-flags">
             Risk flags
@@ -205,7 +205,7 @@ const Cabinet = () => (
 
         <div className="tab-panel" data-tab-panel="incidents">
           <div className="card compact" data-focus-id="incidents-card">
-            <p className="card-title">My incidents</p>
+            <p className="card-title">My incidents (<span className="tab-count" data-incidents-total-card aria-label="Total incidents">0</span>)</p>
             <ul className="list" data-incident-list>
               <li>Log in to see incidents.</li>
             </ul>

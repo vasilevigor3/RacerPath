@@ -14,6 +14,33 @@ from app.services.auth import require_user
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
+@router.get("/count")
+def get_incidents_count(
+    driver_id: str | None = None,
+    participation_id: str | None = None,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Return total count of incidents for the current driver (or filtered)."""
+    if user.role not in {"admin"}:
+        driver = DriverRepository(session).get_by_user_id(user.id)
+        if not driver:
+            return {"total": 0}
+        if driver_id and driver_id != driver.id:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+        driver_id = driver.id
+        if participation_id:
+            participation = ParticipationRepository(session).get_by_id(participation_id)
+            if not participation:
+                return {"total": 0}
+            if participation.driver_id != driver.id:
+                raise HTTPException(status_code=403, detail="Insufficient role")
+    total = IncidentRepository(session).count_filtered(
+        driver_id=driver_id, participation_id=participation_id
+    )
+    return {"total": total}
+
+
 @router.get("", response_model=List[IncidentRead])
 def list_all_incidents(
     driver_id: str | None = None,

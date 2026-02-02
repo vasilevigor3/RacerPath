@@ -5,15 +5,27 @@ import { parseOptionalInt, parseDateTime } from '../utils/parse.js';
 const incidentForm = document.querySelector('[data-incident-form]');
 const incidentStatus = document.querySelector('[data-incident-status]');
 const incidentList = document.querySelector('[data-incident-list]');
+const incidentsTotalEls = document.querySelectorAll('[data-incidents-total], [data-incidents-total-card]');
+
+function setIncidentsTotal(total) {
+  const value = total == null ? '0' : String(total);
+  incidentsTotalEls.forEach((el) => { el.textContent = value; });
+}
 
 export const loadIncidents = async (driver) => {
   if (!incidentList) return;
   incidentList.innerHTML = '<li>Loading...</li>';
+  setIncidentsTotal(0);
   try {
     const url = driver ? `/api/incidents?driver_id=${driver.id}` : '/api/incidents';
-    const res = await apiFetch(url);
-    if (!res.ok) throw new Error('failed');
-    const incidents = await res.json();
+    const countUrl = driver ? `/api/incidents/count?driver_id=${driver.id}` : '/api/incidents/count';
+    const [listRes, countRes] = await Promise.all([apiFetch(url), apiFetch(countUrl)]);
+    if (!listRes.ok) throw new Error('failed');
+    const incidents = await listRes.json();
+    if (countRes.ok) {
+      const { total } = await countRes.json();
+      setIncidentsTotal(total ?? 0);
+    }
     if (!incidents.length) {
       incidentList.innerHTML = '<li>No incidents yet.</li>';
       return;

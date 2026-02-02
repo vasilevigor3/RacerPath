@@ -71,5 +71,20 @@ class IncidentRepository:
             .count()
         )
 
+    def count_filtered(
+        self,
+        driver_id: Optional[str] = None,
+        participation_id: Optional[str] = None,
+    ) -> int:
+        query = self._session.query(Incident)
+        if participation_id:
+            query = query.filter(Incident.participation_id == participation_id)
+        if driver_id:
+            query = (
+                query.join(Participation, Incident.participation_id == Participation.id)
+                .filter(Participation.driver_id == driver_id)
+            )
+        return query.count()
+
     def add(self, incident: Incident) -> None:
         self._session.add(incident)

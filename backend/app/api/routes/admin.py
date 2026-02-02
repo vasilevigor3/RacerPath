@@ -70,6 +70,7 @@ from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
 from app.services.next_tier import compute_next_tier_progress
 from app.events.participation_events import dispatch_participation_completed
+from app.services.global_tasks import check_and_complete_global_tasks
 from app.services.tasks import ensure_task_completion
 from app.services.race_of_day import restart_race_of_day
 
@@ -119,6 +120,7 @@ def update_profile(
         if profile_completion >= 100 or not missing:
             ensure_task_completion(session, driver.id, f"ONBOARD_PROFILE_{suffix}")
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
+        check_and_complete_global_tasks(session, driver.id)
         session.commit()
     next_tier, next_tier_data = compute_next_tier_progress(session, user_id)
     return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)

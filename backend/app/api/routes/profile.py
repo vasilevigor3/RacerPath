@@ -13,6 +13,7 @@ from app.models.user_profile import UserProfile
 from app.schemas.profile import NextTierData, UserProfileRead, UserProfileUpsert
 from app.services.auth import require_user
 from app.services.next_tier import compute_next_tier_progress
+from app.services.global_tasks import check_and_complete_global_tasks
 from app.services.tasks import ensure_task_completion
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -146,6 +147,7 @@ def upsert_my_profile(
         if profile_completion >= 100 or not missing:
             ensure_task_completion(session, driver.id, f"ONBOARD_PROFILE_{suffix}")
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
+        check_and_complete_global_tasks(session, driver.id)
         session.commit()
     next_tier, next_tier_data = compute_next_tier_progress(session, user.id)
     return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)

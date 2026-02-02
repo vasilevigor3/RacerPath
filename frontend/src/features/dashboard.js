@@ -635,9 +635,11 @@ function showEventDetail(event, driver) {
   const eventHasRigReq = eventRigOpts && (eventRigOpts.wheel_type || eventRigOpts.pedals_class || eventRigOpts.manual_with_clutch === true);
   const driverRigUnknown = eventHasRigReq && (!driver || driver.rig_options === undefined);
   const rigOk = driverRigUnknown ? false : driverRigSatisfiesEvent(driverRigOpts, eventRigOpts);
-  const canRegister = tierMatch && licenseOk && rigOk && (!participationForEvent || canReRegister);
+  const startMs = event.start_time_utc ? new Date(event.start_time_utc).getTime() : NaN;
+  const isPastEvent = !Number.isNaN(startMs) && startMs < Date.now();
+  const canRegister = !isPastEvent && tierMatch && licenseOk && rigOk && (!participationForEvent || canReRegister);
   const maxWithdrawalsReached = participationForEvent && isWithdrawn && withdrawCount >= MAX_WITHDRAWALS;
-  const cannotRegisterReason = !tierMatch ? 'tier' : !licenseOk ? 'license' : (!rigOk && !driverRigUnknown) ? 'rig' : null;
+  const cannotRegisterReason = isPastEvent ? 'past' : !tierMatch ? 'tier' : !licenseOk ? 'license' : (!rigOk && !driverRigUnknown) ? 'rig' : null;
   const rigLoading = driverRigUnknown;
   const canWithdraw = participationForEvent && isRegistered;
   const status = getEventStatus(event);
@@ -672,6 +674,7 @@ function showEventDetail(event, driver) {
   const showActions = canRegister || canWithdraw || maxWithdrawalsReached || showNoRegisterMsg;
   if (noRegisterMsg) {
     if (rigLoading) noRegisterMsg.textContent = 'Loading…';
+    else if (cannotRegisterReason === 'past') noRegisterMsg.textContent = 'Registration is closed. This event has already started or finished.';
     else if (cannotRegisterReason) {
       noRegisterMsg.textContent = cannotRegisterReason === 'tier' ? 'This event does not match your tier. You cannot register.'
         : cannotRegisterReason === 'license' ? 'You do not meet the license requirement for this event. You cannot register.'

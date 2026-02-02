@@ -84,6 +84,8 @@ def _meets_requirements(
     classification: Classification | None,
 ) -> bool:
     requirements = task.requirements or {}
+    part_status = getattr(participation, "status", None)
+    part_status = part_status.value if hasattr(part_status, "value") else (str(part_status) if part_status else "")
 
     min_event_tier = requirements.get("min_event_tier") or task.min_event_tier
     if min_event_tier:

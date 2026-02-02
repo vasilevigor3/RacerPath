@@ -1,4 +1,4 @@
-"""Create a test task (GT_TEST_FLOW) and a test event with task_codes for flow testing.
+"""Create a test task (GT_TEST_FLOW), event with task_codes, and license level that requires it.
 
 Run from repo root:
   docker compose exec app python backend/scripts/create_test_task_and_event.py
@@ -8,7 +8,7 @@ Flow to test for vasilevigor3@gmail.com (E0 driver):
   2. Task GT_TEST_FLOW should appear In progress (assign_tasks_on_registration).
   3. Admin: mock-join then mock-finish (status=finished) for the participation.
   4. Backend must call evaluate_tasks on participation completed to mark task completed.
-  5. If GT_TEST_FLOW is in a license level's required_task_codes, eligibility may allow receiving license.
+  5. License GT_E0_TEST requires GT_TEST_FLOW; after task completed, driver may receive it.
 """
 from __future__ import annotations
 
@@ -17,11 +17,15 @@ from datetime import datetime, timedelta, timezone
 from app.db.session import SessionLocal
 from app.models.classification import Classification
 from app.models.event import Event
+from app.models.license_level import LicenseLevel
 from app.models.task_definition import TaskDefinition
 from app.services.classifier import TIER_LABELS, build_event_payload, classify_event
 
 TASK_CODE = "GT_TEST_FLOW"
 EVENT_TITLE = "Test Flow · E0 Sprint"
+LICENSE_CODE = "GT_E0_TEST"
+LICENSE_NAME = "GT E0 Test"
+LICENSE_DESC = "Test license: complete GT_TEST_FLOW (Test Flow event) to become eligible."
 
 
 def main() -> None:
@@ -77,6 +81,29 @@ def main() -> None:
         classification_data["tier_label"] = TIER_LABELS.get(tier, tier)
         classification = Classification(event_id=event.id, **classification_data)
         session.add(classification)
+
+        # 3. Create or get license level that requires this task
+        level = session.query(LicenseLevel).filter(LicenseLevel.code == LICENSE_CODE).first()
+        if not level:
+            level = LicenseLevel(
+                discipline="gt",
+                code=LICENSE_CODE,
+                name=LICENSE_NAME,
+                description=LICENSE_DESC,
+                min_crs=0.0,
+                required_task_codes=[TASK_CODE],
+                active=True,
+            )
+            session.add(level)
+            session.flush()
+            print(f"Created license level: {level.code} (id={level.id}, required_task_codes={level.required_task_codes})")
+        else:
+            if TASK_CODE not in (level.required_task_codes or []):
+                level.required_task_codes = list(level.required_task_codes or []) + [TASK_CODE]
+                session.flush()
+                print(f"Updated license level: {level.code}, required_task_codes={level.required_task_codes}")
+            else:
+                print(f"License level already exists: {level.code} (required_task_codes={level.required_task_codes})")
 
         session.commit()
         print(

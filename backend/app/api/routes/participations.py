@@ -35,6 +35,16 @@ def create_participation(
     event = session.query(Event).filter(Event.id == payload.event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    from datetime import datetime, timezone
+    now_utc = datetime.now(timezone.utc)
+    start_utc = event.start_time_utc
+    if start_utc is not None and start_utc.tzinfo is None:
+        start_utc = start_utc.replace(tzinfo=timezone.utc)
+    if start_utc is not None and start_utc <= now_utc:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot register for a past event. Registration is closed.",
+        )
     classification = (
         session.query(Classification)
         .filter(Classification.event_id == payload.event_id)

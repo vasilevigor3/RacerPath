@@ -321,13 +321,56 @@ footer {
   margin-left: 0.25em;
 }
 
-.license-card h3 {
-  margin: 6px 0 12px;
+.license-flow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.license-card h4 {
-  margin: 6px 0 12px;
+.license-flow__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 10px 18px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius-sm);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.license-flow__badge--current {
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--stroke);
+}
+
+.license-flow__badge--current:empty::before {
+  content: '—';
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.license-flow__badge--next {
+  background: linear-gradient(135deg, rgba(31, 157, 139, 0.12), rgba(31, 157, 139, 0.06));
   color: var(--accent-2);
+  border: 1px solid rgba(31, 157, 139, 0.35);
+}
+
+.license-flow__arrow {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f9d8b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;
+  opacity: 0.85;
+}
+
+.license-card .license-flow__badge:empty {
+  color: var(--muted);
 }
 
 .hero-copy h1 {

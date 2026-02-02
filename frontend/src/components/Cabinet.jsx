@@ -176,10 +176,11 @@ const Cabinet = () => (
         <div className="tab-panel" data-tab-panel="licenses">
           <div className="card license-card" data-focus-id="licenses-card">
             <p className="card-title">License progress</p>
-            <p className="muted">Current license</p>
-            <h3 data-license-current>--</h3>
-            <p className="muted">Next target</p>
-            <h4 data-license-next>--</h4>
+            <div className="license-flow">
+              <span className="license-flow__badge license-flow__badge--current" data-license-current>—</span>
+              <span className="license-flow__arrow" aria-hidden />
+              <span className="license-flow__badge license-flow__badge--next" data-license-next>—</span>
+            </div>
             <ul className="list" data-license-reqs>
               <li>No requirements loaded.</li>
             </ul>

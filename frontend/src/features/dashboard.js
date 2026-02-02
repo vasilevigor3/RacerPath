@@ -1,5 +1,5 @@
 import { apiFetch } from '../api/client.js';
-import { setList, setLicenseReqsList, setEventListWithRegister, setTaskListClickable, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
+import { setList, setLicenseReqsList, setEventListWithRegister, setTaskListClickable, setRecommendationTasksList, setRecommendationRacesList, tickRecommendationCountdowns } from '../utils/dom.js';
 import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { driverRigSatisfiesEvent } from '../utils/rigCompat.js';
@@ -19,7 +19,8 @@ const riskFlagsDetailPanel = document.querySelector('[data-risk-flags-detail]');
 const riskFlagsListView = document.querySelector('[data-risk-flags-list-view]');
 const tasksCompletedList = document.querySelector('[data-tasks-completed]');
 const tasksPendingList = document.querySelector('[data-tasks-pending]');
-const recommendationList = document.querySelector('[data-recommendation-list]');
+const recommendationTasksList = document.querySelector('[data-recommendation-tasks]');
+const recommendationRacesList = document.querySelector('[data-recommendation-races]');
 const recNextEventTitle = document.querySelector('[data-rec-next-event-title]');
 const recNextEventDesc = document.querySelector('[data-rec-next-event-desc]');
 const recSkillGapTitle = document.querySelector('[data-rec-skill-gap-title]');
@@ -417,14 +418,23 @@ const updateRecommendationCards = (data) => {
   set(recReadinessDesc, data.summary || '');
 };
 
+const COMPLETE_TASK_PREFIX = 'Complete task:';
+const RACE_OF_PREFIXES = ['Race of the day:', 'Race of the week:', 'Race of the month:', 'Race of the year:'];
+
 export const loadDashboardRecommendations = async (driver) => {
-  if (!recommendationList) return;
+  const tasksEl = document.querySelector('[data-recommendation-tasks]');
+  const racesEl = document.querySelector('[data-recommendation-races]');
+  if (!tasksEl || !racesEl) return;
   if (recommendationCountdownInterval) {
     clearInterval(recommendationCountdownInterval);
     recommendationCountdownInterval = null;
   }
+  const setEmpty = () => {
+    if (tasksEl) setList(tasksEl, ['Log in and create a driver profile to see next steps.'], '');
+    if (racesEl) setList(racesEl, ['—'], '');
+  };
   if (!driver) {
-    setList(recommendationList, ['Log in and create a driver profile to see next steps.'], '');
+    setEmpty();
     updateRecommendationCards(null);
     return;
   }
@@ -432,7 +442,8 @@ export const loadDashboardRecommendations = async (driver) => {
     const discipline = driver.primary_discipline || 'gt';
     const res = await apiFetch(`/api/recommendations/latest?driver_id=${driver.id}&discipline=${discipline}`);
     if (!res.ok) {
-      setList(recommendationList, ['No recommendations yet. Compute one in Dashboards.'], '');
+      if (tasksEl) setList(tasksEl, ['No recommendations yet.'], '');
+      if (racesEl) setList(racesEl, ['—'], '');
       updateRecommendationCards(null);
       return;
     }
@@ -440,7 +451,8 @@ export const loadDashboardRecommendations = async (driver) => {
     try {
       data = await res.json();
     } catch (parseErr) {
-      setList(recommendationList, ['Unable to load recommendations (invalid response).'], '');
+      if (tasksEl) setList(tasksEl, ['Unable to load recommendations.'], '');
+      if (racesEl) setList(racesEl, ['—'], '');
       updateRecommendationCards(null);
       return;
     }
@@ -449,24 +461,23 @@ export const loadDashboardRecommendations = async (driver) => {
         clearInterval(recommendationCountdownInterval);
         recommendationCountdownInterval = null;
       }
-      setRecommendationListWithCountdown(
-        recommendationList,
-        data.items || [],
-        data.special_events || [],
-        'No recommendations yet.',
-        formatCountdown
-      );
+      const items = data.items || [];
+      const taskItems = items.filter((i) => typeof i === 'string' && i.startsWith(COMPLETE_TASK_PREFIX));
+      const raceItems = items.filter((i) => typeof i === 'string' && RACE_OF_PREFIXES.some((p) => i.startsWith(p)));
+      setRecommendationTasksList(tasksEl, taskItems, lastTaskDefinitions, 'No tasks to complete.');
+      setRecommendationRacesList(racesEl, raceItems, data.special_events || [], '—', formatCountdown);
       recommendationCountdownInterval = setInterval(() => {
-        tickRecommendationCountdowns(recommendationList, formatCountdown);
+        tickRecommendationCountdowns(racesEl, formatCountdown);
       }, 1000);
       updateRecommendationCards(data);
     } else {
-      setList(recommendationList, ['No recommendations yet. Compute one in Dashboards.'], '');
+      if (tasksEl) setList(tasksEl, ['No recommendations yet.'], '');
+      if (racesEl) setList(racesEl, ['—'], '');
       updateRecommendationCards(null);
     }
   } catch (err) {
     console.warn('loadDashboardRecommendations failed:', err);
-    setList(recommendationList, ['Unable to load recommendations.'], '');
+    setEmpty();
     updateRecommendationCards(null);
   }
 };
@@ -851,11 +862,26 @@ function initDashboardEventsRegisterDelegation() {
       }
       return;
     }
-    const recList = e.target.closest('[data-recommendation-list]');
-    const recItem = recList ? e.target.closest('.rec-item[data-event-id]') : null;
-    if (recItem && recList) {
+    const recTasksList = e.target.closest('[data-recommendation-tasks]');
+    const recTaskItem = recTasksList ? e.target.closest('.rec-item[data-task-id]') : null;
+    if (recTaskItem && recTasksList) {
       e.preventDefault();
-      const eventId = recItem.getAttribute('data-event-id');
+      const taskId = recTaskItem.getAttribute('data-task-id');
+      const driver = lastDriverForTasks;
+      if (!taskId || !driver) return;
+      const task = lastTaskDefinitions.find((t) => t.id === taskId);
+      if (task) {
+        const tasksTab = document.querySelector('[data-tab-button="tasks"]');
+        if (tasksTab) tasksTab.click();
+        showTaskDetail(task, driver);
+      }
+      return;
+    }
+    const recRacesList = e.target.closest('[data-recommendation-races]');
+    const recRaceItem = recRacesList ? e.target.closest('.rec-item[data-event-id]') : null;
+    if (recRaceItem && recRacesList) {
+      e.preventDefault();
+      const eventId = recRaceItem.getAttribute('data-event-id');
       const driver = lastDriverForEvents;
       if (!eventId || !driver) return;
       try {

@@ -85,6 +85,80 @@ const RACE_OF_PREFIX_TO_SLOT = {
   'Race of the year:': 'race_of_year'
 };
 
+const COMPLETE_TASK_PREFIX = 'Complete task: ';
+
+/**
+ * Set "Next actions" Tasks column: items "Complete task: {name}" as clickable rows with data-task-id.
+ * taskDefinitions: array of { id, name, ... } to resolve name -> id.
+ */
+export const setRecommendationTasksList = (listEl, taskItemStrings, taskDefinitions, emptyText) => {
+  if (!listEl) return;
+  if (!taskItemStrings || taskItemStrings.length === 0) {
+    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
+    return;
+  }
+  const byName = (taskDefinitions || []).reduce((acc, t) => {
+    if (t.name) acc[t.name] = t;
+    return acc;
+  }, {});
+  listEl.innerHTML = taskItemStrings
+    .map((raw) => {
+      const text = typeof raw === 'string' ? raw : String(raw);
+      if (!text.startsWith(COMPLETE_TASK_PREFIX)) return '';
+      const name = text.slice(COMPLETE_TASK_PREFIX.length).trim();
+      const task = byName[name];
+      const taskId = task ? task.id : '';
+      const label = escapeHtml(text);
+      if (taskId) {
+        return `<li class="rec-item rec-item--clickable" data-task-id="${escapeHtml(taskId)}"><button type="button" class="rec-item__text btn-link">${label}</button></li>`;
+      }
+      return `<li class="rec-item">${label}</li>`;
+    })
+    .filter(Boolean)
+    .join('') || `<li>${escapeHtml(emptyText)}</li>`;
+};
+
+/**
+ * Set "Next actions" Race of d/w/m/y column: only "Race of day/week/month/year" items with countdown; click opens event.
+ */
+export const setRecommendationRacesList = (listEl, raceItemStrings, special_events, emptyText, formatCountdownFn) => {
+  if (!listEl) return;
+  if (!formatCountdownFn) formatCountdownFn = () => '';
+  if (!raceItemStrings || raceItemStrings.length === 0) {
+    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
+    return;
+  }
+  const bySlot = (special_events || []).reduce((acc, se) => {
+    if (se.slot && se.start_time_utc) acc[se.slot] = se;
+    return acc;
+  }, {});
+  listEl.innerHTML = raceItemStrings
+    .map((item) => {
+      const text = typeof item === 'string' ? item : '';
+      let slot = null;
+      for (const [prefix] of Object.entries(RACE_OF_PREFIX_TO_SLOT)) {
+        if (text.startsWith(prefix)) {
+          slot = RACE_OF_PREFIX_TO_SLOT[prefix];
+          break;
+        }
+      }
+      const special = slot ? bySlot[slot] : null;
+      const startUtc = special && special.start_time_utc != null
+        ? (typeof special.start_time_utc === 'string' ? special.start_time_utc : (special.start_time_utc?.iso ? special.start_time_utc.iso() : String(special.start_time_utc)))
+        : '';
+      const countdown = startUtc
+        ? `<span class="rec-countdown" data-start-utc="${escapeHtml(startUtc)}">${escapeHtml(formatCountdownFn(startUtc))}</span>`
+        : '';
+      const inner = `${escapeHtml(text)}${countdown ? `<br><small class="rec-countdown-wrap">${countdown}</small>` : ''}`;
+      if (special && special.event_id) {
+        const eventId = escapeHtml(String(special.event_id));
+        return `<li class="rec-item rec-item--clickable" data-event-id="${eventId}"><button type="button" class="rec-item__text btn-link">${inner}</button></li>`;
+      }
+      return `<li class="rec-item">${inner}</li>`;
+    })
+    .join('');
+};
+
 /**
  * Set recommendation list with optional countdown timers for "Race of X" items.
  * special_events: [{ slot, label, start_time_utc, ... }]

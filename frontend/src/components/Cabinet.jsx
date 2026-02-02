@@ -155,13 +155,23 @@ const Cabinet = () => (
 
         <div className="tab-panel active" data-tab-panel="overview">
           <div className="grid-2">
-            {/* Next actions: loadDashboardRecommendations (dashboard.js) when profile loads.
-                Data: GET /api/recommendations/latest?driver_id=&discipline= → items (risks, missing tasks, "Race next: …"). */}
+            {/* Next actions: 2 columns — Tasks (open task card), Race of d/w/m/y (open event card). */}
             <div className="card compact">
               <p className="card-title">Next actions</p>
-              <ul className="list" data-recommendation-list>
-                <li>Log in to load recommendations.</li>
-              </ul>
+              <div className="next-actions-grid">
+                <div>
+                  <p className="next-actions-column-title">Tasks</p>
+                  <ul className="list" data-recommendation-tasks>
+                    <li>Log in to load recommendations.</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="next-actions-column-title">Race of d/w/m/y</p>
+                  <ul className="list" data-recommendation-races>
+                    <li>—</li>
+                  </ul>
+                </div>
+              </div>
             </div>
             {/* Upcoming events: loadDashboardEvents (dashboard.js). GET /api/events → filter by driver.sim_games (only events for selected games) → only future events (start_time_utc > now), max 3. */}
             <div className="card compact">
@@ -188,7 +198,7 @@ const Cabinet = () => (
             </div>
             <div className="license-detail-panel is-hidden" data-license-detail-panel>
               <div className="license-detail-content" data-license-detail-content />
-              <button type="button" className="btn ghost" data-license-detail-back>Back</button>
+              <button type="button" className="btn ghost btn-back-arrow" data-license-detail-back aria-label="Back"><span aria-hidden>←</span></button>
             </div>
           </div>
         </div>
@@ -242,7 +252,7 @@ const Cabinet = () => (
               <button type="button" className="btn primary btn-task-complete" data-task-detail-complete>Complete</button>
               <button type="button" className="btn ghost btn-task-decline" data-task-detail-decline>Decline</button>
             </div>
-            <button type="button" className="btn ghost task-detail-back" data-task-detail-back>Back</button>
+            <button type="button" className="btn ghost btn-back-arrow task-detail-back" data-task-detail-back aria-label="Back"><span aria-hidden>←</span></button>
           </div>
         </div>
 
@@ -270,7 +280,6 @@ const Cabinet = () => (
                 </ul>
               </div>
               <div className="event-detail-panel is-hidden" data-event-detail-panel>
-                <button type="button" className="btn ghost event-detail-back" data-event-detail-back>Back</button>
                 <div className="event-detail-content" data-event-detail-content />
                 <div className="event-detail-actions" data-event-detail-actions>
                   <p className="event-detail-no-register-message is-hidden muted" data-event-detail-no-register-message />
@@ -278,7 +287,7 @@ const Cabinet = () => (
                   <button type="button" className="btn secondary btn-withdraw-event-panel is-hidden" data-event-detail-withdraw>Withdraw from event</button>
                   <p className="event-detail-max-withdrawals is-hidden" data-event-detail-max-withdrawals />
                 </div>
-                <button type="button" className="btn ghost event-detail-back" data-event-detail-back>Back</button>
+                <button type="button" className="btn ghost btn-back-arrow event-detail-back" data-event-detail-back aria-label="Back"><span aria-hidden>←</span></button>
               </div>
             </div>
             <div className="card">

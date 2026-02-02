@@ -510,6 +510,31 @@ footer {
   font-weight: 600;
 }
 
+.next-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.next-actions-column-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.btn-back-arrow {
+  min-width: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.btn-back-arrow span {
+  display: inline-block;
+}
+
 .muted {
   color: var(--muted);
 }

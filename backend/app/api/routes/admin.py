@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -69,7 +69,8 @@ from app.schemas.participation import ParticipationRead, ParticipationAdminRead
 from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
 from app.services.next_tier import compute_next_tier_progress
-from app.services.tasks import assign_participation_id_for_completed_participation, ensure_task_completion, evaluate_tasks
+from app.events.participation_events import dispatch_participation_completed
+from app.services.tasks import ensure_task_completion
 from app.services.race_of_day import restart_race_of_day
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -535,6 +536,16 @@ def update_participation(
     for key, value in data.items():
         setattr(part, key, value)
 
+    # When setting completed without started_at, set started_at so validation passes and dispatch runs
+    if part.participation_state == ParticipationState.completed and part.started_at is None:
+        if part.finished_at is not None:
+            part.started_at = part.finished_at - timedelta(minutes=30)
+        else:
+            now = datetime.now(timezone.utc)
+            part.started_at = now - timedelta(minutes=30)
+            if part.finished_at is None:
+                part.finished_at = now
+
     # Date validation
     if part.started_at is not None and part.finished_at is not None:
         if part.finished_at < part.started_at:
@@ -568,8 +579,7 @@ def update_participation(
     session.commit()
     session.refresh(part)
     if part.participation_state == ParticipationState.completed:
-        evaluate_tasks(session, part.driver_id, part.id)
-        assign_participation_id_for_completed_participation(session, part.driver_id, part.id)
+        dispatch_participation_completed(session, part.driver_id, part.id)
     return part
 
 

@@ -88,6 +88,63 @@ def create_event(
     return EventRead.model_validate(event).model_copy(update={"event_tier": tier})
 
 
+@router.get("/diagnostic")
+def events_empty_diagnostic(
+    driver_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Explain why GET /events?driver_id=... might return []. Use when list is empty."""
+    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    if not driver or (user.role not in {"admin"} and driver.user_id != user.id):
+        return {"reason": "driver_not_found_or_forbidden", "driver_found": False}
+    total_in_db = session.query(Event).count()
+    driver_games = list(expand_driver_games_for_event_match(driver.sim_games or []))
+    query = session.query(Event)
+    if driver.sim_games:
+        query = query.filter(Event.game.in_(driver_games))
+    after_game = query.count()
+    driver_tier = getattr(driver, "tier", "E0") or "E0"
+    event_ids_after_game = [r[0] for r in query.with_entities(Event.id).all()]
+    tier_by_event = {}
+    if event_ids_after_game:
+        classifications = (
+            session.query(Classification)
+            .filter(Classification.event_id.in_(event_ids_after_game))
+            .order_by(Classification.created_at.desc())
+            .all()
+        )
+        for c in classifications:
+            if c.event_id not in tier_by_event:
+                tier_by_event[c.event_id] = c.event_tier or "E2"
+    driver_idx = TIER_ORDER.index(driver_tier) if driver_tier in TIER_ORDER else 0
+    after_tier = sum(
+        1
+        for eid in event_ids_after_game
+        if TIER_ORDER.index(tier_by_event.get(eid, "E2")) >= driver_idx
+    )
+    if total_in_db == 0:
+        reason = "no_events_in_db"
+    elif after_game == 0 and driver.sim_games:
+        reason = "no_events_match_sim_games"
+    elif after_tier == 0:
+        reason = "no_events_match_tier"
+    else:
+        reason = "ok"
+    return {
+        "reason": reason,
+        "driver_found": True,
+        "driver_sim_games": driver.sim_games,
+        "driver_tier": driver_tier,
+        "events_total_in_db": total_in_db,
+        "events_after_game_filter": after_game,
+        "events_after_tier_filter": after_tier,
+        "hint": "Add ACC or Assetto Corsa Competizione to Profile → Sim games to see test events."
+        if reason == "no_events_match_sim_games"
+        else ("Run create_test_task_and_event.py to create test events." if reason == "no_events_in_db" else None),
+    }
+
+
 @router.get("", response_model=List[EventRead])
 def list_events(
     game: str | None = None,
@@ -141,7 +198,8 @@ def list_events(
             return []
         if driver.sim_games:
             query = query.filter(Event.game.in_(expand_driver_games_for_event_match(driver.sim_games)))
-        # else: no sim_games filter — show all events (e.g. newcomer before adding games)
+        # else: no sim_games filter — show all events (e.g. newcomer before adding games).
+        # Test events (create_test_task_and_event) use game="ACC"; driver must have ACC or Assetto Corsa Competizione in sim_games to see them.
         # same_tier filter applied after we have latest classification per event (below)
     events = query.order_by(Event.created_at.desc()).all()
     if not events:

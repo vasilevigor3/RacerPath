@@ -1186,22 +1186,26 @@ export const loadDashboardEvents = async (driver) => {
     }
     lastUpcomingEventsData = upcomingEventsData;
 
+    const noEventsFromApi = !events || events.length === 0;
+    const hintNoEvents = noEventsFromApi && driver.sim_games && driver.sim_games.length
+      ? 'No events for your selected games. Add ACC (or your sim) in Profile → Sim games to see test events.'
+      : null;
     if (dashboardEventsList) {
-      const emptyText = driver.sim_games && driver.sim_games.length
+      const emptyText = hintNoEvents || (driver.sim_games && driver.sim_games.length
         ? 'No upcoming events.'
-        : 'Add sim games to see events.';
+        : 'Add sim games to see events.');
       setEventListWithRegister(dashboardEventsList, dashboardEventsData, driver, emptyText, formatEventItem);
     }
     if (dashboardPastEventsList) {
-      const emptyText = driver.sim_games && driver.sim_games.length
+      const emptyText = hintNoEvents || (driver.sim_games && driver.sim_games.length
         ? 'No past events in the last 30 days.'
-        : 'Add sim games to see events.';
+        : 'Add sim games to see events.');
       setEventListWithRegister(dashboardPastEventsList, pastEventsData, driver, emptyText, formatEventItem);
     }
     if (upcomingEventsList) {
-      const emptyText = driver.sim_games && driver.sim_games.length
+      const emptyText = hintNoEvents || (driver.sim_games && driver.sim_games.length
         ? 'No upcoming events for your games.'
-        : 'No upcoming events. Add sim games to see events.';
+        : 'No upcoming events. Add sim games to see events.');
       setEventListWithRegister(upcomingEventsList, upcomingEventsData, driver, emptyText, formatEventItem);
     }
     loadActiveRace(driver);

@@ -22,7 +22,8 @@ from app.models.task_definition import TaskDefinition
 from app.services.classifier import TIER_LABELS, build_event_payload, classify_event
 
 TASK_CODE = "GT_TEST_FLOW"
-EVENT_TITLE = "Test Flow · E0 Sprint"
+EVENT_TITLE = "Test Flow · E1 Sprint"
+EVENT_TIER = "E1"  # E0 or E1: driver tier must be >= event tier to see events
 LICENSE_CODE = "GT_E0_TEST"
 LICENSE_NAME = "GT E0 Test"
 LICENSE_DESC = "Test license: complete GT_TEST_FLOW (Test Flow event) to become eligible."
@@ -74,7 +75,7 @@ def main() -> None:
             )
             session.add(event)
             session.flush()
-            tier = "E0"
+            tier = EVENT_TIER
             payload = build_event_payload(event, "gt")
             classification_data = classify_event(payload)
             classification_data["event_tier"] = tier

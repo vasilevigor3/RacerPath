@@ -1051,6 +1051,19 @@ footer {
   background: var(--bg-muted, #f5f5f5);
 }
 
+.admin-part-inc-pen-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+.admin-part-inc-pen-wrap .admin-constructors__input--tiny {
+  width: 3rem;
+  min-width: 2.5rem;
+  padding: 4px 6px;
+  font-size: 0.8125rem;
+}
+
 .admin-participation-card__head {
   display: flex;
   align-items: center;

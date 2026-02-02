@@ -1907,6 +1907,52 @@ const TaskDefinitionsPanel = ({ pendingTaskEditId, onClearPendingTaskEdit }) => 
   );
 };
 
+const ParticipationIncPenRow = ({ participationId, onSet }) => {
+  const [inc, setInc] = useState('');
+  const [pen, setPen] = useState('');
+  const [loading, setLoading] = useState(false);
+  const handleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (loading) return;
+    setLoading(true);
+    Promise.resolve()
+      .then(() => onSet(inc, pen))
+      .finally(() => setLoading(false));
+  };
+  return (
+    <span className="admin-part-inc-pen-wrap" onClick={(e) => e.stopPropagation()}>
+      <input
+        type="number"
+        className="admin-part-inc admin-constructors__input admin-constructors__input--tiny"
+        min={0}
+        placeholder="inc"
+        aria-label="Incidents"
+        value={inc}
+        onChange={(e) => setInc(e.target.value)}
+      />
+      <input
+        type="number"
+        className="admin-part-pen admin-constructors__input admin-constructors__input--tiny"
+        min={0}
+        placeholder="pen"
+        aria-label="Penalties"
+        value={pen}
+        onChange={(e) => setPen(e.target.value)}
+      />
+      <button
+        type="button"
+        className="btn ghost admin-constructors__btn"
+        title="PATCH incidents_count / penalties_count (empty = random 0–5)"
+        onClick={handleClick}
+        disabled={loading}
+      >
+        {loading ? '…' : 'Set inc/pen'}
+      </button>
+    </span>
+  );
+};
+
 const AdminLookup = () => {
   const [activeTab, setActiveTab] = useState('drivers');
   const [q, setQ] = useState('');
@@ -2041,6 +2087,38 @@ const AdminLookup = () => {
     }
     const query = q.trim();
     if (query) await doLookup(query);
+  };
+
+  const INCIDENT_TYPES_FOR_SET = ['Contact', 'Off-track', 'Track limits', 'Unsafe rejoin', 'Blocking', 'Avoidable contact', 'Mechanical', 'Other'];
+
+  const setParticipationIncidentsPenalties = async (partId, incStr, penStr, onDone) => {
+    const incVal = (incStr ?? '').toString().trim();
+    const penVal = (penStr ?? '').toString().trim();
+    const incidentsToCreate = incVal !== '' ? Math.max(0, parseInt(incVal, 10) || 0) : Math.floor(Math.random() * 6);
+    const penalties_count = penVal !== '' ? Math.max(0, parseInt(penVal, 10) || 0) : Math.floor(Math.random() * 6);
+    try {
+      for (let i = 0; i < incidentsToCreate; i++) {
+        const res = await apiFetch(`/api/participations/${encodeURIComponent(partId)}/incidents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            participation_id: partId,
+            incident_type: INCIDENT_TYPES_FOR_SET[i % INCIDENT_TYPES_FOR_SET.length],
+            severity: 1 + (i % 5),
+            lap: i + 1,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.detail || res.statusText || 'Create incident failed');
+        }
+      }
+      await updateParticipationState(partId, { penalties_count });
+      if (typeof onDone === 'function') onDone();
+      if (q.trim()) await doLookup(q.trim());
+    } catch (err) {
+      window.alert(err?.message || 'Failed');
+    }
   };
 
   const fetchParticipation = (e) => {
@@ -2324,6 +2402,10 @@ const AdminLookup = () => {
                           </button>
                         </>
                       )}
+                      <ParticipationIncPenRow
+                        participationId={p.id}
+                        onSet={(inc, pen) => setParticipationIncidentsPenalties(p.id, inc, pen)}
+                      />
                     </li>
                   ))}
                 </ul>

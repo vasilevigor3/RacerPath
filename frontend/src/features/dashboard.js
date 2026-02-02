@@ -238,8 +238,10 @@ function showTaskDetail(task, driver) {
   const canComplete = isTaken;
   const canDecline = isTaken || canTake;
 
+  const taskCode = task.code ?? task.id ?? '—';
   content.innerHTML = `
     <dl class="task-detail-dl">
+      <div><dt>Code</dt><dd>${taskEscapeHtml(taskCode)}</dd></div>
       <div><dt>Name</dt><dd>${taskEscapeHtml(task.name ?? '—')}</dd></div>
       <div><dt>Discipline</dt><dd>${taskEscapeHtml(task.discipline ?? '—')}</dd></div>
       <div><dt>Description</dt><dd>${taskEscapeHtml(task.description ?? '—')}</dd></div>

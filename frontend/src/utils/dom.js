@@ -57,7 +57,7 @@ export const setEventListWithRegister = (listEl, events, driver, emptyText, form
 
 /**
  * Render tasks as clickable rows; click opens task detail panel.
- * tasks: array of { id, name, ... }
+ * tasks: array of { id, code, name, ... } — display "CODE - Name"
  * emptyText: string when empty
  */
 export const setTaskListClickable = (listEl, tasks, emptyText) => {
@@ -68,9 +68,11 @@ export const setTaskListClickable = (listEl, tasks, emptyText) => {
   }
   listEl.innerHTML = tasks
     .map((task) => {
-      const name = escapeHtml(task.name ?? task.id);
+      const code = task.code ?? task.id ?? '';
+      const name = task.name ?? task.id ?? '—';
+      const label = code ? `${escapeHtml(code)} - ${escapeHtml(name)}` : escapeHtml(name);
       const taskId = escapeHtml(task.id);
-      return `<li class="task-list-item"><button type="button" class="task-list-item__text btn-link" data-task-id="${taskId}">${name}</button></li>`;
+      return `<li class="task-list-item"><button type="button" class="task-list-item__text btn-link" data-task-id="${taskId}">${label}</button></li>`;
     })
     .join('');
 };

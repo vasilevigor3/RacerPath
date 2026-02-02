@@ -236,7 +236,6 @@ const Cabinet = () => (
             </div>
           </div>
           <div className="task-detail-panel is-hidden" data-task-detail-panel>
-            <button type="button" className="btn ghost task-detail-back" data-task-detail-back>Back</button>
             <div className="task-detail-content" data-task-detail-content />
             <div className="task-detail-actions" data-task-detail-actions>
               <button type="button" className="btn primary btn-task-take" data-task-detail-take>Take task</button>

@@ -1651,7 +1651,7 @@ const CrsDiagnosticPanel = () => {
 
 const TASK_SCOPES = ['global', 'per_participation', 'rolling_window', 'periodic'];
 
-const TaskDefinitionsPanel = () => {
+const TaskDefinitionsPanel = ({ pendingTaskEditId, onClearPendingTaskEdit }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1693,7 +1693,7 @@ const TaskDefinitionsPanel = () => {
       startEdit(task);
     }
     onClearPendingTaskEdit();
-  }, [pendingTaskEditId, tasks]);
+  }, [pendingTaskEditId, tasks, onClearPendingTaskEdit]);
 
   const handleCreate = (e) => {
     e.preventDefault();

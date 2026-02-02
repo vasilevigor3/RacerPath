@@ -217,6 +217,18 @@ function taskEscapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+const TIER_ORDER = ['E0', 'E1', 'E2', 'E3', 'E4', 'E5'];
+
+function driverTierAllowsTask(driver, task) {
+  if (!task?.min_event_tier) return true;
+  const driverTier = driver?.tier || 'E0';
+  const driverIdx = TIER_ORDER.indexOf(driverTier);
+  const taskIdx = TIER_ORDER.indexOf(task.min_event_tier);
+  if (driverIdx === -1) return true;
+  if (taskIdx === -1) return true;
+  return driverIdx >= taskIdx;
+}
+
 function showTaskDetail(task, driver) {
   const listView = document.querySelector('[data-tasks-list-view]');
   const panel = document.querySelector('[data-task-detail-panel]');
@@ -235,7 +247,7 @@ function showTaskDetail(task, driver) {
   );
   const isCompleted = completedIds.has(task.id);
   const isTaken = pendingTaskIds.has(task.id);
-  const canTake = !isCompleted && !isTaken;
+  const canTake = !isCompleted && !isTaken && driverTierAllowsTask(driver, task);
   const canComplete = isTaken;
   const canDecline = isTaken || canTake;
 

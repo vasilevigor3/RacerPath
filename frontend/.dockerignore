@@ -1,0 +1,17 @@
+# Dependencies (image runs npm ci)
+node_modules
+
+# Build output (image runs npm run build)
+dist
+
+# Git and IDE
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# Tests and docs (not needed in image)
+tests
+*.md
+*.log

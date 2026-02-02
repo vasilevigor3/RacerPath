@@ -1,0 +1,25 @@
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+.idea
+.DS_Store
+
+# Dependencies and build artifacts (Docker builds its own)
+node_modules
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.pyc
+.venv
+.env
+.env.*
+
+# Docs and logs (not needed in image)
+*.md
+*.log
+_backup*/
+
+# Backend dev only (optional: keep scripts if needed for image)
+# backend/app.db

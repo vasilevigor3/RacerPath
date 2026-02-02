@@ -72,6 +72,19 @@ def create_task_completion(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    # Driver can take tasks only at their tier or below (admin can bypass)
+    if user.role not in {"admin"} and payload.status == "pending":
+        _TIER_ORDER = ("E0", "E1", "E2", "E3", "E4", "E5")
+        driver_tier = (driver.tier or "E0").strip()
+        task_min_tier = (task.min_event_tier or "E0").strip()
+        driver_idx = _TIER_ORDER.index(driver_tier) if driver_tier in _TIER_ORDER else 0
+        task_idx = _TIER_ORDER.index(task_min_tier) if task_min_tier in _TIER_ORDER else 0
+        if driver_idx < task_idx:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Task requires tier {task_min_tier} or higher; your tier is {driver_tier}. You can only take tasks at your tier or below.",
+            )
+
     if payload.participation_id:
         participation = (
             session.query(Participation)

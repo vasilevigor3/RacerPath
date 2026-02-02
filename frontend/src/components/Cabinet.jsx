@@ -216,11 +216,18 @@ const Cabinet = () => (
         </div>
 
         <div className="tab-panel" data-tab-panel="penalties">
-          <div className="card compact" data-focus-id="penalties-card">
+          <div data-penalties-list-view className="card compact" data-focus-id="penalties-card">
             <p className="card-title">My penalties (<span className="tab-count" data-penalties-total-card aria-label="Total penalties">0</span>)</p>
-            <ul className="list" data-penalty-list>
-              <li>Log in to see penalties.</li>
-            </ul>
+            <div className="penalty-cards" data-penalty-list role="list">
+              <div role="listitem">Log in to see penalties.</div>
+            </div>
+          </div>
+          <div className="penalty-detail-panel is-hidden" data-penalty-detail>
+            <h3 className="penalty-detail-title" data-penalty-detail-type>—</h3>
+            <p className="penalty-detail-race muted" data-penalty-detail-race>—</p>
+            <p className="penalty-detail-meta" data-penalty-detail-meta>—</p>
+            <p className="penalty-detail-desc muted" data-penalty-detail-desc></p>
+            <button type="button" className="btn ghost" data-penalty-detail-back>Back</button>
           </div>
         </div>
 

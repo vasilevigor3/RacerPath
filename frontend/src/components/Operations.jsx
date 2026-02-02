@@ -78,6 +78,13 @@ const toDatetimeLocal = (iso) => {
 };
 
 const INCIDENT_TYPES = ['Contact', 'Off-track', 'Track limits', 'Unsafe rejoin', 'Blocking', 'Avoidable contact', 'Mechanical', 'Other'];
+const PENALTY_TYPES = [
+  { value: 'time_penalty', label: 'Time penalty' },
+  { value: 'drive_through', label: 'Drive through' },
+  { value: 'stop_and_go', label: 'Stop and go' },
+  { value: 'dsq', label: 'DSQ' },
+];
+const TIME_PENALTY_SECONDS = [1, 2, 5, 10, 15, 30];
 const PARTICIPATION_STATUSES = ['finished', 'dnf', 'dsq', 'dns'];
 const PARTICIPATION_STATES = ['registered', 'withdrawn', 'started', 'completed'];
 const DISCIPLINES = ['gt', 'formula', 'rally', 'karting', 'historic'];
@@ -242,6 +249,12 @@ const AdminConstructors = ({ tab }) => {
   });
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentMsg, setIncidentMsg] = useState(null);
+
+  const [penaltyForm, setPenaltyForm] = useState({
+    participation_id: '', penalty_type: 'time_penalty', time_seconds: '5', lap: '', description: '',
+  });
+  const [penaltyLoading, setPenaltyLoading] = useState(false);
+  const [penaltyMsg, setPenaltyMsg] = useState(null);
 
   const [updatePartForm, setUpdatePartForm] = useState({
     participation_id: '', status: '', participation_state: '', position_overall: '',
@@ -443,6 +456,30 @@ const AdminConstructors = ({ tab }) => {
       .then((data) => setIncidentMsg(`Incident created: ${data.id}`))
       .catch((err) => setIncidentMsg(err?.message || 'Error'))
       .finally(() => setIncidentLoading(false));
+  };
+
+  const createPenalty = (e) => {
+    e.preventDefault();
+    const pid = penaltyForm.participation_id?.trim();
+    if (!pid) return;
+    setPenaltyLoading(true);
+    setPenaltyMsg(null);
+    const body = {
+      participation_id: pid,
+      penalty_type: penaltyForm.penalty_type,
+      lap: penaltyForm.lap ? parseInt(penaltyForm.lap, 10) : null,
+      description: penaltyForm.description?.trim() || null,
+    };
+    if (penaltyForm.penalty_type === 'time_penalty') {
+      body.time_seconds = parseInt(penaltyForm.time_seconds, 10) || 5;
+    } else if (penaltyForm.penalty_type === 'stop_and_go' && penaltyForm.time_seconds) {
+      body.time_seconds = parseInt(penaltyForm.time_seconds, 10) || null;
+    }
+    apiFetch(`/api/participations/${encodeURIComponent(pid)}/penalties`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
+      .then((data) => setPenaltyMsg(`Penalty created: ${data.id}`))
+      .catch((err) => setPenaltyMsg(err?.message || 'Error'))
+      .finally(() => setPenaltyLoading(false));
   };
 
   const updateParticipation = (e) => {
@@ -762,6 +799,41 @@ const AdminConstructors = ({ tab }) => {
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={incidentLoading}>{incidentLoading ? '…' : 'Create Incident'}</button>
           {incidentMsg && <p className="admin-constructors__msg" role="status">{incidentMsg}</p>}
+        </form>
+      </section>
+
+      <section className="admin-constructors__block">
+        <h4 className="admin-constructors__subtitle">Create Penalty</h4>
+        <p className="admin-constructors__hint">Participation ID required. Time penalty: time_seconds must be 1, 2, 5, 10, 15 or 30. DSQ will set participation status to dsq.</p>
+        <form onSubmit={createPenalty} className="admin-constructors__form">
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Participation ID</label>
+            <input type="text" value={penaltyForm.participation_id} onChange={(e) => setPenaltyForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Penalty type</label>
+            <select value={penaltyForm.penalty_type} onChange={(e) => setPenaltyForm((f) => ({ ...f, penalty_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
+              {PENALTY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          {(penaltyForm.penalty_type === 'time_penalty' || penaltyForm.penalty_type === 'stop_and_go') && (
+            <div className="admin-constructors__row">
+              <label className="admin-constructors__label">{penaltyForm.penalty_type === 'time_penalty' ? 'Time (seconds)' : 'Stop duration (s, optional)'}</label>
+              <select value={penaltyForm.time_seconds} onChange={(e) => setPenaltyForm((f) => ({ ...f, time_seconds: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
+                {TIME_PENALTY_SECONDS.map((s) => <option key={s} value={s}>{s}s</option>)}
+              </select>
+            </div>
+          )}
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Lap</label>
+            <input type="number" min="0" value={penaltyForm.lap} onChange={(e) => setPenaltyForm((f) => ({ ...f, lap: e.target.value }))} placeholder="optional" className="admin-constructors__input admin-constructors__input--num" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Description</label>
+            <input type="text" value={penaltyForm.description} onChange={(e) => setPenaltyForm((f) => ({ ...f, description: e.target.value }))} placeholder="optional" className="admin-constructors__input admin-constructors__input--uuid" />
+          </div>
+          <button type="submit" className="btn primary admin-constructors__btn" disabled={penaltyLoading}>{penaltyLoading ? '…' : 'Create Penalty'}</button>
+          {penaltyMsg && <p className="admin-constructors__msg" role="status">{penaltyMsg}</p>}
         </form>
       </section>
 

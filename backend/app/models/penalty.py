@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 from enum import Enum
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -26,6 +26,7 @@ class Penalty(Base):
         String(36), ForeignKey("participations.id"), nullable=False, index=True
     )
     penalty_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)  # CRS deduction; from app.penalties.scores
     time_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     lap: Mapped[int | None] = mapped_column(Integer, nullable=True)
     description: Mapped[str | None] = mapped_column(String(240), nullable=True)

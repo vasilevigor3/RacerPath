@@ -11,6 +11,7 @@ from app.models.anti_gaming import AntiGamingReport
 from app.models.crs_history import CRSHistory
 from app.models.participation import Participation
 from app.models.task_completion import TaskCompletion
+from app.repositories.penalty import PenaltyRepository
 from app.core.settings import settings
 from app.core.constants import (
     CRS_ALGO_VERSION,
@@ -42,10 +43,13 @@ def _classification_for_participation(
     )
 
 
-def _participation_score(participation: Participation) -> float:
+def _participation_score(participation: Participation, penalty_score_sum: float | None = None) -> float:
     score = 100.0
     score -= participation.incidents_count * 4.0
-    score -= participation.penalties_count * 6.0
+    if penalty_score_sum is not None:
+        score -= penalty_score_sum
+    else:
+        score -= participation.penalties_count * 6.0
 
     if participation.status == "dnf":
         score -= 25.0
@@ -78,8 +82,10 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
     weighted_scores = []
     weights = []
 
+    penalty_repo = PenaltyRepository(session)
     for participation in participations:
-        base_score = _participation_score(participation)
+        penalty_score_sum = penalty_repo.sum_score_by_participation_id(participation.id)
+        base_score = _participation_score(participation, penalty_score_sum)
         classification = _classification_for_participation(session, participation)
         if not classification:
             raise ValueError(

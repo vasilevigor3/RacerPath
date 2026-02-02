@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.participation import Participation
 from app.models.penalty import Penalty
+from app.penalties.scores import DEFAULT_PENALTY_SCORE
 
 
 class PenaltyRepository:
@@ -65,6 +66,18 @@ class PenaltyRepository:
                 .filter(Participation.driver_id == driver_id)
             )
         return query.count()
+
+    def sum_score_by_participation_id(self, participation_id: str) -> float:
+        """Sum penalty scores for a participation. Null score treated as DEFAULT_PENALTY_SCORE (legacy)."""
+        rows = (
+            self._session.query(Penalty.score)
+            .filter(Penalty.participation_id == participation_id)
+            .all()
+        )
+        total = 0.0
+        for (s,) in rows:
+            total += s if s is not None else DEFAULT_PENALTY_SCORE
+        return total
 
     def add(self, penalty: Penalty) -> None:
         self._session.add(penalty)

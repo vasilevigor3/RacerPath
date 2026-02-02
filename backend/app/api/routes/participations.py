@@ -17,6 +17,7 @@ from app.repositories.penalty import PenaltyRepository
 from app.repositories.task_completion import TaskCompletionRepository
 from app.schemas.incident import IncidentCreate, IncidentRead
 from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead, ParticipationWithdrawUpdate
+from app.penalties.scores import get_score_for_penalty_type
 from app.schemas.penalty import PenaltyCreate, PenaltyRead, PenaltyTypeEnum
 from app.services.tasks import assign_tasks_on_registration, evaluate_tasks
 from app.services.crs import recompute_crs
@@ -251,9 +252,11 @@ def create_penalty(
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
 
+    score = payload.score if payload.score is not None else get_score_for_penalty_type(payload.penalty_type.value)
     penalty = Penalty(
         participation_id=payload.participation_id,
         penalty_type=payload.penalty_type.value,
+        score=score,
         time_seconds=payload.time_seconds,
         lap=payload.lap,
         description=payload.description,

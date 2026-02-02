@@ -712,6 +712,20 @@ footer {
   margin-top: 16px;
 }
 
+.admin-reset-seed-block {
+  margin-top: 12px;
+}
+.admin-reset-seed-block .admin-reset-seed-error {
+  color: var(--error, #c00);
+  font-size: 0.875rem;
+  margin-top: 6px;
+}
+.admin-reset-seed-block .admin-reset-seed-result {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-top: 6px;
+}
+
 .admin-tabs {
   display: flex;
   flex-wrap: wrap;

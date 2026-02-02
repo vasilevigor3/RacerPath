@@ -2482,6 +2482,52 @@ const AdminLookup = () => {
   );
 };
 
+const ResetSeedTestDataButton = () => {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const handleClick = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await apiFetch('/api/admin/reset-and-seed-test-data', { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || res.statusText || 'Failed');
+      }
+      const data = await res.json();
+      setResult(data);
+    } catch (e) {
+      setError(e?.message || 'Error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-reset-seed-block">
+      <button
+        type="button"
+        className="btn btn--secondary"
+        onClick={handleClick}
+        disabled={loading}
+        data-admin-reset-seed-test
+      >
+        {loading ? 'Running…' : 'Reset & seed test data'}
+      </button>
+      {error && <p className="admin-reset-seed-error">{error}</p>}
+      {result && !error && (
+        <p className="admin-reset-seed-result">
+          Reset: {result.reset?.events ?? 0} events, {result.reset?.task_definitions ?? 0} tasks, {result.reset?.license_levels ?? 0} licenses.
+          Created: {result.created?.events?.length ?? 0} events, {result.created?.tasks?.length ?? 0} tasks, license {result.created?.license ?? '—'}.
+        </p>
+      )}
+    </div>
+  );
+};
+
 const Operations = () => {
   return (
     <section id="operations" className="section reveal is-hidden" data-admin-only>
@@ -2492,6 +2538,7 @@ const Operations = () => {
         <div className="section-header-row__heading-wrap">
           <div className="section-heading">
             <h2>Admin console</h2>
+            <ResetSeedTestDataButton />
           </div>
         </div>
       </div>

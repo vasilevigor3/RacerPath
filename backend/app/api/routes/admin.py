@@ -86,6 +86,7 @@ from app.events.participation_events import dispatch_participation_completed
 from app.services.global_tasks import check_and_complete_global_tasks
 from app.services.tasks import ensure_task_completion
 from app.services.race_of_day import restart_race_of_day
+from app.services.test_data import reset_all_tasks_licenses_events, create_test_task_and_event_set
 from app.core.constants import VALID_TIERS
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -410,6 +411,19 @@ def post_race_of_day_restart(
 ):
     """Delete current Race of the day event(s) with all relations, create a new one (E0)."""
     return restart_race_of_day(session)
+
+
+@router.post("/reset-and-seed-test-data")
+def post_reset_and_seed_test_data(
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Reset all tasks, licenses, events and related; then create test set (GT_TEST_FLOW, GT_TEST_FLOW_2, 2 events, GT_E0_TEST)."""
+    reset_counts = reset_all_tasks_licenses_events(session)
+    session.commit()
+    created = create_test_task_and_event_set(session)
+    session.commit()
+    return {"reset": reset_counts, "created": created}
 
 
 @router.get("/events/{event_id}", response_model=AdminEventDetailRead)

@@ -1,12 +1,14 @@
-"""Run task evaluation and license award when a participation becomes completed."""
+"""Run task evaluation, license award, and tier recalc when a participation becomes completed."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.models.driver import Driver
 from app.models.participation import Participation
 from app.services.licenses import award_license, check_eligibility
+from app.services.next_tier import compute_next_tier_progress
 from app.services.tasks import assign_participation_id_for_completed_participation, evaluate_tasks
 
 
@@ -20,7 +22,7 @@ class ParticipationCompletedResult:
 def on_participation_completed(
     session: Session, driver_id: str, participation_id: str
 ) -> ParticipationCompletedResult:
-    """Evaluate tasks, backfill participation_id, check eligibility and award license if eligible."""
+    """Evaluate tasks, backfill participation_id, check eligibility, award license if eligible, recalc tier."""
     completions = evaluate_tasks(session, driver_id, participation_id)
     assign_participation_id_for_completed_participation(session, driver_id, participation_id)
 
@@ -37,6 +39,11 @@ def on_participation_completed(
         if awarded:
             license_awarded = True
             license_level_code = awarded.level_code
+
+    # Recalc tier (and auto-promote if progress 100% and required licenses earned)
+    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    if driver and driver.user_id:
+        compute_next_tier_progress(session, driver.user_id)
 
     return ParticipationCompletedResult(
         task_completions_count=len(completions),

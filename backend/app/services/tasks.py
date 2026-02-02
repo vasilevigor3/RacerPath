@@ -7,8 +7,9 @@ import json
 from sqlalchemy.orm import Session
 
 from app.models.classification import Classification
+from app.models.driver import Driver
 from app.models.event import Event
-from app.models.participation import Participation
+from app.models.participation import Participation, ParticipationState
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
 
@@ -121,15 +122,109 @@ def _meets_requirements(
         return False
 
     if requirements.get("require_clean_finish"):
-        if participation.status != "finished":
+        if part_status != "finished":
             return False
         if participation.incidents_count > 0 or participation.penalties_count > 0:
             return False
 
-    if participation.status != "finished" and not requirements.get("allow_non_finish"):
+    if part_status != "finished" and not requirements.get("allow_non_finish"):
+        return False
+
+    max_position_overall = requirements.get("max_position_overall")
+    if max_position_overall is not None and participation.position_overall is not None:
+        if participation.position_overall > int(max_position_overall):
+            return False
+
+    min_position_overall = requirements.get("min_position_overall")
+    if min_position_overall is not None and participation.position_overall is not None:
+        if participation.position_overall < int(min_position_overall):
+            return False
+
+    min_laps_completed = requirements.get("min_laps_completed")
+    if min_laps_completed is not None and participation.laps_completed < int(min_laps_completed):
         return False
 
     return True
+
+
+def assign_tasks_on_registration(
+    session: Session, driver_id: str, participation_id: str
+) -> list[TaskCompletion]:
+    """When driver registers for an event that has task_codes, assign matching tasks to in progress (pending + participation_id)."""
+    participation = (
+        session.query(Participation)
+        .filter(Participation.id == participation_id, Participation.driver_id == driver_id)
+        .first()
+    )
+    if not participation:
+        return []
+    event = session.query(Event).filter(Event.id == participation.event_id).first()
+    if not event or not getattr(event, "task_codes", None) or not isinstance(event.task_codes, list):
+        return []
+    task_codes = [c for c in event.task_codes if c and isinstance(c, str)]
+    if not task_codes:
+        return []
+    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    if not driver:
+        return []
+    driver_tier = (driver.tier or "E0").strip()
+    part_discipline = (
+        participation.discipline.value if hasattr(participation.discipline, "value") else str(participation.discipline)
+    )
+    created: list[TaskCompletion] = []
+    for code in task_codes:
+        task = (
+            session.query(TaskDefinition)
+            .filter(
+                TaskDefinition.code == code.strip(),
+                TaskDefinition.active.is_(True),
+                TaskDefinition.discipline == part_discipline,
+            )
+            .first()
+        )
+        if not task:
+            continue
+        task_min_tier = (task.min_event_tier or "E0").strip()
+        if driver_tier not in TIER_RANK or task_min_tier not in TIER_RANK:
+            continue
+        if TIER_RANK[driver_tier] < TIER_RANK[task_min_tier]:
+            continue
+        already_completed = (
+            session.query(TaskCompletion)
+            .filter(
+                TaskCompletion.driver_id == driver_id,
+                TaskCompletion.task_id == task.id,
+                TaskCompletion.status == "completed",
+            )
+            .first()
+        )
+        if already_completed:
+            continue
+        already_pending = (
+            session.query(TaskCompletion)
+            .filter(
+                TaskCompletion.driver_id == driver_id,
+                TaskCompletion.task_id == task.id,
+                TaskCompletion.participation_id == participation_id,
+                TaskCompletion.status == "pending",
+            )
+            .first()
+        )
+        if already_pending:
+            continue
+        completion = TaskCompletion(
+            driver_id=driver_id,
+            task_id=task.id,
+            participation_id=participation_id,
+            status="pending",
+        )
+        session.add(completion)
+        created.append(completion)
+    if created:
+        session.commit()
+        for c in created:
+            session.refresh(c)
+    return created
 
 
 def ensure_task_completion(
@@ -228,6 +323,8 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
     current_signature = _event_signature(event)
 
     for task in tasks:
+        if not getattr(task, "event_related", True):
+            continue
         requirements = task.requirements or {}
         repeatable = bool(requirements.get("repeatable", False))
 
@@ -357,20 +454,79 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
             floor = float(requirements.get("diminishing_floor") or 0.4)
             multiplier = max(floor, 1.0 - step * len(recent))
 
-        completion = TaskCompletion(
-            driver_id=driver_id,
-            task_id=task.id,
-            participation_id=participation_id,
-            status="completed",
-            completed_at=now,
-            event_signature=current_signature,
-            score_multiplier=multiplier,
+        existing_pending = (
+            session.query(TaskCompletion)
+            .filter(
+                TaskCompletion.driver_id == driver_id,
+                TaskCompletion.task_id == task.id,
+                TaskCompletion.participation_id == participation_id,
+                TaskCompletion.status == "pending",
+            )
+            .first()
         )
-        session.add(completion)
-        completions.append(completion)
+        if existing_pending:
+            existing_pending.status = "completed"
+            existing_pending.completed_at = now
+            existing_pending.event_signature = current_signature
+            existing_pending.score_multiplier = multiplier
+            completions.append(existing_pending)
+        else:
+            completion = TaskCompletion(
+                driver_id=driver_id,
+                task_id=task.id,
+                participation_id=participation_id,
+                status="completed",
+                completed_at=now,
+                event_signature=current_signature,
+                score_multiplier=multiplier,
+            )
+            session.add(completion)
+            completions.append(completion)
 
     session.commit()
     for completion in completions:
         session.refresh(completion)
 
     return completions
+
+
+def assign_participation_id_for_completed_participation(
+    session: Session, driver_id: str, participation_id: str
+) -> int:
+    """When a participation is completed, link existing task completions (without participation_id)
+    that are satisfied by this participation. Returns the number of completions updated.
+    Call after evaluate_tasks so new completions are created first; this backfills manual ones.
+    """
+    participation = (
+        session.query(Participation)
+        .filter(Participation.id == participation_id, Participation.driver_id == driver_id)
+        .first()
+    )
+    if not participation or participation.participation_state != ParticipationState.completed:
+        return 0
+    event = session.query(Event).filter(Event.id == participation.event_id).first()
+    if not event:
+        return 0
+    classification = _latest_classification(session, participation.event_id)
+    part_discipline = (
+        participation.discipline.value if hasattr(participation.discipline, "value") else str(participation.discipline)
+    )
+    unlinked = (
+        session.query(TaskCompletion, TaskDefinition)
+        .join(TaskDefinition, TaskCompletion.task_id == TaskDefinition.id)
+        .filter(
+            TaskCompletion.driver_id == driver_id,
+            TaskCompletion.status == "completed",
+            TaskCompletion.participation_id.is_(None),
+            TaskDefinition.discipline == part_discipline,
+        )
+        .all()
+    )
+    updated = 0
+    for completion, task in unlinked:
+        if _meets_requirements(task, participation, event, classification):
+            completion.participation_id = participation_id
+            updated += 1
+    if updated:
+        session.commit()
+    return updated

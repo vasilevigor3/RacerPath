@@ -84,6 +84,12 @@ def create_task_completion(
                 status_code=400,
                 detail=f"Task requires tier {task_min_tier} or higher; your tier is {driver_tier}. You can only take tasks at your tier or below.",
             )
+        # Event-related tasks can only be taken by registering for an event (with participation_id)
+        if getattr(task, "event_related", True) and not payload.participation_id:
+            raise HTTPException(
+                status_code=400,
+                detail="This task is event-related. You can only take it by registering for an event that has this task.",
+            )
 
     if payload.participation_id:
         participation = (

@@ -253,6 +253,7 @@ const Cabinet = () => (
           </div>
           <div className="task-detail-panel is-hidden" data-task-detail-panel>
             <div className="task-detail-content" data-task-detail-content />
+            <p className="task-detail-event-related-msg is-hidden muted" data-task-detail-event-related-msg />
             <div className="task-detail-actions" data-task-detail-actions>
               <button type="button" className="btn primary btn-task-take" data-task-detail-take>Take task</button>
               <button type="button" className="btn ghost btn-task-decline" data-task-detail-decline>Decline</button>
@@ -274,7 +275,7 @@ const Cabinet = () => (
           </div>
           <div className="grid-2">
             <div className="card card-events">
-              <p className="card-title">Recent events</p>
+              <p className="card-title">Upcoming events</p>
               <div data-events-list-view>
                 <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                   <input type="checkbox" data-events-same-tier />
@@ -294,6 +295,12 @@ const Cabinet = () => (
                 </div>
                 <button type="button" className="btn ghost btn-back-arrow event-detail-back" data-event-detail-back aria-label="Back"><span aria-hidden>←</span></button>
               </div>
+            </div>
+            <div className="card">
+              <p className="card-title">Past events</p>
+              <ul className="list" data-dashboard-past-events>
+                <li>No past events.</li>
+              </ul>
             </div>
             <div className="card">
               <p className="card-title">Recent participations</p>

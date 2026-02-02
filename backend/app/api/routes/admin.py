@@ -69,7 +69,7 @@ from app.schemas.participation import ParticipationRead, ParticipationAdminRead
 from app.schemas.profile import UserProfileRead, UserProfileUpsert
 from app.services.auth import require_roles
 from app.services.next_tier import compute_next_tier_progress
-from app.services.tasks import ensure_task_completion
+from app.services.tasks import assign_participation_id_for_completed_participation, ensure_task_completion, evaluate_tasks
 from app.services.race_of_day import restart_race_of_day
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -567,6 +567,9 @@ def update_participation(
 
     session.commit()
     session.refresh(part)
+    if part.participation_state == ParticipationState.completed:
+        evaluate_tasks(session, part.driver_id, part.id)
+        assign_participation_id_for_completed_participation(session, part.driver_id, part.id)
     return part
 
 

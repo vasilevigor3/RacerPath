@@ -9,10 +9,11 @@ from app.models.driver import Driver
 from app.models.event import Event
 from app.models.incident import Incident
 from app.models.participation import Participation, ParticipationState, ParticipationStatus
+from app.models.task_completion import TaskCompletion
 from app.models.user import User
 from app.schemas.incident import IncidentCreate, IncidentRead
 from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead, ParticipationWithdrawUpdate
-from app.services.tasks import evaluate_tasks
+from app.services.tasks import assign_tasks_on_registration, evaluate_tasks
 from app.services.crs import recompute_crs
 from app.services.auth import require_user
 from app.utils.rig_compat import driver_rig_satisfies_event
@@ -69,6 +70,7 @@ def create_participation(
             existing.status = ParticipationStatus.dns
             session.commit()
             session.refresh(existing)
+            assign_tasks_on_registration(session, driver.id, existing.id)
             return existing
         raise HTTPException(status_code=400, detail="Participation already exists")
 
@@ -77,7 +79,7 @@ def create_participation(
     session.add(participation)
     session.commit()
     session.refresh(participation)
-    evaluate_tasks(session, driver.id, participation.id)
+    assign_tasks_on_registration(session, driver.id, participation.id)
     try:
         recompute_crs(
             session,
@@ -188,6 +190,10 @@ def update_participation_withdraw(
         )
     participation.participation_state = ParticipationState.withdrawn
     participation.withdraw_count = (participation.withdraw_count or 0) + 1
+    session.query(TaskCompletion).filter(
+        TaskCompletion.participation_id == participation.id,
+        TaskCompletion.status == "pending",
+    ).delete(synchronize_session=False)
     session.commit()
     session.refresh(participation)
     return participation

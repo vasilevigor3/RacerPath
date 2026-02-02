@@ -98,6 +98,7 @@ def list_events(
     driver_id: str | None = None,
     same_tier: bool = False,
     rig_filter: bool = True,
+    task_code: str | None = None,
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
@@ -145,6 +146,10 @@ def list_events(
     events = query.order_by(Event.created_at.desc()).all()
     if not events:
         return []
+    if task_code:
+        events = [e for e in events if getattr(e, "task_codes", None) and task_code in e.task_codes]
+        if not events:
+            return []
     # Latest classification per event (same source we use for display)
     event_ids = [e.id for e in events]
     classifications = (

@@ -20,6 +20,8 @@ class TaskDefinition(Base):
     requirements: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     min_event_tier: Mapped[str] = mapped_column(String(10), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # True = completion only via event participation; False = other (e.g. profile, onboarding)
+    event_related: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # scope: how task is counted (global once, per participation, rolling window, periodic)
     scope: Mapped[str] = mapped_column(String(24), nullable=False, default="per_participation")
     cooldown_days: Mapped[int | None] = mapped_column(Integer, nullable=True)

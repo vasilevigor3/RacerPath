@@ -143,4 +143,6 @@ def mock_participation_finish(
     part.status = ParticipationStatus(status)
     session.commit()
     session.refresh(part)
+    evaluate_tasks(session, part.driver_id, part.id)
+    assign_participation_id_for_completed_participation(session, part.driver_id, part.id)
     return part

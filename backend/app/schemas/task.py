@@ -18,6 +18,7 @@ class TaskDefinitionCreate(BaseModel):
     requirements: Dict[str, str | int | float | bool] = Field(default_factory=dict)
     min_event_tier: str | None = None
     active: bool = True
+    event_related: bool = True
     scope: TASK_SCOPE = "per_participation"
     cooldown_days: int | None = Field(default=None, ge=0, le=365)
     period: TASK_PERIOD | None = None
@@ -47,6 +48,7 @@ class TaskDefinitionUpdate(BaseModel):
     requirements: Dict[str, str | int | float | bool] | None = None
     min_event_tier: str | None = None
     active: bool | None = None
+    event_related: bool | None = None
     scope: TASK_SCOPE | None = None
     cooldown_days: int | None = Field(None, ge=0, le=365)
     period: TASK_PERIOD | None = None

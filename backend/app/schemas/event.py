@@ -69,6 +69,7 @@ class EventCreate(BaseModel):
     official_event: bool = False
     assists_allowed: bool = False
     rig_options: Optional[RigOptions] = Field(default=None, description="Required/minimum rig for event")
+    task_codes: Optional[List[str]] = Field(default=None, description="Task codes that can be completed at this event; empty/None = normal race only")
 
     @model_validator(mode="after")
     def validate_team_sizes(self):
@@ -125,6 +126,7 @@ class EventUpdate(BaseModel):
     official_event: Optional[bool] = None
     assists_allowed: Optional[bool] = None
     rig_options: Optional[RigOptions] = None
+    task_codes: Optional[List[str]] = None
 
     @model_validator(mode="after")
     def validate_team_sizes(self):

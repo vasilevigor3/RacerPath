@@ -30,6 +30,7 @@ const recReadinessTitle = document.querySelector('[data-rec-readiness-title]');
 const recReadinessDesc = document.querySelector('[data-rec-readiness-desc]');
 const upcomingEventsList = document.querySelector('[data-upcoming-events]');
 const dashboardEventsList = document.querySelector('[data-dashboard-events]');
+const dashboardPastEventsList = document.querySelector('[data-dashboard-past-events]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
 const licenseReqs = document.querySelector('[data-license-reqs]');
@@ -230,13 +231,14 @@ function driverTierAllowsTask(driver, task) {
   return driverIdx >= taskIdx;
 }
 
-function showTaskDetail(task, driver) {
+async function showTaskDetail(task, driver) {
   const listView = document.querySelector('[data-tasks-list-view]');
   const panel = document.querySelector('[data-task-detail-panel]');
   const content = document.querySelector('[data-task-detail-content]');
   const actionsEl = document.querySelector('[data-task-detail-actions]');
   const takeBtn = document.querySelector('[data-task-detail-take]');
   const declineBtn = document.querySelector('[data-task-detail-decline]');
+  const eventRelatedMsg = document.querySelector('[data-task-detail-event-related-msg]');
   if (!listView || !panel || !content) return;
 
   const completedIds = new Set(
@@ -247,7 +249,8 @@ function showTaskDetail(task, driver) {
   );
   const isCompleted = completedIds.has(task.id);
   const isTaken = pendingTaskIds.has(task.id);
-  const canTake = !isCompleted && !isTaken && driverTierAllowsTask(driver, task);
+  const isEventRelated = task.event_related !== false;
+  const canTake = !isCompleted && !isTaken && driverTierAllowsTask(driver, task) && !isEventRelated;
   const canDecline = isTaken || canTake;
 
   const taskCode = task.code ?? task.id ?? '—';
@@ -261,6 +264,30 @@ function showTaskDetail(task, driver) {
       <div><dt>Status</dt><dd>${isCompleted ? 'Completed' : isTaken ? 'In progress' : 'Not taken'}</dd></div>
     </dl>
   `;
+
+  if (eventRelatedMsg) {
+    if (isEventRelated && !isCompleted && !isTaken) {
+      eventRelatedMsg.classList.remove('is-hidden');
+      const code = (task.code || '').trim();
+      if (code && driver?.id) {
+        try {
+          const res = await apiFetch(`/api/events?driver_id=${encodeURIComponent(driver.id)}&task_code=${encodeURIComponent(code)}&rig_filter=false`);
+          const events = res.ok ? await res.json() : [];
+          const names = (Array.isArray(events) ? events : []).map((e) => e.title || e.id).filter(Boolean);
+          eventRelatedMsg.textContent = names.length
+            ? `Таска автоматически назначается при участии в событии: ${names.join(', ')}.`
+            : 'Таска автоматически назначается при участии в подходящем событии.';
+        } catch {
+          eventRelatedMsg.textContent = 'Таска автоматически назначается при участии в подходящем событии.';
+        }
+      } else {
+        eventRelatedMsg.textContent = 'Таска автоматически назначается при участии в подходящем событии.';
+      }
+    } else {
+      eventRelatedMsg.classList.add('is-hidden');
+      eventRelatedMsg.textContent = '';
+    }
+  }
 
   if (takeBtn) {
     takeBtn.style.display = canTake ? '' : 'none';
@@ -547,6 +574,7 @@ let lastRiskFlagsWithDetails = [];
 let lastDriverForEvents = null;
 let lastDriverForActiveRace = null;
 let lastDashboardEventsData = [];
+let lastDashboardPastEventsData = [];
 let lastUpcomingEventsData = [];
 let lastShownEventId = null;
 let lastShownEvent = null;
@@ -787,6 +815,7 @@ const registerOnEvent = async (driverId, eventId) => {
     if (lastDriverForEvents) {
       await loadDashboardStats(lastDriverForEvents);
       await loadDashboardEvents(lastDriverForEvents);
+      await loadTasksOverview(lastDriverForEvents);
     }
   } catch (err) {
     if (typeof window !== 'undefined' && window.alert) window.alert('Register failed.');
@@ -811,6 +840,7 @@ const withdrawFromEvent = async (participationId) => {
     if (lastDriverForEvents) {
       await loadDashboardStats(lastDriverForEvents);
       await loadDashboardEvents(lastDriverForEvents);
+      await loadTasksOverview(lastDriverForEvents);
     }
   } catch (err) {
     if (typeof window !== 'undefined' && window.alert) window.alert('Withdraw failed.');
@@ -929,8 +959,9 @@ function initDashboardEventsRegisterDelegation() {
     }
     const list = e.target.closest('[data-dashboard-events]');
     const upcomingList = e.target.closest('[data-upcoming-events]');
-    const textBtn = (list || upcomingList) ? e.target.closest('.event-list-item__text') : null;
-    if (textBtn && (list || upcomingList)) {
+    const pastList = e.target.closest('[data-dashboard-past-events]');
+    const textBtn = (list || upcomingList || pastList) ? e.target.closest('.event-list-item__text') : null;
+    if (textBtn && (list || upcomingList || pastList)) {
       e.preventDefault();
       const eventId = textBtn.getAttribute('data-event-id');
       const driver = lastDriverForEvents;
@@ -1027,11 +1058,13 @@ export const loadDashboardEvents = async (driver) => {
   if (!driver) {
     lastDriverForEvents = null;
     lastDashboardEventsData = [];
+    lastDashboardPastEventsData = [];
     lastUpcomingEventsData = [];
     hideEventDetail();
     loadActiveRace(null);
     if (dashboardEventsList) setList(dashboardEventsList, [], 'Log in to load events.');
     if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
+    if (dashboardPastEventsList) setList(dashboardPastEventsList, [], 'No past events.');
     return;
   }
   lastDriverForEvents = driver;
@@ -1082,6 +1115,18 @@ export const loadDashboardEvents = async (driver) => {
       .slice(0, 5);
     lastDashboardEventsData = dashboardEventsData;
 
+    const RECENT_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const cutoffMs = now - RECENT_DAYS_MS;
+    const pastEventsData = events
+      .filter((e) => {
+        if (!e.start_time_utc) return false;
+        const startMs = new Date(e.start_time_utc).getTime();
+        return !Number.isNaN(startMs) && startMs < now && startMs >= cutoffMs;
+      })
+      .sort((a, b) => new Date(b.start_time_utc).getTime() - new Date(a.start_time_utc).getTime())
+      .slice(0, 10);
+    lastDashboardPastEventsData = pastEventsData;
+
     let upcomingEventsData = [];
     if (upcomingRes.ok) {
       const upcomingEvents = await upcomingRes.json();
@@ -1091,9 +1136,15 @@ export const loadDashboardEvents = async (driver) => {
 
     if (dashboardEventsList) {
       const emptyText = driver.sim_games && driver.sim_games.length
-        ? 'No recent or upcoming events.'
+        ? 'No upcoming events.'
         : 'Add sim games to see events.';
       setEventListWithRegister(dashboardEventsList, dashboardEventsData, driver, emptyText, formatEventItem);
+    }
+    if (dashboardPastEventsList) {
+      const emptyText = driver.sim_games && driver.sim_games.length
+        ? 'No past events in the last 30 days.'
+        : 'Add sim games to see events.';
+      setEventListWithRegister(dashboardPastEventsList, pastEventsData, driver, emptyText, formatEventItem);
     }
     if (upcomingEventsList) {
       const emptyText = driver.sim_games && driver.sim_games.length
@@ -1105,6 +1156,9 @@ export const loadDashboardEvents = async (driver) => {
   } catch (err) {
     if (dashboardEventsList) {
       setList(dashboardEventsList, [], 'Unable to load events.');
+    }
+    if (dashboardPastEventsList) {
+      setList(dashboardPastEventsList, [], 'Unable to load events.');
     }
     if (upcomingEventsList) {
       setList(upcomingEventsList, [], 'Unable to load events.');

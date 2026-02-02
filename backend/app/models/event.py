@@ -80,6 +80,8 @@ class Event(Base):
     assists_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     rig_options: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    # Task codes that can be completed at this event (e.g. ["GT_CLEAN_SPRINT"]); empty/None = normal race only
+    task_codes: Mapped[list | None] = mapped_column(JSON, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

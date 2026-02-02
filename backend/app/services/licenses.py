@@ -95,7 +95,8 @@ def check_eligibility(session: Session, driver_id: str, discipline: str) -> Elig
     for level in levels:
         if level.code in earned:
             continue
-        missing_tasks = set(level.required_task_codes) - completed_codes
+        req_codes = level.required_task_codes if isinstance(level.required_task_codes, list) else []
+        missing_tasks = set(req_codes) - completed_codes
         if crs.score < level.min_crs:
             reasons.append(f"CRS {crs.score} < min_crs {level.min_crs} for {level.code}")
             continue
@@ -157,7 +158,9 @@ def award_license(session: Session, driver_id: str, discipline: str) -> DriverLi
             continue
         if crs.score < level.min_crs:
             continue
-        if not set(level.required_task_codes).issubset(completed_codes):
+        # Require ALL required_task_codes to be in completed_codes (no partial pass)
+        req_codes = level.required_task_codes if isinstance(level.required_task_codes, list) else []
+        if req_codes and not all(rc in completed_codes for rc in req_codes):
             continue
         eligible = level
 

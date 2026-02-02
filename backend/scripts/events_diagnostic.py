@@ -63,6 +63,8 @@ def main() -> None:
             hint = "Add ACC or Assetto Corsa Competizione to Profile → Sim games to see test events."
         elif reason == "no_events_in_db":
             hint = "Run create_test_task_and_event.py to create test events."
+        elif reason == "no_events_match_tier":
+            hint = "Events have lower tier than driver. Uncheck 'Show only my lvl events' or create events with tier >= driver tier."
         out = {
             "reason": reason,
             "driver_found": True,

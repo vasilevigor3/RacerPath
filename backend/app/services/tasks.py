@@ -397,6 +397,10 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
         .filter(TaskDefinition.active.is_(True), TaskDefinition.discipline == participation.discipline)
         .all()
     )
+    # Only evaluate tasks that are assigned to THIS event (event.task_codes)
+    event_task_codes = list(event.task_codes) if getattr(event, "task_codes", None) else []
+    if event_task_codes:
+        tasks = [t for t in tasks if t.code in event_task_codes]
 
     completions: list[TaskCompletion] = []
 
@@ -609,6 +613,7 @@ def assign_participation_id_for_completed_participation(
     part_discipline = (
         participation.discipline.value if hasattr(participation.discipline, "value") else str(participation.discipline)
     )
+    event_task_codes = list(event.task_codes) if getattr(event, "task_codes", None) else []
     unlinked = (
         session.query(TaskCompletion, TaskDefinition)
         .join(TaskDefinition, TaskCompletion.task_id == TaskDefinition.id)
@@ -622,6 +627,8 @@ def assign_participation_id_for_completed_participation(
     )
     updated = 0
     for completion, task in unlinked:
+        if event_task_codes and task.code not in event_task_codes:
+            continue
         if _meets_requirements(task, participation, event, classification):
             completion.participation_id = participation_id
             updated += 1

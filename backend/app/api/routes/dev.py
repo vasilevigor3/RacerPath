@@ -17,6 +17,7 @@ from app.schemas.task import TaskCompletionRead, TaskCompleteRequest
 from app.services.auth import require_roles, require_user
 from app.services.crs import recompute_crs
 from app.services.recommendations import recompute_recommendations
+from app.services.tasks import assign_participation_id_for_completed_participation, evaluate_tasks
 from app.services.task_engine import can_complete_task, complete_task
 
 router = APIRouter(prefix="/dev", tags=["dev"])

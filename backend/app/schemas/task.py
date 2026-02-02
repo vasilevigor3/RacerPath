@@ -17,6 +17,29 @@ class TaskDefinitionCreate(BaseModel):
     description: str = Field(min_length=2, max_length=500)
     requirements: Dict[str, str | int | float | bool] = Field(default_factory=dict)
     min_event_tier: str | None = None
+    max_event_tier: str | None = None
+    min_duration_minutes: float | None = Field(default=None, ge=0, le=10080)
+    max_incidents: int | None = Field(default=None, ge=0, le=1000)
+    max_penalties: int | None = Field(default=None, ge=0, le=1000)
+    require_night: bool = False
+    require_dynamic_weather: bool = False
+    require_team_event: bool = False
+    require_clean_finish: bool = False
+    allow_non_finish: bool = False
+    max_position_overall: int | None = Field(default=None, ge=1, le=1000)
+    min_position_overall: int | None = Field(default=None, ge=1, le=1000)
+    min_laps_completed: int | None = Field(default=None, ge=0, le=10000)
+    repeatable: bool = False
+    max_completions: int | None = Field(default=None, ge=1, le=1000)
+    cooldown_hours: float | None = Field(default=None, ge=0, le=8760)
+    diversity_window_days: int | None = Field(default=None, ge=1, le=365)
+    max_same_event_count: int | None = Field(default=None, ge=0, le=100)
+    require_event_diversity: bool | None = None
+    max_same_signature_count: int | None = Field(default=None, ge=0, le=100)
+    signature_cooldown_hours: float | None = Field(default=None, ge=0, le=8760)
+    diminishing_returns: bool = False
+    diminishing_step: float | None = Field(default=None, ge=0, le=1)
+    diminishing_floor: float | None = Field(default=None, ge=0, le=1)
     active: bool = True
     event_related: bool = True
     scope: TASK_SCOPE = "per_participation"
@@ -47,6 +70,29 @@ class TaskDefinitionUpdate(BaseModel):
     description: str | None = Field(None, min_length=2, max_length=500)
     requirements: Dict[str, str | int | float | bool] | None = None
     min_event_tier: str | None = None
+    max_event_tier: str | None = None
+    min_duration_minutes: float | None = Field(None, ge=0, le=10080)
+    max_incidents: int | None = Field(None, ge=0, le=1000)
+    max_penalties: int | None = Field(None, ge=0, le=1000)
+    require_night: bool | None = None
+    require_dynamic_weather: bool | None = None
+    require_team_event: bool | None = None
+    require_clean_finish: bool | None = None
+    allow_non_finish: bool | None = None
+    max_position_overall: int | None = Field(None, ge=1, le=1000)
+    min_position_overall: int | None = Field(None, ge=1, le=1000)
+    min_laps_completed: int | None = Field(None, ge=0, le=10000)
+    repeatable: bool | None = None
+    max_completions: int | None = Field(None, ge=1, le=1000)
+    cooldown_hours: float | None = Field(None, ge=0, le=8760)
+    diversity_window_days: int | None = Field(None, ge=1, le=365)
+    max_same_event_count: int | None = Field(None, ge=0, le=100)
+    require_event_diversity: bool | None = None
+    max_same_signature_count: int | None = Field(None, ge=0, le=100)
+    signature_cooldown_hours: float | None = Field(None, ge=0, le=8760)
+    diminishing_returns: bool | None = None
+    diminishing_step: float | None = Field(None, ge=0, le=1)
+    diminishing_floor: float | None = Field(None, ge=0, le=1)
     active: bool | None = None
     event_related: bool | None = None
     scope: TASK_SCOPE | None = None

@@ -961,25 +961,7 @@ def list_task_definitions_admin(
     out = []
     for t in tasks:
         refs = _required_by_license_levels(session, t.code)
-        out.append(
-            AdminTaskDefinitionRead(
-                id=t.id,
-                code=t.code,
-                name=t.name,
-                discipline=t.discipline,
-                description=t.description,
-                requirements=t.requirements or {},
-                min_event_tier=t.min_event_tier,
-                active=t.active,
-                scope=t.scope or "per_participation",
-                cooldown_days=t.cooldown_days,
-                period=t.period,
-                window_size=t.window_size,
-                window_unit=t.window_unit,
-                created_at=t.created_at,
-                required_by_license_levels=refs,
-            )
-        )
+        out.append(AdminTaskDefinitionRead.model_validate(t).model_copy(update={"required_by_license_levels": refs}))
     return out
 
 
@@ -995,23 +977,7 @@ def create_task_definition_admin(
     session.commit()
     session.refresh(task)
     refs = _required_by_license_levels(session, task.code)
-    return AdminTaskDefinitionRead(
-        id=task.id,
-        code=task.code,
-        name=task.name,
-        discipline=task.discipline,
-        description=task.description,
-        requirements=task.requirements or {},
-        min_event_tier=task.min_event_tier,
-        active=task.active,
-        scope=task.scope or "per_participation",
-        cooldown_days=task.cooldown_days,
-        period=task.period,
-        window_size=task.window_size,
-        window_unit=task.window_unit,
-        created_at=task.created_at,
-        required_by_license_levels=refs,
-    )
+    return AdminTaskDefinitionRead.model_validate(task).model_copy(update={"required_by_license_levels": refs})
 
 
 @router.get("/task-definitions/{task_id}", response_model=AdminTaskDefinitionRead)
@@ -1024,23 +990,7 @@ def get_task_definition_admin(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     refs = _required_by_license_levels(session, task.code)
-    return AdminTaskDefinitionRead(
-        id=task.id,
-        code=task.code,
-        name=task.name,
-        discipline=task.discipline,
-        description=task.description,
-        requirements=task.requirements or {},
-        min_event_tier=task.min_event_tier,
-        active=task.active,
-        scope=task.scope or "per_participation",
-        cooldown_days=task.cooldown_days,
-        period=task.period,
-        window_size=task.window_size,
-        window_unit=task.window_unit,
-        created_at=task.created_at,
-        required_by_license_levels=refs,
-    )
+    return AdminTaskDefinitionRead.model_validate(task).model_copy(update={"required_by_license_levels": refs})
 
 
 @router.patch("/task-definitions/{task_id}", response_model=AdminTaskDefinitionRead)
@@ -1059,20 +1009,4 @@ def update_task_definition_admin(
     session.commit()
     session.refresh(task)
     refs = _required_by_license_levels(session, task.code)
-    return AdminTaskDefinitionRead(
-        id=task.id,
-        code=task.code,
-        name=task.name,
-        discipline=task.discipline,
-        description=task.description,
-        requirements=task.requirements or {},
-        min_event_tier=task.min_event_tier,
-        active=task.active,
-        scope=task.scope or "per_participation",
-        cooldown_days=task.cooldown_days,
-        period=task.period,
-        window_size=task.window_size,
-        window_unit=task.window_unit,
-        created_at=task.created_at,
-        required_by_license_levels=refs,
-    )
+    return AdminTaskDefinitionRead.model_validate(task).model_copy(update={"required_by_license_levels": refs})

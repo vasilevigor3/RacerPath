@@ -16,6 +16,14 @@ from app.models.task_definition import TaskDefinition
 TIER_RANK = {"E0": 0, "E1": 1, "E2": 2, "E3": 3, "E4": 4, "E5": 5}
 
 
+def _get_req(task: TaskDefinition, key: str, default=None):
+    """Read requirement from task column or fallback to task.requirements JSON."""
+    val = getattr(task, key, None)
+    if val is not None:
+        return val
+    return (task.requirements or {}).get(key, default)
+
+
 def _latest_classification(session: Session, event_id: str) -> Classification | None:
     return (
         session.query(Classification)
@@ -83,66 +91,65 @@ def _meets_requirements(
     event: Event,
     classification: Classification | None,
 ) -> bool:
-    requirements = task.requirements or {}
     part_status = getattr(participation, "status", None)
     part_status = part_status.value if hasattr(part_status, "value") else (str(part_status) if part_status else "")
 
-    min_event_tier = requirements.get("min_event_tier") or task.min_event_tier
+    min_event_tier = _get_req(task, "min_event_tier") or task.min_event_tier
     if min_event_tier:
         tier = classification.event_tier if classification else "E2"
         if TIER_RANK.get(tier, 0) < TIER_RANK.get(min_event_tier, 0):
             return False
 
-    max_event_tier = requirements.get("max_event_tier")
+    max_event_tier = _get_req(task, "max_event_tier")
     if max_event_tier:
         tier = classification.event_tier if classification else "E2"
         if TIER_RANK.get(tier, 0) > TIER_RANK.get(max_event_tier, 0):
             return False
 
-    min_duration = requirements.get("min_duration_minutes")
+    min_duration = _get_req(task, "min_duration_minutes")
     if min_duration is not None:
         actual_minutes = _participation_duration_minutes(participation)
         duration_value = actual_minutes if actual_minutes is not None else event.duration_minutes
         if duration_value < float(min_duration):
             return False
 
-    max_incidents = requirements.get("max_incidents")
+    max_incidents = _get_req(task, "max_incidents")
     if max_incidents is not None and participation.incidents_count > int(max_incidents):
         return False
 
-    max_penalties = requirements.get("max_penalties")
+    max_penalties = _get_req(task, "max_penalties")
     if max_penalties is not None and participation.penalties_count > int(max_penalties):
         return False
 
-    if requirements.get("require_night") and not event.night:
+    if _get_req(task, "require_night") and not event.night:
         return False
 
-    if requirements.get("require_dynamic_weather") and event.weather != "dynamic":
+    if _get_req(task, "require_dynamic_weather") and event.weather != "dynamic":
         return False
 
-    if requirements.get("require_team_event") and not event.team_event:
+    if _get_req(task, "require_team_event") and not event.team_event:
         return False
 
-    if requirements.get("require_clean_finish"):
+    if _get_req(task, "require_clean_finish"):
         if part_status != "finished":
             return False
         if participation.incidents_count > 0 or participation.penalties_count > 0:
             return False
 
-    if part_status != "finished" and not requirements.get("allow_non_finish"):
+    if part_status != "finished" and not _get_req(task, "allow_non_finish"):
         return False
 
-    max_position_overall = requirements.get("max_position_overall")
+    max_position_overall = _get_req(task, "max_position_overall")
     if max_position_overall is not None and participation.position_overall is not None:
         if participation.position_overall > int(max_position_overall):
             return False
 
-    min_position_overall = requirements.get("min_position_overall")
+    min_position_overall = _get_req(task, "min_position_overall")
     if min_position_overall is not None and participation.position_overall is not None:
         if participation.position_overall < int(min_position_overall):
             return False
 
-    min_laps_completed = requirements.get("min_laps_completed")
+    min_laps_completed = _get_req(task, "min_laps_completed")
     if min_laps_completed is not None and participation.laps_completed < int(min_laps_completed):
         return False
 
@@ -327,8 +334,7 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
     for task in tasks:
         if not getattr(task, "event_related", True):
             continue
-        requirements = task.requirements or {}
-        repeatable = bool(requirements.get("repeatable", False))
+        repeatable = bool(_get_req(task, "repeatable", False))
 
         total_completed = _count_total_completions(session, driver_id, task.id)
         if not repeatable and total_completed > 0:
@@ -337,11 +343,11 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
         if not _meets_requirements(task, participation, event, classification):
             continue
 
-        max_completions = requirements.get("max_completions")
+        max_completions = _get_req(task, "max_completions")
         if max_completions is not None and total_completed >= int(max_completions):
             continue
 
-        cooldown_hours = requirements.get("cooldown_hours")
+        cooldown_hours = _get_req(task, "cooldown_hours")
         if cooldown_hours is None and repeatable:
             cooldown_hours = 24
         if cooldown_hours:
@@ -349,7 +355,7 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
             if latest and now - _completion_time(latest) < timedelta(hours=float(cooldown_hours)):
                 continue
 
-        diversity_window_days = int(requirements.get("diversity_window_days") or 30)
+        diversity_window_days = int(_get_req(task, "diversity_window_days") or 30)
         cutoff = now - timedelta(days=diversity_window_days)
         recent = _recent_completions(session, driver_id, task.id, cutoff)
 
@@ -405,23 +411,23 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
                     if _event_signature(prior_event) == current_signature:
                         same_signature_count += 1
 
-        max_same_event_count = requirements.get("max_same_event_count")
+        max_same_event_count = _get_req(task, "max_same_event_count")
         if max_same_event_count is None and repeatable:
             max_same_event_count = 1
         if max_same_event_count is not None and same_event_count >= int(max_same_event_count):
             continue
 
-        require_event_diversity = requirements.get("require_event_diversity")
+        require_event_diversity = _get_req(task, "require_event_diversity")
         if require_event_diversity is None:
             require_event_diversity = repeatable
         if require_event_diversity and same_signature_count > 0:
             continue
 
-        max_same_signature_count = requirements.get("max_same_signature_count")
+        max_same_signature_count = _get_req(task, "max_same_signature_count")
         if max_same_signature_count is not None and same_signature_count >= int(max_same_signature_count):
             continue
 
-        signature_cooldown_hours = requirements.get("signature_cooldown_hours")
+        signature_cooldown_hours = _get_req(task, "signature_cooldown_hours")
         if signature_cooldown_hours and same_signature_count:
             last_same_signature = None
             for completion in recent:
@@ -451,9 +457,9 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
                 continue
 
         multiplier = 1.0
-        if requirements.get("diminishing_returns") or repeatable:
-            step = float(requirements.get("diminishing_step") or 0.2)
-            floor = float(requirements.get("diminishing_floor") or 0.4)
+        if _get_req(task, "diminishing_returns") or repeatable:
+            step = float(_get_req(task, "diminishing_step") or 0.2)
+            floor = float(_get_req(task, "diminishing_floor") or 0.4)
             multiplier = max(floor, 1.0 - step * len(recent))
 
         existing_pending = (

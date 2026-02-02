@@ -250,21 +250,42 @@ def list_templates() -> List[dict]:
     return TEMPLATES
 
 
+REQUIREMENT_COLUMN_KEYS = (
+    "min_duration_minutes", "max_incidents", "max_penalties",
+    "require_night", "require_dynamic_weather", "require_team_event",
+    "require_clean_finish", "allow_non_finish",
+    "max_position_overall", "min_position_overall", "min_laps_completed",
+    "repeatable", "max_completions", "cooldown_hours", "diversity_window_days",
+    "max_same_event_count", "require_event_diversity", "max_same_signature_count",
+    "signature_cooldown_hours", "diminishing_returns", "diminishing_step", "diminishing_floor",
+)
+
+
+def _apply_requirement_columns(task: TaskDefinition, req: dict) -> None:
+    for key in REQUIREMENT_COLUMN_KEYS:
+        if key in req:
+            setattr(task, key, req[key])
+
+
 def seed_templates(session: Session) -> List[TaskDefinition]:
     existing_by_code = {
         task.code: task for task in session.query(TaskDefinition).all()
     }
     created: List[TaskDefinition] = []
     for template in TEMPLATES:
+        req = template.get("requirements") or {}
         existing = existing_by_code.get(template["code"])
         if existing:
             existing.name = template["name"]
             existing.description = template["description"]
             existing.requirements = template["requirements"]
-            existing.min_event_tier = template["min_event_tier"]
+            existing.min_event_tier = template.get("min_event_tier")
+            existing.max_event_tier = req.get("max_event_tier")
             existing.active = True
+            _apply_requirement_columns(existing, req)
             continue
         task = TaskDefinition(**template)
+        _apply_requirement_columns(task, req)
         session.add(task)
         created.append(task)
     session.commit()

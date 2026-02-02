@@ -106,12 +106,14 @@ class TaskCompletionCreate(BaseModel):
     driver_id: str
     task_id: str
     participation_id: str | None = None
-    status: Literal["completed", "failed", "pending"] = "completed"
+    status: Literal["completed", "failed", "pending", "in_progress"] = "completed"
     notes: str | None = Field(default=None, max_length=240)
     completed_at: datetime | None = None
     score_multiplier: float = 1.0
     period_key: str | None = Field(default=None, max_length=16)
     achieved_by: List[str] | Dict[str, Any] | None = None
+    evaluation_failed_at: datetime | None = None
+    evaluation_failure_reasons: List[str] | None = None
 
 
 class TaskCompletionRead(TaskCompletionCreate):

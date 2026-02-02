@@ -26,3 +26,6 @@ class TaskCompletion(Base):
     period_key: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # for rolling_window / audit: list of participation_id or aggregates
     achieved_by: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    # when event finished but requirements not met: status -> in_progress
+    evaluation_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    evaluation_failure_reasons: Mapped[list | None] = mapped_column(JSON, nullable=True)  # list of str

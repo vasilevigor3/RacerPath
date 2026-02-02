@@ -221,6 +221,44 @@ function taskEscapeHtml(s) {
 
 const TIER_ORDER = ['E0', 'E1', 'E2', 'E3', 'E4', 'E5'];
 
+/** Build list of human-readable requirement strings from task definition (columns + requirements JSON). */
+function getTaskRequirementsList(task) {
+  const req = task?.requirements && typeof task.requirements === 'object' ? task.requirements : {};
+  const v = (key, col) => {
+    const val = task?.[col] ?? task?.[key] ?? req[key];
+    if (val === undefined || val === null) return null;
+    return val;
+  };
+  const lines = [];
+  if (v('min_event_tier', 'min_event_tier')) lines.push(`Min event tier: ${v('min_event_tier', 'min_event_tier')}`);
+  if (v('max_event_tier', 'max_event_tier')) lines.push(`Max event tier: ${v('max_event_tier', 'max_event_tier')}`);
+  if (v('min_duration_minutes', 'min_duration_minutes') != null) lines.push(`Min session duration: ${v('min_duration_minutes', 'min_duration_minutes')} min`);
+  if (v('max_incidents', 'max_incidents') != null) lines.push(`Max incidents: ${v('max_incidents', 'max_incidents')}`);
+  if (v('max_penalties', 'max_penalties') != null) lines.push(`Max penalties: ${v('max_penalties', 'max_penalties')}`);
+  if (v('require_night', 'require_night')) lines.push('Night session: yes');
+  if (v('require_dynamic_weather', 'require_dynamic_weather')) lines.push('Dynamic weather: yes');
+  if (v('require_team_event', 'require_team_event')) lines.push('Team event: yes');
+  if (v('require_clean_finish', 'require_clean_finish')) lines.push('Clean finish (no incidents/penalties): yes');
+  if (v('allow_non_finish', 'allow_non_finish')) lines.push('DNF allowed: yes');
+  if (v('max_position_overall', 'max_position_overall') != null) lines.push(`Position overall no worse than: ${v('max_position_overall', 'max_position_overall')}`);
+  if (v('min_position_overall', 'min_position_overall') != null) lines.push(`Position overall no better than: ${v('min_position_overall', 'min_position_overall')}`);
+  if (v('min_laps_completed', 'min_laps_completed') != null) lines.push(`Min laps completed: ${v('min_laps_completed', 'min_laps_completed')}`);
+  if (v('repeatable', 'repeatable')) lines.push('Repeatable task: yes');
+  if (v('max_completions', 'max_completions') != null) lines.push(`Max completions: ${v('max_completions', 'max_completions')}`);
+  if (v('cooldown_hours', 'cooldown_hours') != null) lines.push(`Cooldown between completions: ${v('cooldown_hours', 'cooldown_hours')} h`);
+  if (v('diversity_window_days', 'diversity_window_days') != null) lines.push(`Diversity window: ${v('diversity_window_days', 'diversity_window_days')} days`);
+  if (v('max_same_event_count', 'max_same_event_count') != null) lines.push(`Max completions from same event: ${v('max_same_event_count', 'max_same_event_count')}`);
+  if (v('require_event_diversity', 'require_event_diversity')) lines.push('Event diversity required: yes');
+  if (v('max_same_signature_count', 'max_same_signature_count') != null) lines.push(`Max completions from same track type: ${v('max_same_signature_count', 'max_same_signature_count')}`);
+  if (v('signature_cooldown_hours', 'signature_cooldown_hours') != null) lines.push(`Track type cooldown: ${v('signature_cooldown_hours', 'signature_cooldown_hours')} h`);
+  if (v('diminishing_returns', 'diminishing_returns')) {
+    const step = v('diminishing_step', 'diminishing_step');
+    const floor = v('diminishing_floor', 'diminishing_floor');
+    lines.push(`Diminishing score multiplier${step != null ? `, step ${step}` : ''}${floor != null ? `, floor ${floor}` : ''}`);
+  }
+  return lines;
+}
+
 function driverTierAllowsTask(driver, task) {
   if (!task?.min_event_tier) return true;
   const driverTier = driver?.tier || 'E0';
@@ -245,8 +283,11 @@ async function showTaskDetail(task, driver) {
     lastTaskCompletions.filter((c) => c.status === 'completed').map((c) => c.task_id)
   );
   const pendingTaskIds = new Set(
-    lastTaskCompletions.filter((c) => c.status === 'pending').map((c) => c.task_id)
+    lastTaskCompletions.filter((c) => c.status === 'pending' || c.status === 'in_progress').map((c) => c.task_id)
   );
+  const completionForTask = lastTaskCompletions.find((c) => (c.status === 'pending' || c.status === 'in_progress') && c.task_id === task.id);
+  const failureReasons = completionForTask?.evaluation_failure_reasons;
+  const isInProgressFailed = completionForTask?.status === 'in_progress' && Array.isArray(failureReasons) && failureReasons.length > 0;
   const isCompleted = completedIds.has(task.id);
   const isTaken = pendingTaskIds.has(task.id);
   const isEventRelated = task.event_related !== false;
@@ -254,6 +295,11 @@ async function showTaskDetail(task, driver) {
   const canDecline = isTaken || canTake;
 
   const taskCode = task.code ?? task.id ?? '—';
+  const statusText = isCompleted ? 'Completed' : isTaken ? (isInProgressFailed ? 'In progress (not met)' : 'In progress') : 'Not taken';
+  const requirementsList = getTaskRequirementsList(task);
+  const requirementsHtml = requirementsList.length
+    ? `<div><dt>Requirements</dt><dd><ul class="task-requirements-list">${requirementsList.map((r) => `<li>${taskEscapeHtml(r)}</li>`).join('')}</ul></dd></div>`
+    : '<div><dt>Requirements</dt><dd>—</dd></div>';
   content.innerHTML = `
     <dl class="task-detail-dl">
       <div><dt>Code</dt><dd>${taskEscapeHtml(taskCode)}</dd></div>
@@ -261,7 +307,9 @@ async function showTaskDetail(task, driver) {
       <div><dt>Discipline</dt><dd>${taskEscapeHtml(task.discipline ?? '—')}</dd></div>
       <div><dt>Description</dt><dd>${taskEscapeHtml(task.description ?? '—')}</dd></div>
       ${task.min_event_tier ? `<div><dt>Min event tier</dt><dd>${taskEscapeHtml(task.min_event_tier)}</dd></div>` : ''}
-      <div><dt>Status</dt><dd>${isCompleted ? 'Completed' : isTaken ? 'In progress' : 'Not taken'}</dd></div>
+      <div><dt>Status</dt><dd>${statusText}</dd></div>
+      ${requirementsHtml}
+      ${isInProgressFailed ? `<div><dt>Why not met</dt><dd><ul class="task-failure-reasons">${failureReasons.map((r) => `<li>${taskEscapeHtml(r)}</li>`).join('')}</ul></dd></div>` : ''}
     </dl>
   `;
 
@@ -275,13 +323,13 @@ async function showTaskDetail(task, driver) {
           const events = res.ok ? await res.json() : [];
           const names = (Array.isArray(events) ? events : []).map((e) => e.title || e.id).filter(Boolean);
           eventRelatedMsg.textContent = names.length
-            ? `Таска автоматически назначается при участии в событии: ${names.join(', ')}.`
-            : 'Таска автоматически назначается при участии в подходящем событии.';
+            ? `Task is assigned automatically when you participate in: ${names.join(', ')}.`
+            : 'Task is assigned automatically when you participate in a matching event.';
         } catch {
-          eventRelatedMsg.textContent = 'Таска автоматически назначается при участии в подходящем событии.';
+          eventRelatedMsg.textContent = 'Task is assigned automatically when you participate in a matching event.';
         }
       } else {
-        eventRelatedMsg.textContent = 'Таска автоматически назначается при участии в подходящем событии.';
+        eventRelatedMsg.textContent = 'Task is assigned automatically when you participate in a matching event.';
       }
     } else {
       eventRelatedMsg.classList.add('is-hidden');
@@ -394,7 +442,7 @@ export const loadTasksOverview = async (driver) => {
     lastTaskDefinitions = definitions;
 
     const completedIds = new Set(completions.filter((c) => c.status === 'completed').map((c) => c.task_id));
-    const inProgressIds = new Set(completions.filter((c) => c.status === 'pending').map((c) => c.task_id));
+    const inProgressIds = new Set(completions.filter((c) => c.status === 'pending' || c.status === 'in_progress').map((c) => c.task_id));
     const filteredDefinitions = definitions.filter((task) => task.discipline === discipline);
     const completedTasks = filteredDefinitions.filter((task) => completedIds.has(task.id));
     const inProgressTasks = filteredDefinitions.filter((task) => inProgressIds.has(task.id));

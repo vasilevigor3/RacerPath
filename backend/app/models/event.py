@@ -38,7 +38,7 @@ class Event(Base):
     # Race of the day / week / month / year — special featured event (more points)
     special_event: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    # в БД храним строку, в API валидируем Enum-ом
+    # stored as string in DB, validated as enum in API
     session_type: Mapped[str] = mapped_column(String(20), nullable=False, default="race")  # race | training
     schedule_type: Mapped[str] = mapped_column(String(20), nullable=False, default="weekly")
     event_type: Mapped[str] = mapped_column(String(30), nullable=False, default="circuit")

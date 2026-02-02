@@ -202,7 +202,7 @@ def update_participation_withdraw(
     participation.withdraw_count = (participation.withdraw_count or 0) + 1
     session.query(TaskCompletion).filter(
         TaskCompletion.participation_id == participation.id,
-        TaskCompletion.status == "pending",
+        TaskCompletion.status.in_(["pending", "in_progress"]),
     ).delete(synchronize_session=False)
     session.commit()
     session.refresh(participation)

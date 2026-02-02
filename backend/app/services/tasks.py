@@ -156,6 +156,78 @@ def _meets_requirements(
     return True
 
 
+def _meets_requirements_reasons(
+    task: TaskDefinition,
+    participation: Participation,
+    event: Event,
+    classification: Classification | None,
+) -> tuple[bool, list[str]]:
+    """Same checks as _meets_requirements but returns (ok, list of failure reasons)."""
+    reasons: list[str] = []
+    part_status = getattr(participation, "status", None)
+    part_status = part_status.value if hasattr(part_status, "value") else (str(part_status) if part_status else "")
+
+    min_event_tier = _get_req(task, "min_event_tier") or task.min_event_tier
+    if min_event_tier:
+        tier = classification.event_tier if classification else "E2"
+        if TIER_RANK.get(tier, 0) < TIER_RANK.get(min_event_tier, 0):
+            reasons.append(f"Event tier must be at least {min_event_tier}, got {tier}")
+
+    max_event_tier = _get_req(task, "max_event_tier")
+    if max_event_tier:
+        tier = classification.event_tier if classification else "E2"
+        if TIER_RANK.get(tier, 0) > TIER_RANK.get(max_event_tier, 0):
+            reasons.append(f"Event tier must be at most {max_event_tier}, got {tier}")
+
+    min_duration = _get_req(task, "min_duration_minutes")
+    if min_duration is not None:
+        actual_minutes = _participation_duration_minutes(participation)
+        duration_value = actual_minutes if actual_minutes is not None else event.duration_minutes
+        if duration_value < float(min_duration):
+            mins_str = f"{actual_minutes:.1f} min" if actual_minutes is not None else "no data"
+            reasons.append(f"Session duration must be at least {min_duration} min, actual: {mins_str}")
+
+    max_incidents = _get_req(task, "max_incidents")
+    if max_incidents is not None and participation.incidents_count > int(max_incidents):
+        reasons.append(f"Incidents must be at most {max_incidents}, got {participation.incidents_count}")
+
+    max_penalties = _get_req(task, "max_penalties")
+    if max_penalties is not None and participation.penalties_count > int(max_penalties):
+        reasons.append(f"Penalties must be at most {max_penalties}, got {participation.penalties_count}")
+
+    if _get_req(task, "require_night") and not event.night:
+        reasons.append("Night session required")
+
+    if _get_req(task, "require_dynamic_weather") and event.weather != "dynamic":
+        reasons.append("Dynamic weather required")
+
+    if _get_req(task, "require_team_event") and not event.team_event:
+        reasons.append("Team event required")
+
+    if _get_req(task, "require_clean_finish"):
+        if part_status != "finished":
+            reasons.append("Clean finish (finished) required")
+        elif participation.incidents_count > 0 or participation.penalties_count > 0:
+            reasons.append("Clean finish required (no incidents or penalties)")
+
+    if part_status != "finished" and not _get_req(task, "allow_non_finish"):
+        reasons.append("Participation finish (finished) required")
+
+    max_position_overall = _get_req(task, "max_position_overall")
+    if max_position_overall is not None and participation.position_overall is not None and participation.position_overall > int(max_position_overall):
+        reasons.append(f"Position overall must be no worse than {max_position_overall}, got {participation.position_overall}")
+
+    min_position_overall = _get_req(task, "min_position_overall")
+    if min_position_overall is not None and participation.position_overall is not None and participation.position_overall < int(min_position_overall):
+        reasons.append(f"Position overall must be no better than {min_position_overall}, got {participation.position_overall}")
+
+    min_laps_completed = _get_req(task, "min_laps_completed")
+    if min_laps_completed is not None and participation.laps_completed < int(min_laps_completed):
+        reasons.append(f"Laps completed must be at least {min_laps_completed}, got {participation.laps_completed}")
+
+    return (len(reasons) == 0, reasons)
+
+
 def assign_tasks_on_registration(
     session: Session, driver_id: str, participation_id: str
 ) -> list[TaskCompletion]:
@@ -340,7 +412,23 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
         if not repeatable and total_completed > 0:
             continue
 
-        if not _meets_requirements(task, participation, event, classification):
+        meets, failure_reasons = _meets_requirements_reasons(task, participation, event, classification)
+        existing_pending = (
+            session.query(TaskCompletion)
+            .filter(
+                TaskCompletion.driver_id == driver_id,
+                TaskCompletion.task_id == task.id,
+                TaskCompletion.participation_id == participation_id,
+                TaskCompletion.status == "pending",
+            )
+            .first()
+        )
+        if not meets and existing_pending:
+            existing_pending.status = "in_progress"
+            existing_pending.evaluation_failed_at = now
+            existing_pending.evaluation_failure_reasons = failure_reasons
+            continue
+        if not meets:
             continue
 
         max_completions = _get_req(task, "max_completions")
@@ -468,7 +556,7 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
                 TaskCompletion.driver_id == driver_id,
                 TaskCompletion.task_id == task.id,
                 TaskCompletion.participation_id == participation_id,
-                TaskCompletion.status == "pending",
+                TaskCompletion.status.in_(["pending", "in_progress"]),
             )
             .first()
         )
@@ -477,6 +565,8 @@ def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> l
             existing_pending.completed_at = now
             existing_pending.event_signature = current_signature
             existing_pending.score_multiplier = multiplier
+            existing_pending.evaluation_failed_at = None
+            existing_pending.evaluation_failure_reasons = None
             completions.append(existing_pending)
         else:
             completion = TaskCompletion(

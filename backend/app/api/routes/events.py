@@ -254,7 +254,7 @@ def events_breakdown(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    """Разбивка событий по странам и городам: by_country, by_city."""
+    """Events grouped by country and city: by_country, by_city."""
     from sqlalchemy import func
 
     by_country = (

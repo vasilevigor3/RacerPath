@@ -1,0 +1,16 @@
+---
+description: After any code change, rebuild and bring up Docker Compose
+alwaysApply: true
+---
+
+# Docker after code changes
+
+After making any change to the codebase in this project, run:
+
+```bash
+docker compose up -d --build
+```
+
+- Run this from the project root (where `docker-compose.yml` lives).
+- Use PowerShell: `Set-Location "path\to\RacerPath"; docker compose up -d --build`
+- This rebuilds images and starts/restarts containers so changes are reflected.

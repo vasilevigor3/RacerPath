@@ -65,6 +65,18 @@ const formatDate = (d) => {
   }
 };
 
+/** For datetime-local input: ISO string -> "YYYY-MM-DDTHH:mm" or "" */
+const toDatetimeLocal = (iso) => {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 16);
+  } catch {
+    return '';
+  }
+};
+
 const INCIDENT_TYPES = ['Contact', 'Off-track', 'Track limits', 'Unsafe rejoin', 'Blocking', 'Avoidable contact', 'Mechanical', 'Other'];
 const PARTICIPATION_STATUSES = ['finished', 'dnf', 'dsq', 'dns'];
 const PARTICIPATION_STATES = ['registered', 'withdrawn', 'started', 'completed'];
@@ -90,22 +102,6 @@ const RULES_TOGGLES = ['off', 'reduced', 'realistic', 'real', 'normal', 'strict'
 const WEATHER_TYPES = ['fixed', 'dynamic'];
 const STEWARDING_TYPES = ['none', 'automated', 'live', 'human_review'];
 const LICENSE_REQUIREMENTS = ['none', 'entry', 'rookie', 'intermediate', 'pro'];
-
-const toDatetimeLocal = (iso) => {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const h = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${y}-${m}-${day}T${h}:${min}`;
-  } catch {
-    return '';
-  }
-};
 
 const TABS = ['drivers', 'events', 'classifications', 'participations', 'tasks', 'licenses', 'tier', 'schema'];
 const TAB_LABELS = { drivers: 'Drivers', events: 'Events', classifications: 'Classifications', participations: 'Participations', tasks: 'Tasks', licenses: 'Licenses', tier: 'Tier rules', schema: 'Project schema' };
@@ -1885,6 +1881,31 @@ const AdminLookup = () => {
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentError, setIncidentError] = useState(null);
 
+  const [partEditForm, setPartEditForm] = useState({
+    participation_state: 'registered',
+    status: 'finished',
+    position_overall: '',
+    position_class: '',
+    laps_completed: 0,
+    started_at: '',
+    finished_at: '',
+  });
+  const [partSaveLoading, setPartSaveLoading] = useState(false);
+
+  useEffect(() => {
+    if (!partData?.participation) return;
+    const p = partData.participation;
+    setPartEditForm({
+      participation_state: p.participation_state ?? 'registered',
+      status: p.status ?? 'finished',
+      position_overall: p.position_overall != null ? String(p.position_overall) : '',
+      position_class: p.position_class != null ? String(p.position_class) : '',
+      laps_completed: p.laps_completed ?? 0,
+      started_at: toDatetimeLocal(p.started_at),
+      finished_at: toDatetimeLocal(p.finished_at),
+    });
+  }, [partData?.participation?.id]);
+
   const doLookup = (query) => {
     if (!query || !query.trim()) return Promise.resolve();
     setLoading(true);
@@ -1957,6 +1978,12 @@ const AdminLookup = () => {
     e.preventDefault();
     const id = partId.trim();
     if (!id) return;
+    fetchParticipationById(id);
+  };
+
+  const fetchParticipationById = (id) => {
+    if (!id) return;
+    setPartId(id);
     setPartLoading(true);
     setPartError(null);
     setPartData(null);
@@ -1972,6 +1999,41 @@ const AdminLookup = () => {
       .finally(() => {
         setPartLoading(false);
       });
+  };
+
+  const closeParticipationCard = () => {
+    setPartData(null);
+    setPartError(null);
+    setPartId('');
+  };
+
+  const saveParticipationEdit = (e) => {
+    e.preventDefault();
+    if (!partData?.participation?.id) return;
+    setPartSaveLoading(true);
+    const posOverall = partEditForm.position_overall === '' ? null : parseInt(partEditForm.position_overall, 10);
+    const posClass = partEditForm.position_class === '' ? null : parseInt(partEditForm.position_class, 10);
+    const payload = {
+      participation_state: partEditForm.participation_state || null,
+      status: partEditForm.status || null,
+      position_overall: posOverall != null && !Number.isNaN(posOverall) ? posOverall : null,
+      position_class: posClass != null && !Number.isNaN(posClass) ? posClass : null,
+      laps_completed: partEditForm.laps_completed,
+      started_at: partEditForm.started_at ? new Date(partEditForm.started_at).toISOString() : null,
+      finished_at: partEditForm.finished_at ? new Date(partEditForm.finished_at).toISOString() : null,
+    };
+    apiFetch(`/api/admin/participations/${encodeURIComponent(partData.participation.id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText || 'Update failed');
+        return res.json();
+      })
+      .then(() => fetchParticipationById(partData.participation.id))
+      .catch((err) => window.alert(err?.message || 'Update failed'))
+      .finally(() => setPartSaveLoading(false));
   };
 
   const fetchIncident = (e) => {
@@ -2037,41 +2099,138 @@ const AdminLookup = () => {
               </div>
             </form>
             {error && <p className="admin-lookup__error" role="alert">{error}</p>}
-            <LicenseAwardPanel />
-            <CrsDiagnosticPanel />
             {result && (
-        <div className="admin-lookup-result card">
+        <div className="admin-constructors card">
+          <h3 className="admin-constructors__title">Driver (by id/email)</h3>
+
+          {partData && (
+            <section className="admin-constructors__block admin-participation-card">
+              <div className="admin-participation-card__head">
+                <button type="button" className="btn ghost btn-back-arrow" aria-label="Back" onClick={closeParticipationCard}>←</button>
+                <h4 className="admin-constructors__subtitle">Participation</h4>
+              </div>
+              <h4 className="admin-constructors__subtitle">Event</h4>
+              <p><strong>{partData.event?.title ?? partData.event?.id}</strong> {partData.event?.game ? `(${partData.event.game})` : ''}</p>
+              <h4 className="admin-constructors__subtitle">Driver</h4>
+              <p>{partData.driver?.name} ({partData.driver?.primary_discipline ?? '—'})</p>
+              <h4 className="admin-constructors__subtitle">Participation</h4>
+              <dl className="admin-lookup-result__dl">
+                <div><dt>ID</dt><dd className="admin-lookup-result__part-id">{partData.participation?.id}</dd></div>
+                <div><dt>State</dt><dd>{partData.participation?.participation_state ?? '—'}</dd></div>
+                <div><dt>Status</dt><dd>{partData.participation?.status ?? '—'}</dd></div>
+                <div><dt>Position</dt><dd>{partData.participation?.position_overall ?? '—'}</dd></div>
+                <div><dt>Laps</dt><dd>{partData.participation?.laps_completed ?? '—'}</dd></div>
+                <div><dt>Started</dt><dd>{formatDate(partData.participation?.started_at)}</dd></div>
+                <div><dt>Finished</dt><dd>{formatDate(partData.participation?.finished_at)}</dd></div>
+              </dl>
+              {partData.incidents?.length > 0 && (
+                <>
+                  <h4 className="admin-constructors__subtitle">Incidents</h4>
+                  <ul className="admin-lookup-result__list admin-lookup-result__participations">
+                    {partData.incidents.map((i) => (
+                      <li key={i.id}>
+                        <span className="admin-lookup-result__part-id">{i.id}</span>
+                        {i.created_at != null && (
+                          <span className="admin-lookup-result__part-date">{formatDate(i.created_at)}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <form onSubmit={saveParticipationEdit} className="admin-constructors__form">
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">State</label>
+                  <select value={partEditForm.participation_state} onChange={(e) => setPartEditForm((f) => ({ ...f, participation_state: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
+                    {PARTICIPATION_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Status</label>
+                  <select value={partEditForm.status} onChange={(e) => setPartEditForm((f) => ({ ...f, status: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
+                    {PARTICIPATION_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Position / Class / Laps</label>
+                  <input type="number" min="0" value={partEditForm.position_overall} onChange={(e) => setPartEditForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="overall" className="admin-constructors__input admin-constructors__input--num" />
+                  <input type="number" min="0" value={partEditForm.position_class} onChange={(e) => setPartEditForm((f) => ({ ...f, position_class: e.target.value }))} placeholder="class" className="admin-constructors__input admin-constructors__input--num" />
+                  <input type="number" min="0" value={partEditForm.laps_completed} onChange={(e) => setPartEditForm((f) => ({ ...f, laps_completed: parseInt(e.target.value, 10) || 0 }))} className="admin-constructors__input admin-constructors__input--num" />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Started (UTC)</label>
+                  <input type="datetime-local" value={partEditForm.started_at} onChange={(e) => setPartEditForm((f) => ({ ...f, started_at: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" />
+                </div>
+                <div className="admin-constructors__row">
+                  <label className="admin-constructors__label">Finished (UTC)</label>
+                  <input type="datetime-local" value={partEditForm.finished_at} onChange={(e) => setPartEditForm((f) => ({ ...f, finished_at: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" />
+                </div>
+                <button type="submit" className="btn primary admin-constructors__btn" disabled={partSaveLoading}>{partSaveLoading ? '…' : 'Save'}</button>
+              </form>
+              <div className="admin-participation-card__actions">
+                {partData.participation?.participation_state === 'registered' && (
+                  <>
+                    <button type="button" className="btn primary admin-constructors__btn" onClick={() => updateParticipationState(partData.participation.id, { participation_state: 'started', started_at: new Date().toISOString() }).then(() => fetchParticipationById(partData.participation.id)).catch((err) => window.alert(err?.message || 'Failed'))}>
+                      Mark as started
+                    </button>
+                    <button type="button" className="btn ghost admin-constructors__btn" title="Mock: simulate driver joined session" onClick={() => mockJoinParticipation(partData.participation.id).then(() => fetchParticipationById(partData.participation.id)).catch((err) => window.alert(err?.message || 'Failed'))}>
+                      Mock join
+                    </button>
+                  </>
+                )}
+                {partData.participation?.participation_state === 'started' && (
+                  <>
+                    <button type="button" className="btn primary admin-constructors__btn" onClick={() => updateParticipationState(partData.participation.id, { participation_state: 'completed', finished_at: new Date().toISOString(), status: 'finished' }).then(() => fetchParticipationById(partData.participation.id)).catch((err) => window.alert(err?.message || 'Failed'))}>
+                      Mark as completed
+                    </button>
+                    <button type="button" className="btn ghost admin-constructors__btn" title="Mock: simulate driver finished race" onClick={() => mockFinishParticipation(partData.participation.id, 'finished').then(() => fetchParticipationById(partData.participation.id)).catch((err) => window.alert(err?.message || 'Failed'))}>
+                      Mock finish
+                    </button>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
           {result.driver && (
-            <section className="admin-lookup-result__block">
-              <h3 className="admin-lookup-result__title">Driver</h3>
+            <section className="admin-constructors__block">
+              <h4 className="admin-constructors__subtitle">Driver</h4>
               <dl className="admin-lookup-result__dl">
                 <div><dt>ID</dt><dd>{result.driver.id}</dd></div>
                 <div><dt>Name</dt><dd>{result.driver.name}</dd></div>
                 <div><dt>Discipline</dt><dd>{result.driver.primary_discipline}</dd></div>
                 <div><dt>Games</dt><dd>{result.driver.sim_games?.length ? result.driver.sim_games.join(', ') : '—'}</dd></div>
               </dl>
-              <h4 className="admin-lookup-result__subtitle">Last Participations</h4>
+              <h4 className="admin-constructors__subtitle">Last Participations</h4>
               {result.participations?.length > 0 ? (
                 <ul className="admin-lookup-result__list admin-lookup-result__participations">
                   {result.participations.map((p) => (
-                    <li key={p.id} className="admin-lookup-result__part-row">
-                      <span className="admin-lookup-result__part-id">{p.id.slice(0, 8)}…</span>
+                    <li
+                      key={p.id}
+                      className="admin-lookup-result__part-row admin-lookup-result__part-row--clickable"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fetchParticipationById(p.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fetchParticipationById(p.id); } }}
+                      aria-label={`Open participation ${p.id}`}
+                    >
+                      <span className="admin-lookup-result__part-id">{p.id}</span>
                       <span className="admin-lookup-result__part-meta">{p.event_title ?? p.event_id?.slice(0, 8)} · {p.participation_state ?? '—'}</span>
                       <span className="admin-lookup-result__part-date">{formatDate(p.started_at) || '—'}</span>
                       {p.participation_state === 'registered' && (
                         <>
                           <button
                             type="button"
-                            className="btn ghost admin-lookup-result__part-btn"
-                            onClick={() => updateParticipationState(p.id, { participation_state: 'started', started_at: new Date().toISOString() }).catch((e) => window.alert(e?.message || 'Failed'))}
+                            className="btn ghost admin-constructors__btn"
+                            onClick={(e) => { e.stopPropagation(); updateParticipationState(p.id, { participation_state: 'started', started_at: new Date().toISOString() }).catch((err) => window.alert(err?.message || 'Failed')); }}
                           >
                             Mark as started
                           </button>
                           <button
                             type="button"
-                            className="btn ghost admin-lookup-result__part-btn"
+                            className="btn ghost admin-constructors__btn"
                             title="Mock: simulate driver joined session (external integration)"
-                            onClick={() => mockJoinParticipation(p.id).catch((e) => window.alert(e?.message || 'Failed'))}
+                            onClick={(e) => { e.stopPropagation(); mockJoinParticipation(p.id).catch((err) => window.alert(err?.message || 'Failed')); }}
                           >
                             Mock join
                           </button>
@@ -2081,16 +2240,16 @@ const AdminLookup = () => {
                         <>
                           <button
                             type="button"
-                            className="btn ghost admin-lookup-result__part-btn"
-                            onClick={() => updateParticipationState(p.id, { participation_state: 'completed', finished_at: new Date().toISOString(), status: 'finished' }).catch((e) => window.alert(e?.message || 'Failed'))}
+                            className="btn ghost admin-constructors__btn"
+                            onClick={(e) => { e.stopPropagation(); updateParticipationState(p.id, { participation_state: 'completed', finished_at: new Date().toISOString(), status: 'finished' }).catch((err) => window.alert(err?.message || 'Failed')); }}
                           >
                             Mark as completed
                           </button>
                           <button
                             type="button"
-                            className="btn ghost admin-lookup-result__part-btn"
+                            className="btn ghost admin-constructors__btn"
                             title="Mock: simulate driver finished race (external integration)"
-                            onClick={() => mockFinishParticipation(p.id, 'finished').catch((e) => window.alert(e?.message || 'Failed'))}
+                            onClick={(e) => { e.stopPropagation(); mockFinishParticipation(p.id, 'finished').catch((err) => window.alert(err?.message || 'Failed')); }}
                           >
                             Mock finish
                           </button>
@@ -2100,82 +2259,55 @@ const AdminLookup = () => {
                   ))}
                 </ul>
               ) : (
-                <p className="admin-lookup-result__empty">No participations</p>
+                <p className="admin-constructors__msg">No participations</p>
               )}
             </section>
           )}
 
-          <section className="admin-lookup-result__block admin-lookup-result__inputs">
-            <label className="admin-lookup__label" htmlFor="admin-lookup-part-id">
+          <section className="admin-constructors__block">
+            <label className="admin-constructors__label" htmlFor="admin-lookup-part-id">
               Participation by id
             </label>
-            <form className="admin-lookup__row" onSubmit={fetchParticipation}>
+            <form className="admin-constructors__row" onSubmit={fetchParticipation}>
               <input
                 id="admin-lookup-part-id"
                 type="text"
-                className="admin-lookup__input"
+                className="admin-constructors__input admin-constructors__input--uuid"
                 placeholder="participation id"
                 value={partId}
                 onChange={(e) => setPartId(e.target.value)}
                 autoComplete="off"
               />
-              <button type="submit" className="btn primary admin-lookup__btn" disabled={partLoading}>
+              <button type="submit" className="btn primary admin-constructors__btn" disabled={partLoading}>
                 {partLoading ? '…' : 'Fetch'}
               </button>
             </form>
-            {partError && <p className="admin-lookup__error" role="alert">{partError}</p>}
+            {partError && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{partError}</p>}
             {partData && (
-              <div className="admin-lookup-result__fetched">
-                <h4 className="admin-detail-panel__subtitle">Event</h4>
-                <p>{partData.event?.title ?? partData.event?.id} {partData.event?.game ? `(${partData.event.game})` : ''}</p>
-                <h4 className="admin-detail-panel__subtitle">Driver</h4>
-                <p>{partData.driver?.name} ({partData.driver?.primary_discipline})</p>
-                <h4 className="admin-detail-panel__subtitle">Result</h4>
-                <dl className="admin-lookup-result__dl">
-                  <div><dt>Status</dt><dd>{partData.participation?.status}</dd></div>
-                  <div><dt>Position</dt><dd>{partData.participation?.position_overall ?? '—'}</dd></div>
-                  <div><dt>Laps</dt><dd>{partData.participation?.laps_completed}</dd></div>
-                  <div><dt>Started</dt><dd>{formatDate(partData.participation?.started_at)}</dd></div>
-                </dl>
-                {partData.incidents?.length > 0 && (
-                  <>
-                    <h4 className="admin-detail-panel__subtitle">Incidents</h4>
-                    <ul className="admin-lookup-result__list admin-lookup-result__participations">
-                      {partData.incidents.map((i) => (
-                        <li key={i.id}>
-                          <span className="admin-lookup-result__part-id">{i.id}</span>
-                          {i.created_at != null && (
-                            <span className="admin-lookup-result__part-date">{formatDate(i.created_at)}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
+              <p className="admin-constructors__msg">Participation opened in card above. Use Back (←) to close.</p>
             )}
 
-            <label className="admin-lookup__label" htmlFor="admin-lookup-incident-id">
+            <label className="admin-constructors__label" htmlFor="admin-lookup-incident-id">
               Incident by id
             </label>
-            <form className="admin-lookup__row" onSubmit={fetchIncident}>
+            <form className="admin-constructors__row" onSubmit={fetchIncident}>
               <input
                 id="admin-lookup-incident-id"
                 type="text"
-                className="admin-lookup__input"
+                className="admin-constructors__input admin-constructors__input--uuid"
                 placeholder="incident id"
                 value={incidentId}
                 onChange={(e) => setIncidentId(e.target.value)}
                 autoComplete="off"
               />
-              <button type="submit" className="btn primary admin-lookup__btn" disabled={incidentLoading}>
+              <button type="submit" className="btn primary admin-constructors__btn" disabled={incidentLoading}>
                 {incidentLoading ? '…' : 'Fetch'}
               </button>
             </form>
-            {incidentError && <p className="admin-lookup__error" role="alert">{incidentError}</p>}
+            {incidentError && <p className="admin-constructors__msg admin-constructors__msg--error" role="alert">{incidentError}</p>}
             {incidentData && (
               <div className="admin-lookup-result__fetched">
-                <h4 className="admin-detail-panel__subtitle">Incident</h4>
+                <h4 className="admin-constructors__subtitle">Incident</h4>
                 <dl className="admin-lookup-result__dl">
                   <div><dt>Type</dt><dd>{incidentData.incident?.incident_type}</dd></div>
                   <div><dt>Severity</dt><dd>{incidentData.incident?.severity}</dd></div>
@@ -2184,19 +2316,19 @@ const AdminLookup = () => {
                 </dl>
                 {incidentData.participation && (
                   <>
-                    <h4 className="admin-detail-panel__subtitle">Participation</h4>
+                    <h4 className="admin-constructors__subtitle">Participation</h4>
                     <p>{incidentData.participation.id} — {incidentData.participation.status}</p>
                   </>
                 )}
                 {incidentData.event && (
                   <>
-                    <h4 className="admin-detail-panel__subtitle">Event</h4>
+                    <h4 className="admin-constructors__subtitle">Event</h4>
                     <p>{incidentData.event.title} {incidentData.event.game ? `(${incidentData.event.game})` : ''}</p>
                   </>
                 )}
                 {incidentData.driver && (
                   <>
-                    <h4 className="admin-detail-panel__subtitle">Driver</h4>
+                    <h4 className="admin-constructors__subtitle">Driver</h4>
                     <p>{incidentData.driver.name}</p>
                   </>
                 )}
@@ -2205,6 +2337,8 @@ const AdminLookup = () => {
           </section>
         </div>
       )}
+            <LicenseAwardPanel />
+            <CrsDiagnosticPanel />
           </div>
         )}
 

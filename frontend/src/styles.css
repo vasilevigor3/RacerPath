@@ -974,6 +974,10 @@ footer {
   display: none;
 }
 
+.admin-constructors__msg--error {
+  color: var(--error, #c00);
+}
+
 .admin-lookup-result {
   padding: 20px;
   display: flex;
@@ -1006,6 +1010,30 @@ footer {
   flex-wrap: wrap;
   gap: 8px 12px;
   align-items: baseline;
+}
+
+.admin-lookup-result__part-row--clickable {
+  cursor: pointer;
+  padding: 4px 0;
+  border-radius: 4px;
+}
+
+.admin-lookup-result__part-row--clickable:hover {
+  background: var(--bg-muted, #f5f5f5);
+}
+
+.admin-participation-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.admin-participation-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .admin-lookup-result__part-id {

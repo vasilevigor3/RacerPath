@@ -187,8 +187,8 @@ const Cabinet = () => (
               </ul>
             </div>
             <div className="license-detail-panel is-hidden" data-license-detail-panel>
-              <button type="button" className="btn ghost" data-license-detail-back>Back</button>
               <div className="license-detail-content" data-license-detail-content />
+              <button type="button" className="btn ghost" data-license-detail-back>Back</button>
             </div>
           </div>
         </div>
@@ -210,13 +210,13 @@ const Cabinet = () => (
             </ul>
           </div>
           <div className="risk-flag-detail-panel is-hidden" data-risk-flags-detail>
-            <button type="button" className="btn ghost" data-risk-flags-detail-back>Back</button>
             <h3 className="risk-flag-detail-title" data-risk-flags-detail-title>—</h3>
             <p className="risk-flag-detail-explanation muted" data-risk-flags-detail-explanation>—</p>
             <p className="card-title" style={{ marginTop: '1rem' }}>Related events</p>
             <ul className="list" data-risk-flags-detail-events>
               <li>—</li>
             </ul>
+            <button type="button" className="btn ghost" data-risk-flags-detail-back>Back</button>
           </div>
         </div>
 
@@ -243,6 +243,7 @@ const Cabinet = () => (
               <button type="button" className="btn primary btn-task-complete" data-task-detail-complete>Complete</button>
               <button type="button" className="btn ghost btn-task-decline" data-task-detail-decline>Decline</button>
             </div>
+            <button type="button" className="btn ghost task-detail-back" data-task-detail-back>Back</button>
           </div>
         </div>
 
@@ -278,6 +279,7 @@ const Cabinet = () => (
                   <button type="button" className="btn secondary btn-withdraw-event-panel is-hidden" data-event-detail-withdraw>Withdraw from event</button>
                   <p className="event-detail-max-withdrawals is-hidden" data-event-detail-max-withdrawals />
                 </div>
+                <button type="button" className="btn ghost event-detail-back" data-event-detail-back>Back</button>
               </div>
             </div>
             <div className="card">

@@ -136,4 +136,5 @@ class EventUpdate(BaseModel):
 class EventRead(EventCreate):
     id: str
     created_at: datetime
+    difficulty_score: Optional[float] = Field(default=None, description="From latest classification")
     model_config = {"from_attributes": True}

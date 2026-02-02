@@ -288,7 +288,10 @@ def get_event(
         .first()
     )
     event_tier = classification.event_tier if classification else "E2"
-    return EventRead.model_validate(event).model_copy(update={"event_tier": event_tier})
+    difficulty_score = getattr(classification, "difficulty_score", None) if classification else None
+    return EventRead.model_validate(event).model_copy(
+        update={"event_tier": event_tier, "difficulty_score": difficulty_score}
+    )
 
 
 @router.patch("/{event_id}", response_model=EventRead)

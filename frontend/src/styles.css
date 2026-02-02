@@ -394,6 +394,14 @@ footer {
   padding-top: 0.25rem;
 }
 
+.license-detail-panel [data-license-detail-back] {
+  margin-top: 0.5rem;
+}
+
+.risk-flag-detail-panel [data-risk-flags-detail-back] {
+  margin-top: 1rem;
+}
+
 .license-detail-panel .license-detail-content {
   flex: 1;
   min-height: 100px;
@@ -1580,7 +1588,7 @@ input[type='range'] {
 }
 
 .event-detail-panel .event-detail-back {
-  align-self: flex-start;
+  margin-top: 1rem;
 }
 
 .event-detail-content {
@@ -1665,7 +1673,7 @@ input[type='range'] {
 }
 
 .task-detail-panel .task-detail-back {
-  align-self: flex-start;
+  margin-top: 1rem;
 }
 
 .task-detail-content {

@@ -593,6 +593,13 @@ function showEventDetail(event, driver) {
   const canWithdraw = participationForEvent && isRegistered;
   const status = getEventStatus(event);
   const statusLabel = status ? EVENT_STATUS_LABELS[status] : '—';
+  const ro = eventRigOpts || {};
+  const rigParts = [];
+  if (ro.wheel_type) rigParts.push(`Wheel: ${ro.wheel_type.replace(/_/g, ' ')}`);
+  if (ro.pedals_class) rigParts.push(`Pedals: ${ro.pedals_class}`);
+  if (ro.manual_with_clutch === true) rigParts.push('Clutch: yes');
+  const rigLabel = rigParts.length ? rigParts.join(', ') : '—';
+  const difficultyLabel = event.difficulty_score != null ? String(Number(event.difficulty_score)) : '—';
   content.innerHTML = `
     <dl class="event-detail-dl">
       <div><dt>Title</dt><dd>${escapeHtml(event.title ?? '—')}</dd></div>
@@ -603,6 +610,8 @@ function showEventDetail(event, driver) {
       <div><dt>Finish (UTC)</dt><dd>${event.finished_time_utc ? formatDateTime(event.finished_time_utc) : '—'}</dd></div>
       <div><dt>Status</dt><dd>${escapeHtml(statusLabel)}</dd></div>
       <div><dt>Tier</dt><dd>${escapeHtml(eventTier)}</dd></div>
+      <div><dt>Rig</dt><dd>${escapeHtml(rigLabel)}</dd></div>
+      <div><dt>Difficulty score</dt><dd>${escapeHtml(difficultyLabel)}</dd></div>
       ${event.country ? `<div><dt>Country</dt><dd>${escapeHtml(event.country)}</dd></div>` : ''}
       ${event.city ? `<div><dt>City</dt><dd>${escapeHtml(event.city)}</dd></div>` : ''}
     </dl>

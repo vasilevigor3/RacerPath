@@ -53,33 +53,35 @@ def main() -> None:
         else:
             print(f"Task already exists: {task.code} (id={task.id})")
 
-        # 2. Create event with task_codes and classification E0
-        start_utc = datetime.now(timezone.utc) + timedelta(hours=1)
-        start_utc = start_utc.replace(minute=0, second=0, microsecond=0)
-
-        event = Event(
-            title=EVENT_TITLE,
-            source="script",
-            game="ACC",
-            start_time_utc=start_utc,
-            session_type="race",
-            schedule_type="weekly",
-            event_type="circuit",
-            format_type="sprint",
-            duration_minutes=30,
-            grid_size_expected=20,
-            task_codes=[TASK_CODE],
-        )
-        session.add(event)
-        session.flush()
-
-        tier = "E0"
-        payload = build_event_payload(event, "gt")
-        classification_data = classify_event(payload)
-        classification_data["event_tier"] = tier
-        classification_data["tier_label"] = TIER_LABELS.get(tier, tier)
-        classification = Classification(event_id=event.id, **classification_data)
-        session.add(classification)
+        # 2. Create two identical events with same task_codes, different start times (for 1 task on 2 events test)
+        base_start = datetime.now(timezone.utc) + timedelta(hours=1)
+        base_start = base_start.replace(minute=0, second=0, microsecond=0)
+        created_events = []
+        for i, hour_offset in enumerate([0, 1], start=1):
+            start_utc = base_start + timedelta(hours=hour_offset)
+            event = Event(
+                title=f"{EVENT_TITLE} #{i}",
+                source="script",
+                game="ACC",
+                start_time_utc=start_utc,
+                session_type="race",
+                schedule_type="weekly",
+                event_type="circuit",
+                format_type="sprint",
+                duration_minutes=30,
+                grid_size_expected=20,
+                task_codes=[TASK_CODE],
+            )
+            session.add(event)
+            session.flush()
+            tier = "E0"
+            payload = build_event_payload(event, "gt")
+            classification_data = classify_event(payload)
+            classification_data["event_tier"] = tier
+            classification_data["tier_label"] = TIER_LABELS.get(tier, tier)
+            classification = Classification(event_id=event.id, **classification_data)
+            session.add(classification)
+            created_events.append((event, start_utc))
 
         # 3. Create or get license level that requires this task
         level = session.query(LicenseLevel).filter(LicenseLevel.code == LICENSE_CODE).first()
@@ -105,11 +107,11 @@ def main() -> None:
                 print(f"License level already exists: {level.code} (required_task_codes={level.required_task_codes})")
 
         session.commit()
-        print(
-            f"Created event: {event.title} (id={event.id}, tier={tier}, "
-            f"task_codes={event.task_codes}, start={start_utc.isoformat()})"
-        )
-        print("Next: register for this event as driver, then mock-join / mock-finish (admin or dev).")
+        for ev, st in created_events:
+            print(f"Created event: {ev.title} (id={ev.id}, task_codes={ev.task_codes}, start={st.isoformat()})")
+        print("Test flow: register for BOTH events -> 2 pending completions for same task.")
+        print("  Finish event 1 with fail (e.g. <15 min) -> that completion goes in_progress with reasons.")
+        print("  Finish event 2 with pass (>=15 min, clean) -> that completion goes completed; task counts done.")
     finally:
         session.close()
 

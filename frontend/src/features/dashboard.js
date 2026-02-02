@@ -445,7 +445,8 @@ export const loadTasksOverview = async (driver) => {
     const inProgressIds = new Set(completions.filter((c) => c.status === 'pending' || c.status === 'in_progress').map((c) => c.task_id));
     const filteredDefinitions = definitions.filter((task) => task.discipline === discipline);
     const completedTasks = filteredDefinitions.filter((task) => completedIds.has(task.id));
-    const inProgressTasks = filteredDefinitions.filter((task) => inProgressIds.has(task.id));
+    // In progress only if has pending/in_progress and NOT already completed (avoid same task in both lists)
+    const inProgressTasks = filteredDefinitions.filter((task) => inProgressIds.has(task.id) && !completedIds.has(task.id));
     const pendingTasks = filteredDefinitions.filter((task) => !completedIds.has(task.id) && !inProgressIds.has(task.id));
 
     if (tasksPendingList) setTaskListClickable(tasksPendingList, pendingTasks.slice(0, 15), 'No pending tasks.');

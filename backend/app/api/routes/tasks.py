@@ -101,6 +101,19 @@ def create_task_completion(
             raise HTTPException(status_code=403, detail="Participation mismatch")
 
     task_completion_repo = TaskCompletionRepository(session)
+
+    # Decline: update existing pending/in_progress completion to failed (e.g. event-related with participation_id).
+    if payload.status == "failed":
+        existing_in_progress = task_completion_repo.find_pending_or_in_progress(
+            payload.driver_id, payload.task_id
+        )
+        if existing_in_progress:
+            existing_in_progress.status = "failed"
+            existing_in_progress.evaluation_failed_at = datetime.now(timezone.utc)
+            session.commit()
+            session.refresh(existing_in_progress)
+            return existing_in_progress
+
     # Global scope: at most one completion per (driver_id, task_id). Update existing instead of duplicate.
     if payload.participation_id is None and payload.period_key is None:
         existing = task_completion_repo.find_global_completion(payload.driver_id, payload.task_id)

@@ -54,6 +54,21 @@ class TaskCompletionRepository:
             .first()
         )
 
+    def find_pending_or_in_progress(
+        self, driver_id: str, task_id: str
+    ) -> Optional[TaskCompletion]:
+        """Latest completion for this driver+task with status pending or in_progress (for Decline)."""
+        return (
+            self._session.query(TaskCompletion)
+            .filter(
+                TaskCompletion.driver_id == driver_id,
+                TaskCompletion.task_id == task_id,
+                TaskCompletion.status.in_(["pending", "in_progress"]),
+            )
+            .order_by(TaskCompletion.created_at.desc())
+            .first()
+        )
+
     def list_by_driver(self, driver_id: str, task_id: str | None = None) -> List[TaskCompletion]:
         query = self._session.query(TaskCompletion).filter(TaskCompletion.driver_id == driver_id)
         if task_id:

@@ -176,14 +176,20 @@ const Cabinet = () => (
         <div className="tab-panel" data-tab-panel="licenses">
           <div className="card license-card" data-focus-id="licenses-card">
             <p className="card-title">License progress</p>
-            <div className="license-flow">
-              <span className="license-flow__badge license-flow__badge--current" data-license-current>—</span>
-              <span className="license-flow__arrow" aria-hidden />
-              <span className="license-flow__badge license-flow__badge--next" data-license-next>—</span>
+            <div data-licenses-list-view>
+              <div className="license-flow">
+                <button type="button" className="license-flow__badge license-flow__badge--current" data-license-current>—</button>
+                <span className="license-flow__arrow" aria-hidden />
+                <button type="button" className="license-flow__badge license-flow__badge--next" data-license-next>—</button>
+              </div>
+              <ul className="list" data-license-reqs>
+                <li>No requirements loaded.</li>
+              </ul>
             </div>
-            <ul className="list" data-license-reqs>
-              <li>No requirements loaded.</li>
-            </ul>
+            <div className="license-detail-panel is-hidden" data-license-detail-panel>
+              <button type="button" className="btn ghost" data-license-detail-back>Back</button>
+              <div className="license-detail-content" data-license-detail-content />
+            </div>
           </div>
         </div>
 

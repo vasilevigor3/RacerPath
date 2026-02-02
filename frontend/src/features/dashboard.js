@@ -1,5 +1,5 @@
 import { apiFetch } from '../api/client.js';
-import { setList, setEventListWithRegister, setTaskListClickable, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
+import { setList, setLicenseReqsList, setEventListWithRegister, setTaskListClickable, setRecommendationListWithCountdown, tickRecommendationCountdowns } from '../utils/dom.js';
 import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { driverRigSatisfiesEvent } from '../utils/rigCompat.js';
@@ -470,36 +470,53 @@ export const loadLicenseProgress = async (driver) => {
   if (!licenseCurrent || !licenseNext || !licenseReqs) return;
   if (!driver) {
     lastDriverLicenseLevel = null;
+    lastDriverForLicense = null;
+    lastLicenseLevels = [];
     licenseCurrent.textContent = '--';
     licenseNext.textContent = '--';
+    delete licenseCurrent.dataset.licenseCode;
+    delete licenseNext.dataset.licenseCode;
     setList(licenseReqs, [], 'Create a driver profile to see license progress.');
     return;
   }
+  lastDriverForLicense = driver;
   try {
     const discipline = driver.primary_discipline || 'gt';
-    const [latestRes, reqRes] = await Promise.all([
+    const [latestRes, reqRes, levelsRes] = await Promise.all([
       apiFetch(`/api/licenses/latest?driver_id=${driver.id}&discipline=${discipline}`),
-      apiFetch(`/api/licenses/requirements?discipline=${discipline}&driver_id=${driver.id}`)
+      apiFetch(`/api/licenses/requirements?discipline=${discipline}&driver_id=${driver.id}`),
+      apiFetch(`/api/licenses/levels?discipline=${discipline}`)
     ]);
     const latest = latestRes.ok ? await latestRes.json() : null;
     const requirements = reqRes.ok ? await reqRes.json() : null;
+    const levelsData = levelsRes.ok ? await levelsRes.json().catch(() => []) : [];
+    lastLicenseLevels = Array.isArray(levelsData) ? levelsData : [];
     lastDriverLicenseLevel = latest?.level_code ?? null;
     if (latest) {
       licenseCurrent.textContent = latest.level_code;
+      licenseCurrent.dataset.licenseCode = latest.level_code;
     } else {
       licenseCurrent.textContent = 'None';
+      delete licenseCurrent.dataset.licenseCode;
     }
     if (requirements) {
-      licenseNext.textContent = requirements.next_level || '--';
-      setList(licenseReqs, requirements.requirements || [], 'No requirements loaded.');
+      const nextCode = requirements.next_level || '--';
+      licenseNext.textContent = nextCode;
+      if (nextCode && nextCode !== '--') licenseNext.dataset.licenseCode = nextCode;
+      else delete licenseNext.dataset.licenseCode;
+      setLicenseReqsList(licenseReqs, requirements.requirements || [], 'No requirements loaded.');
     } else {
       licenseNext.textContent = '--';
+      delete licenseNext.dataset.licenseCode;
       setList(licenseReqs, ['Maintain performance to keep license.'], '');
     }
   } catch (err) {
     lastDriverLicenseLevel = null;
+    lastLicenseLevels = [];
     licenseCurrent.textContent = '--';
     licenseNext.textContent = '--';
+    delete licenseCurrent.dataset.licenseCode;
+    delete licenseNext.dataset.licenseCode;
     setList(licenseReqs, [], 'Unable to load license progress.');
   }
 };
@@ -514,6 +531,8 @@ let lastShownEventId = null;
 let lastShownEvent = null;
 let lastDriverParticipations = [];
 let lastDriverLicenseLevel = null;
+let lastDriverForLicense = null;
+let lastLicenseLevels = [];
 let lastDriverForTasks = null;
 let lastTaskDefinitions = [];
 let lastTaskCompletions = [];
@@ -628,6 +647,34 @@ function hideEventDetail() {
   lastShownEvent = null;
   const listView = document.querySelector('[data-events-list-view]');
   const panel = document.querySelector('[data-event-detail-panel]');
+  if (listView) listView.classList.remove('is-hidden');
+  if (panel) panel.classList.add('is-hidden');
+}
+
+function showLicenseDetail(level) {
+  const listView = document.querySelector('[data-licenses-list-view]');
+  const panel = document.querySelector('[data-license-detail-panel]');
+  const content = document.querySelector('[data-license-detail-content]');
+  if (!listView || !panel || !content) return;
+  const tasks = (level.required_task_codes || []).length
+    ? (level.required_task_codes || []).join(', ')
+    : '—';
+  content.innerHTML = `
+    <dl class="event-detail-dl license-detail-dl">
+      <div><dt>Code</dt><dd>${escapeHtml(level.code ?? '—')}</dd></div>
+      <div><dt>Name</dt><dd>${escapeHtml(level.name ?? '—')}</dd></div>
+      <div><dt>Description</dt><dd>${escapeHtml(level.description ?? '—')}</dd></div>
+      <div><dt>Min CRS</dt><dd>${level.min_crs != null ? Number(level.min_crs) : '—'}</dd></div>
+      <div><dt>Required tasks</dt><dd>${escapeHtml(tasks)}</dd></div>
+    </dl>
+  `;
+  listView.classList.add('is-hidden');
+  panel.classList.remove('is-hidden');
+}
+
+function hideLicenseDetail() {
+  const listView = document.querySelector('[data-licenses-list-view]');
+  const panel = document.querySelector('[data-license-detail-panel]');
   if (listView) listView.classList.remove('is-hidden');
   if (panel) panel.classList.add('is-hidden');
 }
@@ -755,6 +802,22 @@ function initDashboardEventsRegisterDelegation() {
     if (riskDetailBack) {
       e.preventDefault();
       hideRiskFlagDetail();
+      return;
+    }
+    const licenseCodeBtn = e.target.closest('[data-license-code]');
+    if (licenseCodeBtn) {
+      e.preventDefault();
+      const code = licenseCodeBtn.getAttribute('data-license-code');
+      if (code && lastLicenseLevels.length) {
+        const level = lastLicenseLevels.find((l) => (l.code || '').toUpperCase() === (code || '').toUpperCase());
+        if (level) showLicenseDetail(level);
+      }
+      return;
+    }
+    const licenseDetailBack = e.target.closest('[data-license-detail-back]');
+    if (licenseDetailBack) {
+      e.preventDefault();
+      hideLicenseDetail();
       return;
     }
     const riskEventLink = e.target.closest('.risk-flag-event-link');

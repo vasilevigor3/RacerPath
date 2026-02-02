@@ -74,8 +74,14 @@ export const setProfileEmpty = (message, options = {}) => {
   if (profilePlatforms) profilePlatforms.textContent = 'Platforms: --';
   setProfileIdLabel('--', 'Driver ID');
   if (profileCtaButton) profileCtaButton.textContent = 'Complete profile';
-  if (licenseCurrent) licenseCurrent.textContent = '--';
-  if (licenseNext) licenseNext.textContent = '--';
+  if (licenseCurrent) {
+    licenseCurrent.textContent = '--';
+    delete licenseCurrent.dataset.licenseCode;
+  }
+  if (licenseNext) {
+    licenseNext.textContent = '--';
+    delete licenseNext.dataset.licenseCode;
+  }
   if (licenseReqs) setList(licenseReqs, [], 'Log in to see license progress.');
   if (profileNextTier) profileNextTier.style.width = '0%';
   if (profileNextTierMeta) profileNextTierMeta.textContent = 'Complete profile and races to advance.';

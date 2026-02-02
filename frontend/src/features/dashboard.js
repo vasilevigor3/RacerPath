@@ -109,7 +109,10 @@ export const loadDashboardStats = async (driver) => {
   }
   lastDriverParticipations = participations;
 
-  if (statEvents) statEvents.textContent = participations.length.toString();
+  const completedParticipations = participations.filter(
+    (p) => String(p.participation_state ?? p.status ?? '').toLowerCase() === 'completed'
+  );
+  if (statEvents) statEvents.textContent = completedParticipations.length.toString();
   const incidentTotal = participations.reduce((sum, item) => sum + (item.incidents_count || 0), 0);
   if (statIncidents) statIncidents.textContent = incidentTotal.toString();
 

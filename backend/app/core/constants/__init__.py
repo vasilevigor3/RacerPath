@@ -1,0 +1,93 @@
+"""Central constants: single source for tiers, events, tasks, validation, algorithms."""
+
+from app.core.constants.tiers import (
+    DRIVER_TIERS,
+    EVENT_TIERS,
+    TIER_ORDER,
+    TIER_RANK,
+    TIER_TOP,
+    VALID_TIERS,
+)
+from app.core.constants.events import (
+    SESSION_TYPE_VALUES,
+    SPECIAL_EVENT_VALUES,
+    SPECIAL_SLOT_VALUES,
+)
+from app.core.constants.tasks import (
+    DEFAULT_ROLLING_WINDOW_SIZE,
+    DEFAULT_ROLLING_WINDOW_UNIT,
+    DISCIPLINE_ALIASES,
+    DISCIPLINES,
+    REQUIREMENT_COLUMN_KEYS,
+)
+from app.core.constants.validation import (
+    ALLOWED_DAMAGE,
+    ALLOWED_EVENT_TYPE,
+    ALLOWED_FORMAT,
+    ALLOWED_FUEL,
+    ALLOWED_LICENSE,
+    ALLOWED_PENALTIES,
+    ALLOWED_SCHEDULE,
+    ALLOWED_SESSION_TYPE,
+    ALLOWED_STEWARDING,
+    ALLOWED_SURFACE,
+    ALLOWED_TIRE,
+    ALLOWED_TRACK,
+    ALLOWED_WEATHER,
+)
+from app.core.constants.profile import PROFILE_REQUIRED_FIELDS
+from app.core.constants.algorithms import (
+    CRS_ALGO_VERSION,
+    GT_GLOBAL_PROFILE,
+    GT_GLOBAL_SIM_GAMES,
+    PARTICIPATIONS_INPUT_LIMIT,
+    REC_ALGO_VERSION,
+    TIER_WEIGHTS,
+)
+from app.core.constants.rig import (
+    DEFAULT_DRIVER_RIG,
+    PEDALS_ORDER,
+    WHEEL_ORDER,
+)
+from app.core.constants.classifier import TIER_LABELS
+
+__all__ = [
+    "DRIVER_TIERS",
+    "EVENT_TIERS",
+    "TIER_ORDER",
+    "TIER_RANK",
+    "TIER_TOP",
+    "VALID_TIERS",
+    "SESSION_TYPE_VALUES",
+    "SPECIAL_EVENT_VALUES",
+    "SPECIAL_SLOT_VALUES",
+    "DEFAULT_ROLLING_WINDOW_SIZE",
+    "DEFAULT_ROLLING_WINDOW_UNIT",
+    "DISCIPLINE_ALIASES",
+    "DISCIPLINES",
+    "REQUIREMENT_COLUMN_KEYS",
+    "ALLOWED_DAMAGE",
+    "ALLOWED_EVENT_TYPE",
+    "ALLOWED_FORMAT",
+    "ALLOWED_FUEL",
+    "ALLOWED_LICENSE",
+    "ALLOWED_PENALTIES",
+    "ALLOWED_SCHEDULE",
+    "ALLOWED_SESSION_TYPE",
+    "ALLOWED_STEWARDING",
+    "ALLOWED_SURFACE",
+    "ALLOWED_TIRE",
+    "ALLOWED_TRACK",
+    "ALLOWED_WEATHER",
+    "PROFILE_REQUIRED_FIELDS",
+    "CRS_ALGO_VERSION",
+    "GT_GLOBAL_PROFILE",
+    "GT_GLOBAL_SIM_GAMES",
+    "PARTICIPATIONS_INPUT_LIMIT",
+    "REC_ALGO_VERSION",
+    "TIER_WEIGHTS",
+    "DEFAULT_DRIVER_RIG",
+    "PEDALS_ORDER",
+    "WHEEL_ORDER",
+    "TIER_LABELS",
+]

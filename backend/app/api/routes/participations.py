@@ -4,13 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.classification import Classification
-from app.models.driver import Driver
-from app.models.event import Event
 from app.models.incident import Incident
 from app.models.participation import Participation, ParticipationState, ParticipationStatus
-from app.models.task_completion import TaskCompletion
 from app.models.user import User
+from app.repositories.classification import ClassificationRepository
+from app.repositories.driver import DriverRepository
+from app.repositories.event import EventRepository
+from app.repositories.incident import IncidentRepository
+from app.repositories.participation import ParticipationRepository
+from app.repositories.task_completion import TaskCompletionRepository
 from app.schemas.incident import IncidentCreate, IncidentRead
 from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead, ParticipationWithdrawUpdate
 from app.services.tasks import assign_tasks_on_registration, evaluate_tasks
@@ -27,12 +29,12 @@ def create_participation(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == payload.driver_id).first()
+    driver = DriverRepository(session).get_by_id(payload.driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    event = session.query(Event).filter(Event.id == payload.event_id).first()
+    event = EventRepository(session).get_by_id(payload.event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     from datetime import datetime, timezone
@@ -45,11 +47,7 @@ def create_participation(
             status_code=400,
             detail="Cannot register for a past event. Registration is closed.",
         )
-    classification = (
-        session.query(Classification)
-        .filter(Classification.event_id == payload.event_id)
-        .first()
-    )
+    classification = ClassificationRepository(session).get_latest_for_event(payload.event_id)
     if not classification:
         raise HTTPException(
             status_code=400,
@@ -61,14 +59,8 @@ def create_participation(
             detail="Your rig does not meet the event's required rig (wheel/pedals). You cannot register.",
         )
     MAX_WITHDRAWALS = 3
-    existing = (
-        session.query(Participation)
-        .filter(
-            Participation.driver_id == payload.driver_id,
-            Participation.event_id == payload.event_id,
-        )
-        .first()
-    )
+    part_repo = ParticipationRepository(session)
+    existing = part_repo.get_by_driver_and_event(payload.driver_id, payload.event_id)
     if existing:
         if existing.participation_state == ParticipationState.withdrawn:
             if existing.withdraw_count >= MAX_WITHDRAWALS:
@@ -86,7 +78,7 @@ def create_participation(
 
     participation = Participation(**payload.model_dump())
     participation.classification_id = classification.id
-    session.add(participation)
+    part_repo.add(participation)
     session.commit()
     session.refresh(participation)
     assign_tasks_on_registration(session, driver.id, participation.id)
@@ -111,23 +103,20 @@ def list_participations(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    query = session.query(Participation)
+    part_repo = ParticipationRepository(session)
+    driver_repo = DriverRepository(session)
     if user.role not in {"admin"}:
         if driver_id:
-            driver = session.query(Driver).filter(Driver.id == driver_id).first()
+            driver = driver_repo.get_by_id(driver_id)
             if not driver or driver.user_id != user.id:
                 raise HTTPException(status_code=403, detail="Insufficient role")
         else:
-            driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+            driver = driver_repo.get_by_user_id(user.id)
             if not driver:
                 return []
             driver_id = driver.id
-    if driver_id:
-        query = query.filter(Participation.driver_id == driver_id)
-    if event_id:
-        query = query.filter(Participation.event_id == event_id)
     limit = max(1, min(limit, 200))
-    return query.order_by(Participation.created_at.desc()).offset(offset).limit(limit).all()
+    return part_repo.list_filtered(driver_id=driver_id, event_id=event_id, offset=offset, limit=limit)
 
 
 @router.get("/active", response_model=ActiveParticipationRead | None)
@@ -137,24 +126,15 @@ def get_active_participation(
     user: User = Depends(require_user()),
 ):
     """Return the driver's current race (participation_state=started, finished_at is null), if any."""
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         return None
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    participation = (
-        session.query(Participation)
-        .filter(
-            Participation.driver_id == driver_id,
-            Participation.participation_state == ParticipationState.started,
-            Participation.finished_at.is_(None),
-        )
-        .order_by(Participation.started_at.desc())
-        .first()
-    )
+    participation = ParticipationRepository(session).get_active_by_driver(driver_id)
     if not participation:
         return None
-    event = session.query(Event).filter(Event.id == participation.event_id).first()
+    event = EventRepository(session).get_by_id(participation.event_id)
     event_title = event.title if event else None
     return ActiveParticipationRead(
         **ParticipationRead.model_validate(participation).model_dump(),
@@ -168,11 +148,11 @@ def get_participation(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    participation = session.query(Participation).filter(Participation.id == participation_id).first()
+    participation = ParticipationRepository(session).get_by_id(participation_id)
     if not participation:
         raise HTTPException(status_code=404, detail="Participation not found")
     if user.role not in {"admin"}:
-        driver = session.query(Driver).filter(Driver.id == participation.driver_id).first()
+        driver = DriverRepository(session).get_by_id(participation.driver_id)
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
     return participation
@@ -186,11 +166,11 @@ def update_participation_withdraw(
     user: User = Depends(require_user()),
 ):
     """Driver withdraws from event: set participation_state to withdrawn (only when currently registered)."""
-    participation = session.query(Participation).filter(Participation.id == participation_id).first()
+    participation = ParticipationRepository(session).get_by_id(participation_id)
     if not participation:
         raise HTTPException(status_code=404, detail="Participation not found")
     if user.role not in {"admin"}:
-        driver = session.query(Driver).filter(Driver.id == participation.driver_id).first()
+        driver = DriverRepository(session).get_by_id(participation.driver_id)
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
     if participation.participation_state != ParticipationState.registered:
@@ -200,10 +180,9 @@ def update_participation_withdraw(
         )
     participation.participation_state = ParticipationState.withdrawn
     participation.withdraw_count = (participation.withdraw_count or 0) + 1
-    session.query(TaskCompletion).filter(
-        TaskCompletion.participation_id == participation.id,
-        TaskCompletion.status.in_(["pending", "in_progress"]),
-    ).delete(synchronize_session=False)
+    TaskCompletionRepository(session).delete_by_participation_and_status(
+        participation.id, ["pending", "in_progress"]
+    )
     session.commit()
     session.refresh(participation)
     return participation
@@ -219,16 +198,16 @@ def create_incident(
     if participation_id != payload.participation_id:
         raise HTTPException(status_code=400, detail="Participation mismatch")
 
-    participation = session.query(Participation).filter(Participation.id == participation_id).first()
+    participation = ParticipationRepository(session).get_by_id(participation_id)
     if not participation:
         raise HTTPException(status_code=404, detail="Participation not found")
     if user.role not in {"admin"}:
-        driver = session.query(Driver).filter(Driver.id == participation.driver_id).first()
+        driver = DriverRepository(session).get_by_id(participation.driver_id)
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
 
     incident = Incident(**payload.model_dump())
-    session.add(incident)
+    IncidentRepository(session).add(incident)
     participation.incidents_count += 1
     session.commit()
     session.refresh(incident)
@@ -241,16 +220,11 @@ def list_incidents(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    participation = session.query(Participation).filter(Participation.id == participation_id).first()
+    participation = ParticipationRepository(session).get_by_id(participation_id)
     if not participation:
         raise HTTPException(status_code=404, detail="Participation not found")
     if user.role not in {"admin"}:
-        driver = session.query(Driver).filter(Driver.id == participation.driver_id).first()
+        driver = DriverRepository(session).get_by_id(participation.driver_id)
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
-    return (
-        session.query(Incident)
-        .filter(Incident.participation_id == participation_id)
-        .order_by(Incident.created_at.desc())
-        .all()
-    )
+    return IncidentRepository(session).list_by_participation_id(participation_id)

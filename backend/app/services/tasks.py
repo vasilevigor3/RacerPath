@@ -13,7 +13,7 @@ from app.models.participation import Participation, ParticipationState
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
 
-TIER_RANK = {"E0": 0, "E1": 1, "E2": 2, "E3": 3, "E4": 4, "E5": 5}
+from app.core.constants import TIER_RANK
 
 
 def _get_req(task: TaskDefinition, key: str, default=None):

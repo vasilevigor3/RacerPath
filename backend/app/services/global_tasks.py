@@ -14,20 +14,11 @@ from app.models.driver import Driver
 from app.models.task_definition import TaskDefinition
 from app.models.user_profile import UserProfile
 from app.services.task_engine import can_complete_task, complete_task
-
-# Коды глобальных задач (должны быть созданы в БД через create_global_tasks.py)
-GT_GLOBAL_PROFILE = "GT_GLOBAL_PROFILE"
-GT_GLOBAL_SIM_GAMES = "GT_GLOBAL_SIM_GAMES"
-
-# Поля профиля, которые считаем обязательными для "профиль заполнен"
-PROFILE_REQUIRED_FIELDS = [
-    "full_name",
-    "country",
-    "city",
-    "experience_years",
-    "primary_discipline",
-    "sim_platforms",
-]
+from app.core.constants import (
+    GT_GLOBAL_PROFILE,
+    GT_GLOBAL_SIM_GAMES,
+    PROFILE_REQUIRED_FIELDS,
+)
 
 
 def _is_profile_ready(session: Session, driver_id: str) -> bool:

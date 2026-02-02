@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.anti_gaming import AntiGamingReport
-from app.models.driver import Driver
 from app.models.user import User
+from app.repositories.anti_gaming import AntiGamingReportRepository
+from app.repositories.driver import DriverRepository
 from app.schemas.anti_gaming import AntiGamingReportRead
 from app.services.anti_gaming import evaluate_anti_gaming
 from app.services.auth import require_user
@@ -21,7 +21,7 @@ def evaluate(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
@@ -38,16 +38,15 @@ def list_reports(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
     limit = max(1, min(limit, 200))
-    query = session.query(AntiGamingReport).filter(AntiGamingReport.driver_id == driver_id)
-    if discipline:
-        query = query.filter(AntiGamingReport.discipline == discipline)
-    return query.order_by(AntiGamingReport.created_at.desc()).offset(offset).limit(limit).all()
+    return AntiGamingReportRepository(session).list_by_driver_id(
+        driver_id, discipline=discipline, offset=offset, limit=limit
+    )
 
 
 @router.get("/reports/latest", response_model=AntiGamingReportRead)
@@ -57,16 +56,13 @@ def latest_report(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    report = (
-        session.query(AntiGamingReport)
-        .filter(AntiGamingReport.driver_id == driver_id, AntiGamingReport.discipline == discipline)
-        .order_by(AntiGamingReport.created_at.desc())
-        .first()
+    report = AntiGamingReportRepository(session).latest_by_driver_and_discipline(
+        driver_id, discipline
     )
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")

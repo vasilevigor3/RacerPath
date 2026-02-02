@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.driver import Driver
-from app.models.participation import Participation, ParticipationState, ParticipationStatus
-from app.models.task_definition import TaskDefinition
+from app.models.participation import ParticipationState, ParticipationStatus
 from app.models.user import User
+from app.repositories.driver import DriverRepository
+from app.repositories.participation import ParticipationRepository
+from app.repositories.task_definition import TaskDefinitionRepository
 from app.schemas.crs import CRSHistoryRead
 from app.schemas.participation import ParticipationRead
 from app.schemas.recommendation import RecommendationRead
@@ -30,12 +31,12 @@ def dev_complete_task(
     user: User = Depends(require_user()),
 ):
     """Complete a task by task_code (Task Engine). Admin or own driver."""
-    driver = session.query(Driver).filter(Driver.id == payload.driver_id).first()
+    driver = DriverRepository(session).get_by_id(payload.driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in ("admin",) and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    task = session.query(TaskDefinition).filter(TaskDefinition.code == payload.task_code).first()
+    task = TaskDefinitionRepository(session).get_by_code(payload.task_code)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     allowed, reason = can_complete_task(
@@ -66,7 +67,7 @@ def dev_recompute_driver(
     user: User = Depends(require_user()),
 ) -> dict[str, Any]:
     """Recompute CRS and recommendations for a driver (with snapshot: inputs_hash, algo_version, computed_from)."""
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in ("admin",) and driver.user_id != user.id:
@@ -96,7 +97,7 @@ def mock_participation_join(
     user: User = Depends(require_roles("admin")),
 ):
     """Mock: simulate external integration — driver joined server/session. Sets participation_state=started, started_at=now."""
-    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    part = ParticipationRepository(session).get_by_id(participation_id)
     if not part:
         raise HTTPException(status_code=404, detail="Participation not found")
     if part.participation_state != ParticipationState.registered:
@@ -120,7 +121,7 @@ def mock_participation_finish(
     user: User = Depends(require_roles("admin")),
 ):
     """Mock: simulate external integration — driver finished race. Sets participation_state=completed, finished_at=now, status (finished/dnf/dsq)."""
-    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    part = ParticipationRepository(session).get_by_id(participation_id)
     if not part:
         raise HTTPException(status_code=404, detail="Participation not found")
     if part.participation_state != ParticipationState.started:

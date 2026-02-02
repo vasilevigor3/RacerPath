@@ -1,10 +1,6 @@
 """Rig compatibility: event.rig_options = minimum required; driver must meet or exceed."""
 
-WHEEL_ORDER = {"legacy": 0, "force_feedback_nm": 1}
-PEDALS_ORDER = {"basic": 0, "spring": 1, "premium": 2}
-
-# Driver with no rig_options is treated as minimal rig (legacy, basic, no clutch)
-DEFAULT_DRIVER_RIG = {"wheel_type": "legacy", "pedals_class": "basic", "manual_with_clutch": False}
+from app.core.constants import DEFAULT_DRIVER_RIG, PEDALS_ORDER, WHEEL_ORDER
 
 
 def driver_rig_satisfies_event(driver_rig: dict | None, event_rig: dict | None) -> bool:

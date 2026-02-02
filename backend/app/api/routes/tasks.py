@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.driver import Driver
-from app.models.participation import Participation
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
 from app.models.user import User
+from app.repositories.driver import DriverRepository
+from app.repositories.participation import ParticipationRepository
+from app.repositories.task_completion import TaskCompletionRepository
+from app.repositories.task_definition import TaskDefinitionRepository
 from app.schemas.task import (
     TaskCompletionCreate,
     TaskCompletionRead,
@@ -30,7 +32,7 @@ def create_task_definition(
     _: None = Depends(require_roles("admin")),
 ):
     task = TaskDefinition(**payload.model_dump())
-    session.add(task)
+    TaskDefinitionRepository(session).add(task)
     session.commit()
     session.refresh(task)
     return task
@@ -41,7 +43,7 @@ def list_task_definitions(
     session: Session = Depends(get_session),
     _: User = Depends(require_user()),
 ):
-    return session.query(TaskDefinition).order_by(TaskDefinition.created_at.desc()).all()
+    return TaskDefinitionRepository(session).list_all()
 
 
 @router.get("/definitions/{task_id}", response_model=TaskDefinitionRead)
@@ -50,7 +52,7 @@ def get_task_definition(
     session: Session = Depends(get_session),
     _: User = Depends(require_user()),
 ):
-    task = session.query(TaskDefinition).filter(TaskDefinition.id == task_id).first()
+    task = TaskDefinitionRepository(session).get_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -62,13 +64,13 @@ def create_task_completion(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == payload.driver_id).first()
+    driver = DriverRepository(session).get_by_id(payload.driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
 
-    task = session.query(TaskDefinition).filter(TaskDefinition.id == payload.task_id).first()
+    task = TaskDefinitionRepository(session).get_by_id(payload.task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -92,28 +94,16 @@ def create_task_completion(
             )
 
     if payload.participation_id:
-        participation = (
-            session.query(Participation)
-            .filter(Participation.id == payload.participation_id)
-            .first()
-        )
+        participation = ParticipationRepository(session).get_by_id(payload.participation_id)
         if not participation:
             raise HTTPException(status_code=404, detail="Participation not found")
         if participation.driver_id != driver.id:
             raise HTTPException(status_code=403, detail="Participation mismatch")
 
+    task_completion_repo = TaskCompletionRepository(session)
     # Global scope: at most one completion per (driver_id, task_id). Update existing instead of duplicate.
     if payload.participation_id is None and payload.period_key is None:
-        existing = (
-            session.query(TaskCompletion)
-            .filter(
-                TaskCompletion.driver_id == payload.driver_id,
-                TaskCompletion.task_id == payload.task_id,
-                TaskCompletion.participation_id.is_(None),
-                TaskCompletion.period_key.is_(None),
-            )
-            .first()
-        )
+        existing = task_completion_repo.find_global_completion(payload.driver_id, payload.task_id)
         if existing:
             existing.status = payload.status
             if payload.status == "completed":
@@ -123,7 +113,7 @@ def create_task_completion(
             return existing
 
     completion = TaskCompletion(**payload.model_dump())
-    session.add(completion)
+    task_completion_repo.add(completion)
     session.commit()
     session.refresh(completion)
     return completion
@@ -136,19 +126,16 @@ def list_task_completions(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    query = session.query(TaskCompletion)
     if user.role not in {"admin"}:
-        driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+        driver = DriverRepository(session).get_by_user_id(user.id)
         if not driver:
             return []
         if driver_id and driver_id != driver.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
         driver_id = driver.id
-    if driver_id:
-        query = query.filter(TaskCompletion.driver_id == driver_id)
-    if task_id:
-        query = query.filter(TaskCompletion.task_id == task_id)
-    return query.order_by(TaskCompletion.created_at.desc()).all()
+    if not driver_id:
+        return []
+    return TaskCompletionRepository(session).list_by_driver(driver_id, task_id)
 
 
 @router.post("/evaluate", response_model=List[TaskCompletionRead])
@@ -158,12 +145,12 @@ def evaluate_task_completion(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    participation = session.query(Participation).filter(Participation.id == participation_id).first()
+    participation = ParticipationRepository(session).get_by_id(participation_id)
     if not participation:
         raise HTTPException(status_code=404, detail="Participation not found")
     if participation.driver_id != driver.id:

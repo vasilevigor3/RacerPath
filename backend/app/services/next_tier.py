@@ -13,8 +13,7 @@ from app.models.event import Event
 from app.models.participation import Participation, ParticipationStatus
 from app.models.tier_progression_rule import TierProgressionRule
 
-TIER_TOP = "E5"
-TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
+from app.core.constants import TIER_ORDER, TIER_TOP
 
 
 def _next_tier(current: str) -> str | None:

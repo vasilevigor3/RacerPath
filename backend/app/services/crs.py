@@ -12,18 +12,11 @@ from app.models.crs_history import CRSHistory
 from app.models.participation import Participation
 from app.models.task_completion import TaskCompletion
 from app.core.settings import settings
-
-CRS_ALGO_VERSION = "crs_v1"
-PARTICIPATIONS_INPUT_LIMIT = 20
-
-TIER_WEIGHTS = {
-    "E0": 0.6,
-    "E1": 0.8,
-    "E2": 1.0,
-    "E3": 1.2,
-    "E4": 1.4,
-    "E5": 1.6,
-}
+from app.core.constants import (
+    CRS_ALGO_VERSION,
+    PARTICIPATIONS_INPUT_LIMIT,
+    TIER_WEIGHTS,
+)
 
 
 @dataclass

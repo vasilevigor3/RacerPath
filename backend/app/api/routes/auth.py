@@ -7,6 +7,8 @@ from app.core.settings import settings
 from app.db.session import get_session
 from app.models.audit_log import AuditLog
 from app.models.user import User
+from app.repositories.audit_log import AuditLogRepository
+from app.repositories.user import UserRepository
 from app.schemas.auth import (
     AuditLogRead,
     BootstrapRequest,
@@ -38,13 +40,12 @@ def bootstrap(payload: BootstrapRequest, session: Session = Depends(get_session)
     if payload.bootstrap_key != settings.bootstrap_key:
         raise HTTPException(status_code=403, detail="Invalid bootstrap key")
 
-    existing_admin = session.query(User).filter(User.role == "admin").first()
-    if existing_admin:
+    user_repo = UserRepository(session)
+    if user_repo.get_by_role("admin"):
         raise HTTPException(status_code=400, detail="Admin already exists")
 
     email = payload.email.strip().lower()
-    existing = session.query(User).filter(User.email == email).first()
-    if existing:
+    if user_repo.get_by_email(email):
         raise HTTPException(status_code=400, detail="Email already registered")
     api_key = generate_api_key()
     user = User(
@@ -54,7 +55,7 @@ def bootstrap(payload: BootstrapRequest, session: Session = Depends(get_session)
         api_key_hash=hash_key(api_key),
         password_hash=hash_password(payload.password),
     )
-    session.add(user)
+    user_repo.add(user)
     session.commit()
     session.refresh(user)
     return RegisterRead(
@@ -75,8 +76,8 @@ def register(payload: RegisterRequest, request: Request, session: Session = Depe
         RateLimitConfig(limit=settings.auth_rate_limit_per_minute, window_seconds=60),
     )
     email = payload.email.strip().lower()
-    existing = session.query(User).filter(User.email == email).first()
-    if existing:
+    user_repo = UserRepository(session)
+    if user_repo.get_by_email(email):
         raise HTTPException(status_code=400, detail="Email already registered")
     api_key = generate_api_key()
     user = User(
@@ -86,7 +87,7 @@ def register(payload: RegisterRequest, request: Request, session: Session = Depe
         api_key_hash=hash_key(api_key),
         password_hash=hash_password(payload.password),
     )
-    session.add(user)
+    user_repo.add(user)
     session.commit()
     session.refresh(user)
     return RegisterRead(
@@ -146,7 +147,7 @@ def revoke_api_key(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    target = session.query(User).filter(User.id == user_id).first()
+    target = UserRepository(session).get_by_id(user_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     target.api_key_hash = hash_key(generate_api_key())
@@ -161,8 +162,8 @@ def create_user(
     _: User | None = Depends(require_roles("admin")),
 ):
     email = payload.email.strip().lower()
-    existing = session.query(User).filter(User.email == email).first()
-    if existing:
+    user_repo = UserRepository(session)
+    if user_repo.get_by_email(email):
         raise HTTPException(status_code=400, detail="Email already registered")
     api_key = generate_api_key()
     user = User(
@@ -172,7 +173,7 @@ def create_user(
         api_key_hash=hash_key(api_key),
         password_hash=hash_password(payload.password),
     )
-    session.add(user)
+    user_repo.add(user)
     session.commit()
     session.refresh(user)
     return user
@@ -183,7 +184,7 @@ def list_users(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    return session.query(User).order_by(User.created_at.desc()).all()
+    return UserRepository(session).list_all()
 
 
 @router.get("/audit", response_model=List[AuditLogRead])
@@ -191,4 +192,4 @@ def list_audit_logs(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    return session.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(200).all()
+    return AuditLogRepository(session).list_recent(200)

@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.driver import Driver
-from app.models.driver_license import DriverLicense
 from app.models.license_level import LicenseLevel
 from app.models.user import User
+from app.repositories.driver import DriverRepository
+from app.repositories.driver_license import DriverLicenseRepository
+from app.repositories.license_level import LicenseLevelRepository
 from app.schemas.license import (
     DriverLicenseRead,
     LicenseLevelCreate,
@@ -27,7 +28,7 @@ def create_level(
     _: None = Depends(require_roles("admin")),
 ):
     level = LicenseLevel(**payload.model_dump())
-    session.add(level)
+    LicenseLevelRepository(session).add(level)
     session.commit()
     session.refresh(level)
     return level
@@ -39,10 +40,7 @@ def list_levels(
     session: Session = Depends(get_session),
     _: User = Depends(require_user()),
 ):
-    query = session.query(LicenseLevel)
-    if discipline:
-        query = query.filter(LicenseLevel.discipline == discipline)
-    return query.order_by(LicenseLevel.min_crs.asc()).all()
+    return LicenseLevelRepository(session).list_by_discipline(discipline=discipline)
 
 
 @router.post("/award", response_model=DriverLicenseRead)
@@ -52,7 +50,7 @@ def award(
     session: Session = Depends(get_session),
     _: None = Depends(require_roles("admin")),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     awarded = award_license(session, driver_id, discipline)
@@ -68,21 +66,12 @@ def latest_license(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    license_ = (
-        session.query(DriverLicense)
-        .filter(
-            DriverLicense.driver_id == driver_id,
-            DriverLicense.discipline == discipline,
-        )
-        .order_by(DriverLicense.awarded_at.desc())
-        .first()
-    )
-    return license_
+    return DriverLicenseRepository(session).latest_by_driver_and_discipline(driver_id, discipline)
 
 
 @router.get("/requirements", response_model=LicenseRequirementsRead)
@@ -92,11 +81,8 @@ def license_requirements(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    levels = (
-        session.query(LicenseLevel)
-        .filter(LicenseLevel.discipline == discipline, LicenseLevel.active.is_(True))
-        .order_by(LicenseLevel.min_crs.asc())
-        .all()
+    levels = LicenseLevelRepository(session).list_by_discipline(
+        discipline=discipline, active_only=True
     )
     requirements = [
         f"{lev.code}: min CRS {lev.min_crs}" + (
@@ -106,16 +92,13 @@ def license_requirements(
     ]
     next_level = None
     if driver_id and levels:
-        driver = session.query(Driver).filter(Driver.id == driver_id).first()
+        driver = DriverRepository(session).get_by_id(driver_id)
         if driver and (user.role == "admin" or driver.user_id == user.id):
             earned = {
                 dl.level_code
-                for dl in session.query(DriverLicense)
-                .filter(
-                    DriverLicense.driver_id == driver_id,
-                    DriverLicense.discipline == discipline,
+                for dl in DriverLicenseRepository(session).list_by_driver_id(
+                    driver_id, discipline
                 )
-                .all()
             }
             for lev in levels:
                 if lev.code not in earned:
@@ -133,12 +116,9 @@ def list_driver_licenses(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    query = session.query(DriverLicense).filter(DriverLicense.driver_id == driver_id)
-    if discipline:
-        query = query.filter(DriverLicense.discipline == discipline)
-    return query.order_by(DriverLicense.awarded_at.desc()).all()
+    return DriverLicenseRepository(session).list_by_driver_id(driver_id, discipline)

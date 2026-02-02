@@ -13,12 +13,13 @@ from app.models.participation import Participation
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
 
+from app.core.constants import (
+    DEFAULT_ROLLING_WINDOW_SIZE,
+    DEFAULT_ROLLING_WINDOW_UNIT,
+)
+
 PeriodKind = Literal["daily", "weekly", "monthly"]
 ScopeKind = Literal["global", "per_participation", "rolling_window", "periodic"]
-
-# Default window for rolling_window when not in TaskDefinition (service/config level)
-DEFAULT_ROLLING_WINDOW_SIZE = 5
-DEFAULT_ROLLING_WINDOW_UNIT = "participations"
 
 
 def build_period_key(dt: datetime | None, period: PeriodKind) -> str:

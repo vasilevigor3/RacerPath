@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.crs_history import CRSHistory
 from app.models.driver import Driver
 from app.models.user import User
 from app.models.user_profile import UserProfile
+from app.repositories.crs_history import CRSHistoryRepository
+from app.repositories.driver import DriverRepository
+from app.repositories.user_profile import UserProfileRepository
 from app.schemas.crs import CRSHistoryRead
 from app.schemas.driver import DriverCreate, DriverRead, DriverUpdate
 from app.services.auth import require_roles, require_user
@@ -32,7 +34,7 @@ def create_driver(
         sim_games=payload.sim_games,
         user_id=payload.user_id,
     )
-    session.add(driver)
+    DriverRepository(session).add(driver)
     session.commit()
     session.refresh(driver)
     suffix = (driver.primary_discipline or "gt").upper()
@@ -47,10 +49,10 @@ def list_drivers(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    query = session.query(Driver)
-    if user.role not in {"admin"}:
-        query = query.filter(Driver.user_id == user.id)
-    return query.order_by(Driver.created_at.desc()).all()
+    repo = DriverRepository(session)
+    if user.role == "admin":
+        return repo.list_all()
+    return repo.list_for_user(user.id)
 
 
 @router.get("/me", response_model=DriverRead | None)
@@ -58,7 +60,7 @@ def get_my_driver(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    return session.query(Driver).filter(Driver.user_id == user.id).first()
+    return DriverRepository(session).get_by_user_id(user.id)
 
 
 @router.post("/me", response_model=DriverRead)
@@ -74,7 +76,9 @@ def create_my_driver(
         )
     if not payload.sim_games:
         raise HTTPException(status_code=400, detail="At least one sim game is required")
-    existing = session.query(Driver).filter(Driver.user_id == user.id).first()
+    driver_repo = DriverRepository(session)
+    profile_repo = UserProfileRepository(session)
+    existing = driver_repo.get_by_user_id(user.id)
     if existing:
         raise HTTPException(status_code=400, detail="Driver profile already exists")
     driver = Driver(
@@ -84,10 +88,10 @@ def create_my_driver(
         user_id=user.id,
         rig_options=payload.rig_options.model_dump() if payload.rig_options is not None else None,
     )
-    session.add(driver)
+    driver_repo.add(driver)
     session.commit()
     session.refresh(driver)
-    profile = session.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+    profile = profile_repo.get_by_user_id(user.id)
     if not profile:
         profile = UserProfile(
             user_id=user.id,
@@ -95,7 +99,7 @@ def create_my_driver(
             primary_discipline=driver.primary_discipline,
             sim_platforms=driver.sim_games,
         )
-        session.add(profile)
+        profile_repo.add(profile)
     else:
         if not profile.primary_discipline:
             profile.primary_discipline = driver.primary_discipline
@@ -117,15 +121,12 @@ def get_driver_crs_history(
     user: User = Depends(require_user()),
 ):
     """CRS history for driver (includes inputs_hash, computed_from_participation_id)."""
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    query = session.query(CRSHistory).filter(CRSHistory.driver_id == driver_id)
-    if discipline:
-        query = query.filter(CRSHistory.discipline == discipline)
-    return query.order_by(CRSHistory.computed_at.desc()).all()
+    return CRSHistoryRepository(session).list_by_driver_id(driver_id, discipline)
 
 
 @router.patch("/me", response_model=DriverRead)
@@ -134,7 +135,7 @@ def update_my_driver(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+    driver = DriverRepository(session).get_by_user_id(user.id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver profile not found")
     data = payload.model_dump(exclude_unset=True)
@@ -152,7 +153,7 @@ def get_driver(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-SPECIAL_SLOT_VALUES = ("race_of_day", "race_of_week", "race_of_month", "race_of_year")
+from app.core.constants import SPECIAL_SLOT_VALUES
 
 
 def get_period_bounds(special_value: str, dt: datetime) -> tuple[datetime, datetime]:

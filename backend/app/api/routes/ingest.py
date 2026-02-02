@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.raw_event import RawEvent
 from app.models.user import User
+from app.repositories.raw_event import RawEventRepository
 from app.schemas.raw_event import RawEventIngest, RawEventRead
 from app.services.ingestion import ingest_payload
 from app.services.auth import require_roles, require_user
@@ -46,13 +46,7 @@ def list_raw_events(
     _: User | None = Depends(require_roles("admin")),
 ):
     limit = max(1, min(limit, 200))
-    return (
-        session.query(RawEvent)
-        .order_by(RawEvent.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    return RawEventRepository(session).list_paginated(offset=offset, limit=limit)
 
 
 @router.get("/raw-events/{raw_event_id}", response_model=RawEventRead)
@@ -61,7 +55,7 @@ def get_raw_event(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    raw_event = session.query(RawEvent).filter(RawEvent.id == raw_event_id).first()
+    raw_event = RawEventRepository(session).get_by_id(raw_event_id)
     if not raw_event:
         raise HTTPException(status_code=404, detail="Raw event not found")
     return raw_event

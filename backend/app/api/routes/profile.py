@@ -8,33 +8,27 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.models.user import User
-from app.models.driver import Driver
 from app.models.user_profile import UserProfile
+from app.repositories.driver import DriverRepository
+from app.repositories.user_profile import UserProfileRepository
 from app.schemas.profile import NextTierData, UserProfileRead, UserProfileUpsert
 from app.services.auth import require_user
 from app.services.next_tier import compute_next_tier_progress
 from app.services.global_tasks import check_and_complete_global_tasks
 from app.services.tasks import ensure_task_completion
 
-router = APIRouter(prefix="/profile", tags=["profile"])
+from app.core.constants import PROFILE_REQUIRED_FIELDS
 
-REQUIRED_FIELDS = [
-    "full_name",
-    "country",
-    "city",
-    "experience_years",
-    "primary_discipline",
-    "sim_platforms",
-]
+router = APIRouter(prefix="/profile", tags=["profile"])
 
 
 def _compute_completion(profile: UserProfile | None) -> tuple[int, List[str], str]:
     if not profile:
-        missing = REQUIRED_FIELDS.copy()
+        missing = list(PROFILE_REQUIRED_FIELDS)
         return 0, missing, "Rookie"
 
     missing = []
-    for field in REQUIRED_FIELDS:
+    for field in PROFILE_REQUIRED_FIELDS:
         value = getattr(profile, field)
         if field == "sim_platforms":
             if not value:
@@ -43,7 +37,7 @@ def _compute_completion(profile: UserProfile | None) -> tuple[int, List[str], st
             if value in (None, ""):
                 missing.append(field)
 
-    profile_completion = int(round((len(REQUIRED_FIELDS) - len(missing)) / len(REQUIRED_FIELDS) * 100))
+    profile_completion = int(round((len(PROFILE_REQUIRED_FIELDS) - len(missing)) / len(PROFILE_REQUIRED_FIELDS) * 100))
     if profile_completion >= 85:
         level = "Elite"
     elif profile_completion >= 60:
@@ -108,7 +102,7 @@ def get_my_profile(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    profile = session.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+    profile = UserProfileRepository(session).get_by_user_id(user.id)
     next_tier, next_tier_data = compute_next_tier_progress(session, user.id)
     return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)
 
@@ -119,10 +113,12 @@ def upsert_my_profile(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    profile = session.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+    profile_repo = UserProfileRepository(session)
+    driver_repo = DriverRepository(session)
+    profile = profile_repo.get_by_user_id(user.id)
     if not profile:
         profile = UserProfile(user_id=user.id)
-        session.add(profile)
+        profile_repo.add(profile)
 
     data = payload.model_dump(exclude_unset=True)
     rig_options = data.pop("rig_options", None)
@@ -132,7 +128,7 @@ def upsert_my_profile(
         setattr(profile, field, value)
 
     profile.updated_at = datetime.now(timezone.utc)
-    driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+    driver = driver_repo.get_by_user_id(user.id)
     if profile.sim_platforms and driver:
         driver.sim_games = profile.sim_platforms
     if driver and rig_options is not None:

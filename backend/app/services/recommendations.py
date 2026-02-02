@@ -17,7 +17,7 @@ from app.models.task_definition import TaskDefinition
 from app.utils.game_aliases import expand_driver_games_for_event_match
 from app.utils.special_events import get_period_bounds
 
-TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
+from app.core.constants import REC_ALGO_VERSION, TIER_ORDER
 
 
 def _latest_crs(session: Session, driver_id: str, discipline: str) -> CRSHistory | None:
@@ -221,9 +221,6 @@ def compute_recommendation(session: Session, driver_id: str, discipline: str) ->
     session.commit()
     session.refresh(recommendation)
     return recommendation, special_events
-
-
-REC_ALGO_VERSION = "rec_v1"
 
 
 def recompute_recommendations(

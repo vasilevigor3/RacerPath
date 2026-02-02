@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models.driver import Driver
 from app.models.real_world_format import RealWorldFormat
-from app.models.real_world_readiness import RealWorldReadiness
 from app.models.user import User
+from app.repositories.driver import DriverRepository
+from app.repositories.real_world import RealWorldFormatRepository, RealWorldReadinessRepository
 from app.schemas.real_world import RealWorldFormatCreate, RealWorldFormatRead, RealWorldReadinessRead
 from app.services.auth import require_roles, require_user
 from app.services.real_world import compute_real_world_readiness
@@ -22,7 +22,7 @@ def create_format(
     _: None = Depends(require_roles("admin")),
 ):
     fmt = RealWorldFormat(**payload.model_dump())
-    session.add(fmt)
+    RealWorldFormatRepository(session).add(fmt)
     session.commit()
     session.refresh(fmt)
     return fmt
@@ -34,10 +34,7 @@ def list_formats(
     session: Session = Depends(get_session),
     _: User = Depends(require_user()),
 ):
-    query = session.query(RealWorldFormat)
-    if discipline:
-        query = query.filter(RealWorldFormat.discipline == discipline)
-    return query.order_by(RealWorldFormat.min_crs.asc()).all()
+    return RealWorldFormatRepository(session).list_by_discipline(discipline)
 
 
 @router.post("/assess", response_model=RealWorldReadinessRead)
@@ -47,7 +44,7 @@ def assess(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
@@ -64,16 +61,15 @@ def list_assessments(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
     limit = max(1, min(limit, 200))
-    query = session.query(RealWorldReadiness).filter(RealWorldReadiness.driver_id == driver_id)
-    if discipline:
-        query = query.filter(RealWorldReadiness.discipline == discipline)
-    return query.order_by(RealWorldReadiness.created_at.desc()).offset(offset).limit(limit).all()
+    return RealWorldReadinessRepository(session).list_by_driver_id(
+        driver_id, discipline=discipline, offset=offset, limit=limit
+    )
 
 
 @router.get("/assessments/latest", response_model=RealWorldReadinessRead)
@@ -83,16 +79,13 @@ def latest_assessment(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    driver = session.query(Driver).filter(Driver.id == driver_id).first()
+    driver = DriverRepository(session).get_by_id(driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
-    readiness = (
-        session.query(RealWorldReadiness)
-        .filter(RealWorldReadiness.driver_id == driver_id, RealWorldReadiness.discipline == discipline)
-        .order_by(RealWorldReadiness.created_at.desc())
-        .first()
+    readiness = RealWorldReadinessRepository(session).latest_by_driver_and_discipline(
+        driver_id, discipline
     )
     if not readiness:
         raise HTTPException(status_code=404, detail="Assessment not found")

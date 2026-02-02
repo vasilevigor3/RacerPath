@@ -5,8 +5,7 @@ from sqlalchemy import CheckConstraint, DateTime, ForeignKey, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-
-DRIVER_TIERS = ("E0", "E1", "E2", "E3", "E4", "E5")
+from app.core.constants import VALID_TIERS
 
 
 class Driver(Base):

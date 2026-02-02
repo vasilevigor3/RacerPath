@@ -4,8 +4,7 @@ from sqlalchemy import CheckConstraint, Float, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-
-TIER_VALUES = ("E0", "E1", "E2", "E3", "E4", "E5")
+from app.core.constants import VALID_TIERS
 
 
 class TierProgressionRule(Base):

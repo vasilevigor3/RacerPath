@@ -6,20 +6,21 @@ from pydantic import ValidationError
 
 from app.schemas.event import EventCreate
 
-
-ALLOWED_SESSION_TYPE = {"race", "training"}
-ALLOWED_SCHEDULE = {"daily", "weekly", "seasonal", "special"}
-ALLOWED_EVENT_TYPE = {"circuit", "rally_stage", "rallycross", "karting", "offroad", "historic"}
-ALLOWED_FORMAT = {"sprint", "endurance", "series", "time_trial"}
-ALLOWED_DAMAGE = {"off", "visual", "limited", "full"}
-ALLOWED_PENALTIES = {"off", "low", "standard", "strict"}
-ALLOWED_FUEL = {"off", "normal", "real"}
-ALLOWED_TIRE = {"off", "normal", "real"}
-ALLOWED_WEATHER = {"fixed", "dynamic"}
-ALLOWED_STEWARDING = {"none", "automated", "human_review"}
-ALLOWED_LICENSE = {"none", "entry", "intermediate", "advanced", "pro_sim"}
-ALLOWED_SURFACE = {"tarmac", "gravel", "dirt", "mixed", "snow", "other"}
-ALLOWED_TRACK = {"road", "street", "oval", "mixed", "stage"}
+from app.core.constants import (
+    ALLOWED_DAMAGE,
+    ALLOWED_EVENT_TYPE,
+    ALLOWED_FORMAT,
+    ALLOWED_FUEL,
+    ALLOWED_LICENSE,
+    ALLOWED_PENALTIES,
+    ALLOWED_SCHEDULE,
+    ALLOWED_SESSION_TYPE,
+    ALLOWED_STEWARDING,
+    ALLOWED_SURFACE,
+    ALLOWED_TIRE,
+    ALLOWED_TRACK,
+    ALLOWED_WEATHER,
+)
 
 
 def _normalize_enum(value: Any, allowed: set[str], default: str, errors: List[str], label: str) -> str:

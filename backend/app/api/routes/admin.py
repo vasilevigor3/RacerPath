@@ -19,6 +19,19 @@ from app.models.task_definition import TaskDefinition
 from app.models.crs_history import CRSHistory
 from app.models.recommendation import Recommendation
 from app.models.tier_progression_rule import TierProgressionRule
+from app.repositories.classification import ClassificationRepository
+from app.repositories.crs_history import CRSHistoryRepository
+from app.repositories.driver import DriverRepository
+from app.repositories.driver_license import DriverLicenseRepository
+from app.repositories.event import EventRepository
+from app.repositories.incident import IncidentRepository
+from app.repositories.license_level import LicenseLevelRepository
+from app.repositories.participation import ParticipationRepository
+from app.repositories.recommendation import RecommendationRepository
+from app.repositories.task_definition import TaskDefinitionRepository
+from app.repositories.tier_progression_rule import TierProgressionRuleRepository
+from app.repositories.user import UserRepository
+from app.repositories.user_profile import UserProfileRepository
 from app.schemas.admin import (
     AdminLookupRead,
     AdminDriverCrsDiagnostic,
@@ -73,6 +86,7 @@ from app.events.participation_events import dispatch_participation_completed
 from app.services.global_tasks import check_and_complete_global_tasks
 from app.services.tasks import ensure_task_completion
 from app.services.race_of_day import restart_race_of_day
+from app.core.constants import VALID_TIERS
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -82,7 +96,7 @@ def get_profile(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    profile = session.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    profile = UserProfileRepository(session).get_by_user_id(user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     next_tier, next_tier_data = compute_next_tier_progress(session, user_id)
@@ -95,10 +109,11 @@ def update_profile(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    profile = session.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    profile_repo = UserProfileRepository(session)
+    profile = profile_repo.get_by_user_id(user_id)
     if not profile:
         profile = UserProfile(user_id=user_id)
-        session.add(profile)
+        profile_repo.add(profile)
 
     data = payload.model_dump(exclude_unset=True)
     for field, value in data.items():
@@ -107,7 +122,7 @@ def update_profile(
         setattr(profile, field, value)
 
     profile.updated_at = datetime.now(timezone.utc)
-    driver = session.query(Driver).filter(Driver.user_id == user_id).first()
+    driver = DriverRepository(session).get_by_user_id(user_id)
     if profile.sim_platforms and driver:
         driver.sim_games = profile.sim_platforms
     session.commit()
@@ -134,16 +149,10 @@ def list_users(
     _: User | None = Depends(require_roles("admin")),
 ):
     limit = max(1, min(limit, 200))
-    users = (
-        session.query(User)
-        .order_by(User.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    users = UserRepository(session).list_paginated(offset=offset, limit=limit)
     user_ids = [user.id for user in users]
-    profiles = session.query(UserProfile).filter(UserProfile.user_id.in_(user_ids)).all()
-    drivers = session.query(Driver).filter(Driver.user_id.in_(user_ids)).all()
+    profiles = UserProfileRepository(session).get_by_user_ids(user_ids)
+    drivers = [d for d in DriverRepository(session).list_all() if d.user_id in user_ids]
     profile_map = {profile.user_id: profile for profile in profiles}
     driver_map = {driver.user_id: driver for driver in drivers}
     response = []
@@ -174,11 +183,11 @@ def get_user_detail(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    user = session.query(User).filter(User.id == user_id).first()
+    user = UserRepository(session).get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    profile = session.query(UserProfile).filter(UserProfile.user_id == user.id).first()
-    driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+    profile = UserProfileRepository(session).get_by_user_id(user.id)
+    driver = DriverRepository(session).get_by_user_id(user.id)
     profile_completion, _, level = _compute_completion(profile)
     return AdminUserRead(
         id=user.id,
@@ -195,12 +204,14 @@ def get_user_detail(
 
 
 def _find_user_and_driver(session: Session, query: str) -> tuple[User | None, Driver | None]:
+    user_repo = UserRepository(session)
+    driver_repo = DriverRepository(session)
     if "@" in query:
-        user = session.query(User).filter(User.email == query).first()
-        driver = session.query(Driver).filter(Driver.user_id == user.id).first() if user else None
+        user = user_repo.get_by_email(query)
+        driver = driver_repo.get_by_user_id(user.id) if user else None
         return user, driver
-    driver = session.query(Driver).filter(Driver.id == query).first()
-    user = session.query(User).filter(User.id == driver.user_id).first() if driver else None
+    driver = driver_repo.get_by_id(query)
+    user = user_repo.get_by_id(driver.user_id) if driver else None
     return user, driver
 
 
@@ -216,7 +227,7 @@ def admin_lookup(
         raise HTTPException(status_code=404, detail="User or driver not found")
 
     if not user:
-        user = session.query(User).filter(User.id == driver.user_id).first()
+        user = UserRepository(session).get_by_id(driver.user_id)
 
     user_out = (
         AdminLookupUser(
@@ -237,20 +248,15 @@ def admin_lookup(
         sim_games=driver.sim_games or [],
     )
 
-    participations = (
-        session.query(Participation, Event)
-        .join(Event, Participation.event_id == Event.id, isouter=True)
-        .filter(Participation.driver_id == driver.id)
-        .order_by(Participation.started_at.desc(), Participation.created_at.desc())
-        .limit(50)
-        .all()
+    participations = ParticipationRepository(session).list_by_driver_id_with_events(
+        driver.id, limit=50
     )
     part_items = []
     participation_ids = []
     for part, event in participations:
         participation_ids.append(part.id)
         incidents_count = (
-            session.query(Incident).filter(Incident.participation_id == part.id).count()
+            IncidentRepository(session).count_by_participation_id(part.id)
         )
         part_items.append(
             AdminLookupParticipationItem(
@@ -266,12 +272,8 @@ def admin_lookup(
             )
         )
 
-    incidents = (
-        session.query(Incident)
-        .filter(Incident.participation_id.in_(participation_ids))
-        .order_by(Incident.created_at.desc())
-        .limit(100)
-        .all()
+    incidents = IncidentRepository(session).list_by_participation_ids(
+        participation_ids, limit=100
     )
     incident_items = [
         AdminLookupIncidentItem(
@@ -284,23 +286,13 @@ def admin_lookup(
         for i in incidents
     ]
 
-    licenses = (
-        session.query(DriverLicense)
-        .filter(DriverLicense.driver_id == driver.id)
-        .order_by(DriverLicense.awarded_at.desc())
-        .all()
-    )
+    licenses = DriverLicenseRepository(session).list_by_driver_id(driver.id)
     license_items = [
         AdminLookupLicenseItem(id=l.id, discipline=l.discipline, level_code=l.level_code, status=l.status)
         for l in licenses
     ]
 
-    last_crs = (
-        session.query(CRSHistory)
-        .filter(CRSHistory.driver_id == driver.id)
-        .order_by(CRSHistory.computed_at.desc())
-        .first()
-    )
+    last_crs = CRSHistoryRepository(session).latest_by_driver(driver.id)
     crs_out = (
         AdminLookupCrsItem(
             id=last_crs.id,
@@ -312,12 +304,7 @@ def admin_lookup(
         else None
     )
 
-    last_rec = (
-        session.query(Recommendation)
-        .filter(Recommendation.driver_id == driver.id)
-        .order_by(Recommendation.created_at.desc())
-        .first()
-    )
+    last_rec = RecommendationRepository(session).latest_by_driver(driver.id)
     rec_out = (
         AdminLookupRecommendationItem(
             id=last_rec.id,
@@ -347,10 +334,10 @@ def search_user_by_email(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    user = session.query(User).filter(User.email == email).first()
+    user = UserRepository(session).get_by_email(email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+    driver = DriverRepository(session).get_by_user_id(user.id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     return AdminUserSearchRead(
@@ -370,12 +357,8 @@ def search_participations(
     user, driver = _find_user_and_driver(session, q)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
-    participations = (
-        session.query(Participation, Event)
-        .join(Event, Participation.event_id == Event.id, isouter=True)
-        .filter(Participation.driver_id == driver.id)
-        .order_by(Participation.started_at.desc(), Participation.created_at.desc())
-        .all()
+    participations = ParticipationRepository(session).list_by_driver_id_with_events(
+        driver.id, limit=1000
     )
     items = []
     for participation, event in participations:
@@ -401,11 +384,12 @@ def inspect_driver(
     user, driver = _find_user_and_driver(session, q)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
-    participations = (
-        session.query(Participation)
-        .filter(Participation.driver_id == driver.id)
-        .order_by(Participation.started_at.desc(), Participation.created_at.desc())
-        .all()
+    participations = ParticipationRepository(session).list_by_driver_id(driver.id)
+    # Re-sort by started_at desc for summary
+    participations = sorted(
+        participations,
+        key=lambda p: (p.started_at or p.created_at or datetime.min.replace(tzinfo=timezone.utc)),
+        reverse=True,
     )
     summary = [
         AdminParticipationSummary(id=item.id, started_at=item.started_at) for item in participations
@@ -435,19 +419,12 @@ def get_event_detail(
     _: User | None = Depends(require_roles("admin")),
 ):
     """Event details + classification + participations list."""
-    event = session.query(Event).filter(Event.id == event_id).first()
+    event = EventRepository(session).get_by_id(event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    classification = (
-        session.query(Classification).filter(Classification.event_id == event_id).first()
-    )
-    participations = (
-        session.query(Participation, Driver)
-        .join(Driver, Participation.driver_id == Driver.id, isouter=True)
-        .filter(Participation.event_id == event_id)
-        .order_by(Participation.started_at.desc(), Participation.created_at.desc())
-        .limit(200)
-        .all()
+    classification = ClassificationRepository(session).get_latest_for_event(event_id)
+    participations = ParticipationRepository(session).list_by_event_id_with_drivers(
+        event_id, limit=200
     )
     part_items = [
         AdminEventParticipationItem(
@@ -478,19 +455,14 @@ def get_participation_detail(
     _: User | None = Depends(require_roles("admin")),
 ):
     """Participation details + driver + event + incidents list."""
-    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    part = ParticipationRepository(session).get_by_id(participation_id)
     if not part:
         raise HTTPException(status_code=404, detail="Participation not found")
-    driver = session.query(Driver).filter(Driver.id == part.driver_id).first()
+    driver = DriverRepository(session).get_by_id(part.driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
-    event = session.query(Event).filter(Event.id == part.event_id).first()
-    incidents = (
-        session.query(Incident)
-        .filter(Incident.participation_id == participation_id)
-        .order_by(Incident.lap.asc().nulls_last(), Incident.created_at.asc())
-        .all()
-    )
+    event = EventRepository(session).get_by_id(part.event_id)
+    incidents = IncidentRepository(session).list_by_participation_id(participation_id)
     part_data = {**ParticipationRead.model_validate(part).model_dump(), "game": event.game if event else None}
     return AdminParticipationDetailRead(
         participation=ParticipationAdminRead(**part_data),
@@ -527,7 +499,7 @@ def update_participation(
     _: User | None = Depends(require_roles("admin")),
 ):
     """Update participation fields (status, participation_state, position, laps, started_at, finished_at). Dates are validated: finished_at >= started_at when both set; started requires started_at; completed requires started_at and finished_at."""
-    part = session.query(Participation).filter(Participation.id == participation_id).first()
+    part = ParticipationRepository(session).get_by_id(participation_id)
     if not part:
         raise HTTPException(status_code=404, detail="Participation not found")
     data = payload.model_dump(exclude_unset=True)
@@ -592,18 +564,14 @@ def get_incident_detail(
     _: User | None = Depends(require_roles("admin")),
 ):
     """Incident details + participation + event + driver."""
-    incident = session.query(Incident).filter(Incident.id == incident_id).first()
+    incident = IncidentRepository(session).get_by_id(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
-    part = (
-        session.query(Participation)
-        .filter(Participation.id == incident.participation_id)
-        .first()
-    )
+    part = ParticipationRepository(session).get_by_id(incident.participation_id)
     if not part:
         raise HTTPException(status_code=404, detail="Participation not found")
-    event = session.query(Event).filter(Event.id == part.event_id).first()
-    driver = session.query(Driver).filter(Driver.id == part.driver_id).first()
+    event = EventRepository(session).get_by_id(part.event_id)
+    driver = DriverRepository(session).get_by_id(part.driver_id)
     return AdminIncidentDetailRead(
         incident=AdminIncidentRead(
             id=incident.id,
@@ -628,8 +596,6 @@ def get_incident_detail(
 
 # --- Tier progression rules (admin) ---
 
-VALID_TIERS = ("E0", "E1", "E2", "E3", "E4", "E5")
-
 
 @router.get("/tier-rules", response_model=List[TierProgressionRuleRead])
 def list_tier_rules(
@@ -637,7 +603,7 @@ def list_tier_rules(
     _: User | None = Depends(require_roles("admin")),
 ):
     """List all tier progression rules. Missing tiers are not returned (use PATCH to create)."""
-    return session.query(TierProgressionRule).order_by(TierProgressionRule.tier).all()
+    return TierProgressionRuleRepository(session).list_all()
 
 
 @router.get("/tier-rules/{tier}", response_model=TierProgressionRuleRead)
@@ -649,7 +615,7 @@ def get_tier_rule(
     tier = tier.strip().upper()
     if tier not in VALID_TIERS:
         raise HTTPException(status_code=400, detail="Invalid tier")
-    rule = session.query(TierProgressionRule).filter(TierProgressionRule.tier == tier).first()
+    rule = TierProgressionRuleRepository(session).get_by_tier(tier)
     if not rule:
         raise HTTPException(status_code=404, detail="Tier rule not found")
     return rule
@@ -666,7 +632,7 @@ def update_tier_rule(
     tier = tier.strip().upper()
     if tier not in VALID_TIERS:
         raise HTTPException(status_code=400, detail="Invalid tier")
-    rule = session.query(TierProgressionRule).filter(TierProgressionRule.tier == tier).first()
+    rule = TierProgressionRuleRepository(session).get_by_tier(tier)
     if not rule:
         rule = TierProgressionRule(tier=tier, min_events=5, difficulty_threshold=0.0, required_license_codes=[])
         session.add(rule)
@@ -692,10 +658,7 @@ def list_license_levels(
     _: User | None = Depends(require_roles("admin")),
 ):
     """List license levels. Optional filter by discipline."""
-    query = session.query(LicenseLevel)
-    if discipline:
-        query = query.filter(LicenseLevel.discipline == discipline)
-    return query.order_by(LicenseLevel.discipline, LicenseLevel.min_crs.asc()).all()
+    return LicenseLevelRepository(session).list_by_discipline(discipline=discipline)
 
 
 @router.post("/license-levels", response_model=LicenseLevelRead)
@@ -718,7 +681,7 @@ def get_license_level(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    level = session.query(LicenseLevel).filter(LicenseLevel.id == level_id).first()
+    level = LicenseLevelRepository(session).get_by_id(level_id)
     if not level:
         raise HTTPException(status_code=404, detail="License level not found")
     return level
@@ -731,7 +694,7 @@ def update_license_level(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    level = session.query(LicenseLevel).filter(LicenseLevel.id == level_id).first()
+    level = LicenseLevelRepository(session).get_by_id(level_id)
     if not level:
         raise HTTPException(status_code=404, detail="License level not found")
     data = payload.model_dump(exclude_unset=True)
@@ -748,15 +711,15 @@ def update_license_level(
 def _resolve_driver_id(session: Session, driver_id: str | None, email: str | None) -> str:
     """Resolve driver_id from driver_id or email. Raises HTTPException if not found."""
     if driver_id and driver_id.strip():
-        driver = session.query(Driver).filter(Driver.id == driver_id.strip()).first()
+        driver = DriverRepository(session).get_by_id(driver_id.strip())
         if driver:
             return driver.id
         raise HTTPException(status_code=404, detail="Driver not found")
     if email and email.strip():
-        user = session.query(User).filter(User.email == email.strip()).first()
+        user = UserRepository(session).get_by_email(email.strip())
         if not user:
             raise HTTPException(status_code=404, detail="User not found by email")
-        driver = session.query(Driver).filter(Driver.user_id == user.id).first()
+        driver = DriverRepository(session).get_by_user_id(user.id)
         if not driver:
             raise HTTPException(status_code=404, detail="No driver linked to this user")
         return driver.id
@@ -820,34 +783,22 @@ def driver_crs_diagnostic(
 ):
     """Diagnose why CRS might be 0: no participations, events missing classification, or CRS never computed."""
     did = _resolve_driver_id(session, driver_id, email)
-    driver = session.query(Driver).filter(Driver.id == did).first()
+    driver = DriverRepository(session).get_by_id(did)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     discipline = driver.primary_discipline or "gt"
 
-    participations = (
-        session.query(Participation)
-        .filter(Participation.driver_id == did, Participation.discipline == discipline)
-        .all()
-    )
+    all_parts = ParticipationRepository(session).list_by_driver_id(did)
+    participations = [p for p in all_parts if (p.discipline.value if hasattr(p.discipline, "value") else p.discipline) == discipline]
     participations_count = len(participations)
 
     events_missing_classification: list[str] = []
     for p in participations:
-        classification = (
-            session.query(Classification)
-            .filter(Classification.event_id == p.event_id)
-            .first()
-        )
+        classification = ClassificationRepository(session).get_latest_for_event(p.event_id)
         if not classification:
             events_missing_classification.append(p.event_id)
 
-    last_crs = (
-        session.query(CRSHistory)
-        .filter(CRSHistory.driver_id == did, CRSHistory.discipline == discipline)
-        .order_by(CRSHistory.computed_at.desc())
-        .first()
-    )
+    last_crs = CRSHistoryRepository(session).latest_by_driver_and_discipline(did, discipline)
     latest_crs_score = last_crs.score if last_crs else None
     latest_crs_discipline = last_crs.discipline if last_crs else None
 
@@ -884,10 +835,7 @@ def list_classifications_admin(
     _: User | None = Depends(require_roles("admin")),
 ):
     """List classifications. Optional filter by event_id."""
-    query = session.query(Classification)
-    if event_id:
-        query = query.filter(Classification.event_id == event_id)
-    return query.order_by(Classification.created_at.desc()).all()
+    return ClassificationRepository(session).list_for_event_admin(event_id)
 
 
 @router.post("/classifications", response_model=ClassificationRead)
@@ -897,10 +845,10 @@ def create_classification_admin(
     _: User | None = Depends(require_roles("admin")),
 ):
     """Create a classification (1 event = 1 classification; event must exist)."""
-    event = session.query(Event).filter(Event.id == payload.event_id).first()
+    event = EventRepository(session).get_by_id(payload.event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    existing = session.query(Classification).filter(Classification.event_id == payload.event_id).first()
+    existing = ClassificationRepository(session).get_latest_for_event(payload.event_id)
     if existing:
         raise HTTPException(status_code=400, detail="Event already has a classification")
     classification = Classification(**payload.model_dump())
@@ -916,7 +864,7 @@ def get_classification_admin(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    classification = session.query(Classification).filter(Classification.id == classification_id).first()
+    classification = ClassificationRepository(session).get_by_id(classification_id)
     if not classification:
         raise HTTPException(status_code=404, detail="Classification not found")
     return classification
@@ -929,7 +877,7 @@ def update_classification_admin(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    classification = session.query(Classification).filter(Classification.id == classification_id).first()
+    classification = ClassificationRepository(session).get_by_id(classification_id)
     if not classification:
         raise HTTPException(status_code=404, detail="Classification not found")
     data = payload.model_dump(exclude_unset=True)
@@ -946,11 +894,7 @@ def update_classification_admin(
 def _required_by_license_levels(session: Session, task_code: str) -> list:
     """License levels that have task_code in required_task_codes."""
     from app.schemas.admin import AdminLicenseLevelRef
-    levels = (
-        session.query(LicenseLevel)
-        .filter(LicenseLevel.active.is_(True))
-        .all()
-    )
+    levels = LicenseLevelRepository(session).list_by_discipline(active_only=True)
     refs = []
     for lev in levels:
         codes = lev.required_task_codes or []
@@ -966,10 +910,10 @@ def list_task_definitions_admin(
     _: User | None = Depends(require_roles("admin")),
 ):
     """List task definitions with which license levels require each task (by code)."""
-    query = session.query(TaskDefinition)
+    tasks = TaskDefinitionRepository(session).list_all()
     if discipline:
-        query = query.filter(TaskDefinition.discipline == discipline)
-    tasks = query.order_by(TaskDefinition.discipline, TaskDefinition.code).all()
+        tasks = [t for t in tasks if t.discipline == discipline]
+    tasks = sorted(tasks, key=lambda t: (t.discipline or "", t.code or ""))
     out = []
     for t in tasks:
         refs = _required_by_license_levels(session, t.code)
@@ -998,7 +942,7 @@ def get_task_definition_admin(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    task = session.query(TaskDefinition).filter(TaskDefinition.id == task_id).first()
+    task = TaskDefinitionRepository(session).get_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     refs = _required_by_license_levels(session, task.code)
@@ -1012,7 +956,7 @@ def update_task_definition_admin(
     session: Session = Depends(get_session),
     _: User | None = Depends(require_roles("admin")),
 ):
-    task = session.query(TaskDefinition).filter(TaskDefinition.id == task_id).first()
+    task = TaskDefinitionRepository(session).get_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     data = payload.model_dump(exclude_unset=True)

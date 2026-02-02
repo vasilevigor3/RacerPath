@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.models.task_definition import TaskDefinition
 
+from app.core.constants import DISCIPLINES, REQUIREMENT_COLUMN_KEYS
+
 TEMPLATES = [
     {
         "code": "GT_CLEAN_SPRINT",
@@ -210,7 +212,6 @@ TEMPLATES = [
     },
 ]
 
-DISCIPLINES = ["gt", "formula", "rally", "karting", "historic"]
 ONBOARDING_TEMPLATES = []
 for discipline in DISCIPLINES:
     suffix = discipline.upper()
@@ -248,17 +249,6 @@ TEMPLATES.extend(ONBOARDING_TEMPLATES)
 
 def list_templates() -> List[dict]:
     return TEMPLATES
-
-
-REQUIREMENT_COLUMN_KEYS = (
-    "min_duration_minutes", "max_incidents", "max_penalties",
-    "require_night", "require_dynamic_weather", "require_team_event",
-    "require_clean_finish", "allow_non_finish",
-    "max_position_overall", "min_position_overall", "min_laps_completed",
-    "repeatable", "max_completions", "cooldown_hours", "diversity_window_days",
-    "max_same_event_count", "require_event_diversity", "max_same_signature_count",
-    "signature_cooldown_hours", "diminishing_returns", "diminishing_step", "diminishing_floor",
-)
 
 
 def _apply_requirement_columns(task: TaskDefinition, req: dict) -> None:

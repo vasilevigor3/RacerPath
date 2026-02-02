@@ -9,14 +9,14 @@ from app.models.enums.event_enums import (EventStatus,
     DamageModel, RulesToggle, WeatherType,
     StewardingType, LicenseRequirement,
 )
+from app.core.constants import (
+    EVENT_TIERS,
+    SESSION_TYPE_VALUES,
+    SPECIAL_EVENT_VALUES,
+)
 
-EVENT_TIERS = ("E0", "E1", "E2", "E3", "E4", "E5")
 EventTier = Literal["E0", "E1", "E2", "E3", "E4", "E5"]
-
-SPECIAL_EVENT_VALUES = ("race_of_day", "race_of_week", "race_of_month", "race_of_year")
 SpecialEvent = Literal["race_of_day", "race_of_week", "race_of_month", "race_of_year"]
-
-SESSION_TYPE_VALUES = ("race", "training")
 SessionType = Literal["race", "training"]
 
 

@@ -13,7 +13,7 @@ from app.models.real_world_readiness import RealWorldReadiness
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
 
-TIER_ORDER = ["E0", "E1", "E2", "E3", "E4", "E5"]
+from app.core.constants import TIER_ORDER
 
 
 def _latest_crs(session: Session, driver_id: str, discipline: str) -> CRSHistory | None:

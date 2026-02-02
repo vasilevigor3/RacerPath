@@ -5,17 +5,7 @@ import json
 from typing import Dict, List
 
 from app.core.settings import settings
-
-TIER_LABELS = {
-    "E0": "Unranked",
-    "E1": "Entry",
-    "E2": "Club",
-    "E3": "National",
-    "E4": "Pro Sim",
-    "E5": "Real-Bridge",
-}
-
-TIER_RANK = {"E0": 0, "E1": 1, "E2": 2, "E3": 3, "E4": 4, "E5": 5}
+from app.core.constants import TIER_LABELS, TIER_RANK
 
 
 def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:

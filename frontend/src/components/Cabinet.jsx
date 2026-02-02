@@ -255,7 +255,6 @@ const Cabinet = () => (
             <div className="task-detail-content" data-task-detail-content />
             <div className="task-detail-actions" data-task-detail-actions>
               <button type="button" className="btn primary btn-task-take" data-task-detail-take>Take task</button>
-              <button type="button" className="btn primary btn-task-complete" data-task-detail-complete>Complete</button>
               <button type="button" className="btn ghost btn-task-decline" data-task-detail-decline>Decline</button>
             </div>
             <button type="button" className="btn ghost btn-back-arrow task-detail-back" data-task-detail-back aria-label="Back"><span aria-hidden>←</span></button>

@@ -236,7 +236,6 @@ function showTaskDetail(task, driver) {
   const content = document.querySelector('[data-task-detail-content]');
   const actionsEl = document.querySelector('[data-task-detail-actions]');
   const takeBtn = document.querySelector('[data-task-detail-take]');
-  const completeBtn = document.querySelector('[data-task-detail-complete]');
   const declineBtn = document.querySelector('[data-task-detail-decline]');
   if (!listView || !panel || !content) return;
 
@@ -249,7 +248,6 @@ function showTaskDetail(task, driver) {
   const isCompleted = completedIds.has(task.id);
   const isTaken = pendingTaskIds.has(task.id);
   const canTake = !isCompleted && !isTaken && driverTierAllowsTask(driver, task);
-  const canComplete = isTaken;
   const canDecline = isTaken || canTake;
 
   const taskCode = task.code ?? task.id ?? '—';
@@ -269,17 +267,12 @@ function showTaskDetail(task, driver) {
     takeBtn.dataset.taskId = task.id;
     takeBtn.dataset.driverId = driver?.id ?? '';
   }
-  if (completeBtn) {
-    completeBtn.style.display = canComplete ? '' : 'none';
-    completeBtn.dataset.taskId = task.id;
-    completeBtn.dataset.driverId = driver?.id ?? '';
-  }
   if (declineBtn) {
     declineBtn.style.display = canDecline ? '' : 'none';
     declineBtn.dataset.taskId = task.id;
     declineBtn.dataset.driverId = driver?.id ?? '';
   }
-  if (actionsEl) actionsEl.classList.toggle('is-hidden', !canTake && !canComplete && !canDecline);
+  if (actionsEl) actionsEl.classList.toggle('is-hidden', !canTake && !canDecline);
 
   listView.classList.add('is-hidden');
   panel.classList.remove('is-hidden');
@@ -335,12 +328,6 @@ function initTaskDetailDelegation() {
     if (takeBtn && takeBtn.dataset.taskId) {
       e.preventDefault();
       taskAction(takeBtn.dataset.driverId, takeBtn.dataset.taskId, 'pending');
-      return;
-    }
-    const completeBtn = e.target.closest('[data-task-detail-complete]');
-    if (completeBtn && completeBtn.dataset.taskId) {
-      e.preventDefault();
-      taskAction(completeBtn.dataset.driverId, completeBtn.dataset.taskId, 'completed');
       return;
     }
     const declineBtn = e.target.closest('[data-task-detail-decline]');

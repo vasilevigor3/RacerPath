@@ -231,17 +231,23 @@ const Cabinet = () => (
         </div>
 
         <div className="tab-panel" data-tab-panel="tasks">
-          <div data-tasks-list-view className="grid-2">
-            <div className="card compact card-tasks">
-              <p className="card-title">Completed tasks</p>
-              <ul className="list" data-tasks-completed>
-                <li>No tasks completed yet.</li>
-              </ul>
-            </div>
+          <div data-tasks-list-view className="grid-3">
             <div className="card compact card-tasks">
               <p className="card-title">Pending tasks</p>
               <ul className="list" data-tasks-pending>
                 <li>No pending tasks.</li>
+              </ul>
+            </div>
+            <div className="card compact card-tasks">
+              <p className="card-title">In progress</p>
+              <ul className="list" data-tasks-in-progress>
+                <li>No tasks in progress.</li>
+              </ul>
+            </div>
+            <div className="card compact card-tasks">
+              <p className="card-title">Completed</p>
+              <ul className="list" data-tasks-completed>
+                <li>No tasks completed yet.</li>
               </ul>
             </div>
           </div>

@@ -19,6 +19,7 @@ const riskFlagsDetailPanel = document.querySelector('[data-risk-flags-detail]');
 const riskFlagsListView = document.querySelector('[data-risk-flags-list-view]');
 const tasksCompletedList = document.querySelector('[data-tasks-completed]');
 const tasksPendingList = document.querySelector('[data-tasks-pending]');
+const tasksInProgressList = document.querySelector('[data-tasks-in-progress]');
 const recommendationTasksList = document.querySelector('[data-recommendation-tasks]');
 const recommendationRacesList = document.querySelector('[data-recommendation-races]');
 const recNextEventTitle = document.querySelector('[data-rec-next-event-title]');
@@ -359,6 +360,7 @@ export const loadTasksOverview = async (driver) => {
     hideTaskDetail();
     if (tasksCompletedList) setList(tasksCompletedList, [], 'No tasks completed yet.');
     if (tasksPendingList) setList(tasksPendingList, [], 'No pending tasks.');
+    if (tasksInProgressList) setList(tasksInProgressList, [], 'No tasks in progress.');
     if (statTasks) statTasks.textContent = '0';
     readinessState.tasksCompleted = 0;
     readinessState.tasksTotal = 0;
@@ -378,12 +380,15 @@ export const loadTasksOverview = async (driver) => {
     lastTaskDefinitions = definitions;
 
     const completedIds = new Set(completions.filter((c) => c.status === 'completed').map((c) => c.task_id));
+    const inProgressIds = new Set(completions.filter((c) => c.status === 'pending').map((c) => c.task_id));
     const filteredDefinitions = definitions.filter((task) => task.discipline === discipline);
     const completedTasks = filteredDefinitions.filter((task) => completedIds.has(task.id));
-    const pendingTasks = filteredDefinitions.filter((task) => !completedIds.has(task.id));
+    const inProgressTasks = filteredDefinitions.filter((task) => inProgressIds.has(task.id));
+    const pendingTasks = filteredDefinitions.filter((task) => !completedIds.has(task.id) && !inProgressIds.has(task.id));
 
-    if (tasksCompletedList) setTaskListClickable(tasksCompletedList, completedTasks, 'No tasks completed yet.');
     if (tasksPendingList) setTaskListClickable(tasksPendingList, pendingTasks.slice(0, 15), 'No pending tasks.');
+    if (tasksInProgressList) setTaskListClickable(tasksInProgressList, inProgressTasks, 'No tasks in progress.');
+    if (tasksCompletedList) setTaskListClickable(tasksCompletedList, completedTasks, 'No tasks completed yet.');
     if (statTasks) statTasks.textContent = completedTasks.length.toString();
     readinessState.tasksCompleted = completedTasks.length;
     readinessState.tasksTotal = filteredDefinitions.length;
@@ -391,6 +396,7 @@ export const loadTasksOverview = async (driver) => {
   } catch (err) {
     if (tasksCompletedList) setList(tasksCompletedList, [], 'No tasks completed yet.');
     if (tasksPendingList) setList(tasksPendingList, [], 'No pending tasks.');
+    if (tasksInProgressList) setList(tasksInProgressList, [], 'No tasks in progress.');
     if (statTasks) statTasks.textContent = '0';
     readinessState.tasksCompleted = 0;
     readinessState.tasksTotal = 0;

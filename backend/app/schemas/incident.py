@@ -59,3 +59,10 @@ class IncidentRead(IncidentCreate):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class IncidentWithEventRead(IncidentRead):
+    """Incident with event (race) info for list views."""
+    event_id: str | None = None
+    event_title: str = ""
+    event_start_time_utc: datetime | None = None

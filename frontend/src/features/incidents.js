@@ -6,40 +6,107 @@ const incidentForm = document.querySelector('[data-incident-form]');
 const incidentStatus = document.querySelector('[data-incident-status]');
 const incidentList = document.querySelector('[data-incident-list]');
 const incidentsTotalEls = document.querySelectorAll('[data-incidents-total], [data-incidents-total-card]');
+const incidentsListView = document.querySelector('[data-incidents-list-view]');
+const incidentDetailPanel = document.querySelector('[data-incident-detail]');
+const incidentDetailType = document.querySelector('[data-incident-detail-type]');
+const incidentDetailRace = document.querySelector('[data-incident-detail-race]');
+const incidentDetailMeta = document.querySelector('[data-incident-detail-meta]');
+const incidentDetailDesc = document.querySelector('[data-incident-detail-desc]');
+const incidentDetailBack = document.querySelector('[data-incident-detail-back]');
+
+let incidentsCache = [];
 
 function setIncidentsTotal(total) {
   const value = total == null ? '0' : String(total);
   incidentsTotalEls.forEach((el) => { el.textContent = value; });
 }
 
+function formatDate(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { dateStyle: 'short' }) + ' ' + d.toLocaleTimeString(undefined, { timeStyle: 'short' });
+  } catch (_) {
+    return iso;
+  }
+}
+
+function showIncidentDetail(item) {
+  if (!incidentDetailPanel || !incidentDetailType || !incidentDetailRace || !incidentDetailMeta) return;
+  const typeLabel = item.incident_type || '—';
+  const severity = item.severity ? `S${item.severity}` : 'S1';
+  incidentDetailType.textContent = `${typeLabel} · ${severity}`;
+  incidentDetailRace.textContent = item.event_title ? `Race: ${item.event_title}` : '—';
+  const metaParts = [];
+  if (item.lap != null && item.lap !== undefined) metaParts.push(`Lap ${item.lap}`);
+  if (item.event_start_time_utc) metaParts.push(formatDate(item.event_start_time_utc));
+  if (item.created_at) metaParts.push(`Recorded: ${formatDate(item.created_at)}`);
+  incidentDetailMeta.textContent = metaParts.length ? metaParts.join(' · ') : '—';
+  incidentDetailDesc.textContent = item.description || '';
+  incidentDetailDesc.style.display = item.description ? '' : 'none';
+  if (incidentsListView) incidentsListView.classList.add('is-hidden');
+  incidentDetailPanel.classList.remove('is-hidden');
+}
+
+function hideIncidentDetail() {
+  if (incidentDetailPanel) incidentDetailPanel.classList.add('is-hidden');
+  if (incidentsListView) incidentsListView.classList.remove('is-hidden');
+}
+
+function setupIncidentDetailListeners() {
+  if (incidentList) {
+    incidentList.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-incident-id]');
+      if (!card) return;
+      const id = card.getAttribute('data-incident-id');
+      const item = incidentsCache.find((i) => i.id === id);
+      if (item) showIncidentDetail(item);
+    });
+  }
+  if (incidentDetailBack) {
+    incidentDetailBack.addEventListener('click', hideIncidentDetail);
+  }
+}
+
+setupIncidentDetailListeners();
+
 export const loadIncidents = async (driver) => {
   if (!incidentList) return;
-  incidentList.innerHTML = '<li>Loading...</li>';
+  incidentList.innerHTML = '<div role="listitem" class="incident-cards__loading">Loading...</div>';
   setIncidentsTotal(0);
+  incidentsCache = [];
   try {
-    const url = driver ? `/api/incidents?driver_id=${driver.id}` : '/api/incidents';
+    const url = driver ? `/api/incidents?driver_id=${driver.id}&limit=200` : '/api/incidents?limit=200';
     const countUrl = driver ? `/api/incidents/count?driver_id=${driver.id}` : '/api/incidents/count';
     const [listRes, countRes] = await Promise.all([apiFetch(url), apiFetch(countUrl)]);
     if (!listRes.ok) throw new Error('failed');
     const incidents = await listRes.json();
+    incidentsCache = incidents;
     if (countRes.ok) {
       const { total } = await countRes.json();
       setIncidentsTotal(total ?? 0);
     }
     if (!incidents.length) {
-      incidentList.innerHTML = '<li>No incidents yet.</li>';
+      incidentList.innerHTML = '<div role="listitem">No incidents yet.</div>';
       return;
     }
     incidentList.innerHTML = incidents
-      .slice(0, 6)
       .map((item) => {
-        const lapLabel = item.lap !== null && item.lap !== undefined ? `Lap ${item.lap}` : 'Lap n/a';
+        const typeLabel = item.incident_type || '—';
         const severity = item.severity ? `S${item.severity}` : 'S1';
-        return `<li>${item.incident_type} • ${severity} • ${lapLabel}</li>`;
+        const race = item.event_title || '—';
+        const lapHtml = item.lap != null && item.lap !== undefined
+          ? `<span class="incident-card__lap">Lap ${item.lap}</span>`
+          : '';
+        return `<button type="button" class="incident-card" data-incident-id="${item.id}" role="listitem">
+          <span class="incident-card__type">${typeLabel} · ${severity}</span>
+          <span class="incident-card__race">${race}</span>
+          ${lapHtml}
+        </button>`;
       })
       .join('');
   } catch (err) {
-    incidentList.innerHTML = '<li>Unable to load incidents.</li>';
+    incidentList.innerHTML = '<div role="listitem">Unable to load incidents.</div>';
   }
 };
 

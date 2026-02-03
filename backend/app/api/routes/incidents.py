@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from app.db.session import get_session
 from app.models.user import User
 from app.repositories.driver import DriverRepository
+from app.repositories.event import EventRepository
 from app.repositories.incident import IncidentRepository
 from app.repositories.participation import ParticipationRepository
-from app.schemas.incident import IncidentRead
+from app.schemas.incident import IncidentRead, IncidentWithEventRead
 from app.services.auth import require_user
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
@@ -41,7 +42,7 @@ def get_incidents_count(
     return {"total": total}
 
 
-@router.get("", response_model=List[IncidentRead])
+@router.get("", response_model=List[IncidentWithEventRead])
 def list_all_incidents(
     driver_id: str | None = None,
     participation_id: str | None = None,
@@ -64,9 +65,33 @@ def list_all_incidents(
             if participation.driver_id != driver.id:
                 raise HTTPException(status_code=403, detail="Insufficient role")
     limit = max(1, min(limit, 200))
-    return IncidentRepository(session).list_filtered(
+    incidents = IncidentRepository(session).list_filtered(
         driver_id=driver_id, participation_id=participation_id, offset=offset, limit=limit
     )
+    if not incidents:
+        return []
+    part_repo = ParticipationRepository(session)
+    event_repo = EventRepository(session)
+    result = []
+    for inc in incidents:
+        part = part_repo.get_by_id(inc.participation_id)
+        event = event_repo.get_by_id(part.event_id) if part else None
+        result.append(
+            IncidentWithEventRead(
+                id=inc.id,
+                participation_id=inc.participation_id,
+                incident_type=inc.incident_type,
+                severity=inc.severity,
+                lap=inc.lap,
+                timestamp_utc=inc.timestamp_utc,
+                description=inc.description,
+                created_at=inc.created_at,
+                event_id=part.event_id if part else None,
+                event_title=event.title if event else "",
+                event_start_time_utc=event.start_time_utc if event else None,
+            )
+        )
+    return result
 
 
 @router.get("/{incident_id}", response_model=IncidentRead)

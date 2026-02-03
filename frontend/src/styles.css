@@ -1,43 +1,50 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Space+Mono:wght@400;600&display=swap');
 @import 'tailwindcss';
 
+/* ─── Dark theme: deep indigo/slate + warm amber accent (harmonious, high contrast) ─── */
 :root {
-  --bg: #f5f6f8;
-  --bg-accent: #e9eef4;
-  --ink: #0f1720;
-  --muted: #5c6775;
-  --accent: #ff7a1a;
-  --accent-2: #1f9d8b;
-  --surface: #ffffff;
-  --surface-2: #f0f3f7;
-  --surface-3: #121820;
-  --stroke: #d3d9e2;
-  --shadow: 0 18px 40px rgba(15, 23, 32, 0.14);
-  --shadow-soft: 0 10px 24px rgba(15, 23, 32, 0.08);
-  --radius-lg: 24px;
-  --radius-md: 16px;
-  --radius-sm: 10px;
-  /* shadcn/ui theme (neutral) */
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.68 0.16 45);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Base: deep indigo‑slate */
+  --background: oklch(0.13 0.02 265);
+  --foreground: oklch(0.96 0.01 265);
+  /* Cards: elevated surface */
+  --card: oklch(0.17 0.02 265);
+  --card-foreground: oklch(0.95 0.01 265);
+  --popover: oklch(0.18 0.02 265);
+  --popover-foreground: oklch(0.95 0.01 265);
+  /* Primary: warm amber (complementary accent) */
+  --primary: oklch(0.78 0.15 75);
+  --primary-foreground: oklch(0.18 0.02 265);
+  /* Secondary / muted — brighter for readability on dark */
+  --secondary: oklch(0.22 0.02 265);
+  --secondary-foreground: oklch(0.9 0.02 265);
+  --muted: oklch(0.24 0.02 265);
+  --muted-foreground: oklch(0.82 0.02 265);
+  --lead-foreground: oklch(0.88 0.02 265);
+  --accent: oklch(0.28 0.04 265);
+  --accent-foreground: oklch(0.95 0.01 265);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --border: oklch(0.28 0.02 265);
+  --border-hover: oklch(0.38 0.03 265);
+  --input: oklch(0.25 0.02 265);
+  --ring: oklch(0.78 0.15 75);
+  /* Legacy aliases for existing CSS */
+  --bg: oklch(0.13 0.02 265);
+  --bg-accent: oklch(0.16 0.02 265);
+  --ink: oklch(0.96 0.01 265);
+  --surface: oklch(0.17 0.02 265);
+  --surface-2: oklch(0.2 0.02 265);
+  --surface-3: oklch(0.12 0.02 265);
+  --stroke: oklch(0.28 0.02 265);
+  --shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.25);
+  --radius-lg: 1rem;
+  --radius-md: 0.75rem;
+  --radius-sm: 0.5rem;
+  --card-bg: var(--card);
+  --card-bg-hover: oklch(0.2 0.02 265);
+  --accent-2: oklch(0.72 0.12 165);
 }
 
 @layer base {
@@ -73,6 +80,66 @@
   box-sizing: border-box;
 }
 
+/* ─── Custom scrollbars (dark theme) ─── */
+.scroll-area,
+.overview-upcoming-scroll,
+.upcoming-events-scroll,
+.past-events-scroll,
+.penalty-cards-scroll,
+.incident-cards-scroll,
+.participation-cards-scroll,
+[class*="-scroll"] {
+  scrollbar-color: oklch(0.35 0.02 265) oklch(0.18 0.02 265);
+  scrollbar-width: thin;
+}
+
+.scroll-area::-webkit-scrollbar,
+.overview-upcoming-scroll::-webkit-scrollbar,
+.upcoming-events-scroll::-webkit-scrollbar,
+.past-events-scroll::-webkit-scrollbar,
+.penalty-cards-scroll::-webkit-scrollbar,
+.incident-cards-scroll::-webkit-scrollbar,
+.participation-cards-scroll::-webkit-scrollbar,
+[class*="-scroll"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-area::-webkit-scrollbar-track,
+.overview-upcoming-scroll::-webkit-scrollbar-track,
+.upcoming-events-scroll::-webkit-scrollbar-track,
+.past-events-scroll::-webkit-scrollbar-track,
+.penalty-cards-scroll::-webkit-scrollbar-track,
+.incident-cards-scroll::-webkit-scrollbar-track,
+.participation-cards-scroll::-webkit-scrollbar-track,
+[class*="-scroll"]::-webkit-scrollbar-track {
+  background: oklch(0.18 0.02 265);
+  border-radius: 4px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb,
+.overview-upcoming-scroll::-webkit-scrollbar-thumb,
+.upcoming-events-scroll::-webkit-scrollbar-thumb,
+.past-events-scroll::-webkit-scrollbar-thumb,
+.penalty-cards-scroll::-webkit-scrollbar-thumb,
+.incident-cards-scroll::-webkit-scrollbar-thumb,
+.participation-cards-scroll::-webkit-scrollbar-thumb,
+[class*="-scroll"]::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0.02 265);
+  border-radius: 4px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb:hover,
+.overview-upcoming-scroll::-webkit-scrollbar-thumb:hover,
+.upcoming-events-scroll::-webkit-scrollbar-thumb:hover,
+.past-events-scroll::-webkit-scrollbar-thumb:hover,
+.penalty-cards-scroll::-webkit-scrollbar-thumb:hover,
+.incident-cards-scroll::-webkit-scrollbar-thumb:hover,
+.participation-cards-scroll::-webkit-scrollbar-thumb:hover,
+[class*="-scroll"]::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.45 0.02 265);
+}
+
 .is-hidden {
   display: none !important;
 }
@@ -81,20 +148,22 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: 'Sora', system-ui, -apple-system, sans-serif;
-  color: var(--ink);
-  background: radial-gradient(1200px 600px at 15% 10%, #fff4df 0%, transparent 55%),
-    radial-gradient(900px 600px at 85% 15%, #dff4ff 0%, transparent 55%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-accent) 100%);
+  color: var(--foreground);
+  background:
+    radial-gradient(1400px 700px at 10% 0%, oklch(0.22 0.04 265) 0%, transparent 50%),
+    radial-gradient(1000px 600px at 90% 100%, oklch(0.18 0.03 75 / 0.4) 0%, transparent 50%),
+    linear-gradient(180deg, var(--background) 0%, oklch(0.1 0.02 265) 100%);
 }
 
 .bg-grid {
   position: fixed;
   inset: 0;
-  background-image: linear-gradient(rgba(22, 26, 32, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(22, 26, 32, 0.05) 1px, transparent 1px);
+  background-image:
+    linear-gradient(oklch(0.3 0.02 265 / 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.3 0.02 265 / 0.15) 1px, transparent 1px);
   background-size: 80px 80px;
   pointer-events: none;
-  mask-image: radial-gradient(circle at 50% 30%, rgba(0, 0, 0, 0.4), transparent 65%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 20%, black 0%, transparent 70%);
   z-index: 0;
 }
 
@@ -108,14 +177,15 @@ footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 6vw;
+  padding: 20px 6vw;
   position: sticky;
   top: 0;
-  backdrop-filter: blur(14px);
-  background: rgba(245, 246, 248, 0.82);
-  border-bottom: 1px solid rgba(15, 23, 32, 0.08);
+  backdrop-filter: blur(16px);
+  background: oklch(0.14 0.02 265 / 0.85);
+  border-bottom: 1px solid oklch(0.28 0.02 265);
   gap: 20px;
   z-index: 20;
+  box-shadow: 0 1px 0 oklch(0.25 0.02 265);
 }
 
 .logo {
@@ -134,7 +204,7 @@ footer {
 
 .nav a {
   text-decoration: none;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-weight: 500;
 }
 
@@ -160,21 +230,31 @@ footer {
 }
 
 .btn.primary {
-  background: var(--accent);
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   border-color: transparent;
-  box-shadow: 0 10px 20px rgba(212, 87, 42, 0.25);
+  box-shadow: 0 4px 14px oklch(0.78 0.15 75 / 0.35);
+}
+
+.btn.primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px oklch(0.78 0.15 75 / 0.4);
 }
 
 .btn.ghost {
   background: transparent;
-  border-color: rgba(22, 26, 32, 0.2);
-  color: var(--ink);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.btn.ghost:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(22, 26, 32, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
 .hero {
@@ -209,7 +289,9 @@ footer {
 }
 
 .auth-card .card {
-  background: linear-gradient(140deg, #ffffff 0%, #f2f6fb 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 .auth-hero h1 {
@@ -251,15 +333,12 @@ footer {
   margin: 12px 0 6px;
 }
 
-.avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  display: grid;
-  place-items: center;
+[data-profile-avatar] {
+  background: linear-gradient(135deg, oklch(0.78 0.15 75 / 0.2), oklch(0.6 0.12 200 / 0.25));
+}
+[data-profile-avatar] [data-profile-initials] {
   font-weight: 700;
-  background: linear-gradient(135deg, rgba(255, 122, 26, 0.16), rgba(31, 157, 139, 0.2));
-  color: var(--ink);
+  color: var(--foreground);
 }
 
 .dashboard-main {
@@ -276,29 +355,36 @@ footer {
 .stat-card {
   padding: 18px;
   border-radius: var(--radius-md);
-  background: linear-gradient(140deg, #ffffff 0%, #f2f6fb 100%);
-  border: 1px solid rgba(15, 23, 32, 0.08);
+  background: var(--card);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-soft);
   display: grid;
   gap: 6px;
+  color: var(--card-foreground);
 }
 
 .stat-card.is-link {
   cursor: pointer;
   text-align: left;
   width: 100%;
-  border: 1px solid rgba(15, 23, 32, 0.12);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+  border: 1px solid var(--border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 .stat-card.is-link:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 26px rgba(15, 23, 32, 0.14);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+  border-color: var(--primary);
+  background: oklch(0.19 0.02 265);
+}
+
+.stat-card.is-link:active {
+  transform: translateY(0);
 }
 
 .stat-card.is-link:focus-visible {
-  outline: 3px solid rgba(31, 157, 139, 0.35);
-  outline-offset: 3px;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .focus-highlight {
@@ -309,7 +395,7 @@ footer {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .stat-card .stat-value {
@@ -319,7 +405,7 @@ footer {
 
 .stat-card .stat-meta {
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .tabs {
@@ -327,8 +413,8 @@ footer {
   flex-wrap: wrap;
   gap: 12px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(15, 23, 32, 0.08);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 999px;
   width: fit-content;
 }
@@ -340,12 +426,12 @@ footer {
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .tab-button:focus-visible {
-  outline: 3px solid rgba(31, 157, 139, 0.35);
-  outline-offset: 3px;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .tab-button.active {
@@ -402,7 +488,7 @@ footer {
 
 .license-flow__badge--current:empty::before {
   content: '—';
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-weight: 500;
 }
 
@@ -421,7 +507,7 @@ footer {
 }
 
 .license-card .license-flow__badge:empty {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .license-flow__badge[data-license-code] {
@@ -478,16 +564,26 @@ footer {
   width: 100%;
   text-align: left;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border, #e0e0e0);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--card-bg, #fff);
+  background: var(--card-bg);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .event-card:hover {
-  background: var(--card-bg-hover, #f5f5f5);
+  background: var(--card-bg-hover);
   border-color: var(--border-hover, #ccc);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.event-card:active {
+  transform: scale(0.99);
+}
+
+.event-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .event-card__title {
@@ -497,7 +593,7 @@ footer {
 
 .event-card__meta {
   font-size: 0.9rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   display: block;
 }
 
@@ -520,16 +616,26 @@ footer {
   width: 100%;
   text-align: left;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border, #e0e0e0);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--card-bg, #fff);
+  background: var(--card-bg);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .penalty-card:hover {
-  background: var(--card-bg-hover, #f5f5f5);
-  border-color: var(--border-hover, #ccc);
+  background: var(--card-bg-hover);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.penalty-card:active {
+  transform: scale(0.99);
+}
+
+.penalty-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .penalty-card__type {
@@ -539,13 +645,13 @@ footer {
 
 .penalty-card__race {
   font-size: 0.9rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   display: block;
 }
 
 .penalty-card__lap {
   font-size: 0.85rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .penalty-detail-panel {
@@ -584,7 +690,7 @@ footer {
 
 .penalty-cards__loading {
   padding: 0.5rem 0;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .incident-cards-scroll {
@@ -606,16 +712,26 @@ footer {
   width: 100%;
   text-align: left;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border, #e0e0e0);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--card-bg, #fff);
+  background: var(--card-bg);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .incident-card:hover {
-  background: var(--card-bg-hover, #f5f5f5);
-  border-color: var(--border-hover, #ccc);
+  background: var(--card-bg-hover);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.incident-card:active {
+  transform: scale(0.99);
+}
+
+.incident-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .incident-card__type {
@@ -625,13 +741,13 @@ footer {
 
 .incident-card__race {
   font-size: 0.9rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   display: block;
 }
 
 .incident-card__lap {
   font-size: 0.85rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .incident-detail-panel {
@@ -670,7 +786,7 @@ footer {
 
 .incident-cards__loading {
   padding: 0.5rem 0;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .participation-cards-scroll {
@@ -693,16 +809,26 @@ footer {
   width: 100%;
   text-align: left;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border, #e0e0e0);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--card-bg, #fff);
+  background: var(--card-bg);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .participation-card:hover {
-  background: var(--card-bg-hover, #f5f5f5);
-  border-color: var(--border-hover, #ccc);
+  background: var(--card-bg-hover);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.participation-card:active {
+  transform: scale(0.99);
+}
+
+.participation-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .participation-card__title {
@@ -712,7 +838,7 @@ footer {
 
 .participation-card__meta {
   font-size: 0.9rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   display: block;
 }
 
@@ -749,7 +875,7 @@ footer {
 
 .participation-cards__loading {
   padding: 0.5rem 0;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .license-detail-panel .license-detail-content {
@@ -818,8 +944,9 @@ footer {
 
 .lead {
   font-size: 1.1rem;
-  color: var(--muted);
+  color: var(--lead-foreground);
   max-width: 520px;
+  line-height: 1.5;
 }
 
 .cta {
@@ -850,7 +977,7 @@ footer {
 }
 
 .stat-label {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.85rem;
 }
 
@@ -885,7 +1012,7 @@ footer {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin: 0 0 0.5rem;
   font-weight: 600;
 }
@@ -904,11 +1031,11 @@ footer {
   width: 100%;
   text-align: left;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border, #e0e0e0);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--card-bg, #fff);
+  background: var(--card-bg);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .next-action-card--static {
@@ -916,8 +1043,18 @@ footer {
 }
 
 .next-action-card:not(.next-action-card--static):hover {
-  background: var(--card-bg-hover, #f5f5f5);
-  border-color: var(--border-hover, #ccc);
+  background: var(--card-bg-hover);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.next-action-card:not(.next-action-card--static):active {
+  transform: scale(0.99);
+}
+
+.next-action-card:not(.next-action-card--static):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .next-action-card__title {
@@ -927,7 +1064,7 @@ footer {
 
 .next-action-card__meta {
   font-size: 0.9rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   display: block;
 }
 
@@ -947,7 +1084,7 @@ footer {
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .pill-row {
@@ -989,7 +1126,7 @@ footer {
 .progress-meta {
   margin-top: 6px;
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .section {
@@ -1082,7 +1219,7 @@ footer {
 .admin-metrics-board__term {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-metrics-board__value {
@@ -1117,7 +1254,7 @@ footer {
   margin-top: 6px;
 }
 .admin-reset-seed-block .admin-reset-seed-result {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.875rem;
   margin-top: 6px;
 }
@@ -1135,7 +1272,7 @@ footer {
   padding: 10px 16px;
   font-size: 0.9375rem;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--muted-foreground);
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
@@ -1215,13 +1352,13 @@ footer {
 }
 
 .admin-schema__arrow {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 1.1rem;
   flex-shrink: 0;
 }
 
 .admin-schema__plus {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.875rem;
   flex-shrink: 0;
 }
@@ -1236,7 +1373,7 @@ footer {
 .admin-lookup__label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-lookup__row {
@@ -1280,13 +1417,13 @@ footer {
   margin: 0 0 4px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-constructors__hint {
   margin: 0 0 4px;
   font-size: 0.8125rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   line-height: 1.35;
 }
 
@@ -1330,7 +1467,7 @@ footer {
 .admin-constructors__row .admin-constructors__label {
   flex: 0 0 100px;
   font-size: 0.8125rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-constructors__label {
@@ -1392,7 +1529,7 @@ footer {
 .admin-constructors__msg {
   margin: 2px 0 0;
   font-size: 0.8125rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-constructors__msg:empty {
@@ -1423,7 +1560,7 @@ footer {
   margin: 12px 0 6px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-lookup-result__participations {
@@ -1503,12 +1640,12 @@ footer {
 }
 
 .admin-lookup-result__part-meta {
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   font-size: 0.85em;
 }
 
 .admin-lookup-result__part-date {
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-lookup-result__part-btn {
@@ -1519,7 +1656,7 @@ footer {
 .admin-lookup-result__empty {
   margin: 0 0 8px;
   font-size: 0.875rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-lookup-result__dl {
@@ -1532,7 +1669,7 @@ footer {
 
 .admin-lookup-result__dl dt {
   margin: 0;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-lookup-result__dl dd {
@@ -1612,7 +1749,7 @@ footer {
 
 .admin-detail-panel__back {
   font-size: 0.875rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
   background: none;
   border: none;
   cursor: pointer;
@@ -1633,7 +1770,7 @@ footer {
   margin: 0 0 8px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .admin-detail-panel__block {
@@ -1652,7 +1789,7 @@ footer {
 .admin-console__detail-placeholder {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .grid-2,
@@ -1675,9 +1812,10 @@ footer {
 }
 
 .card {
-  background: var(--surface);
+  background: var(--card);
+  color: var(--card-foreground);
   border-radius: var(--radius-md);
-  border: 1px solid var(--stroke);
+  border: 1px solid var(--border);
   padding: 24px;
   min-height: 0;
   box-shadow: var(--shadow-soft);
@@ -1775,7 +1913,7 @@ footer {
 }
 
 .admin-output-grid span {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .admin-output-list {
@@ -1856,7 +1994,7 @@ footer {
 .field-group label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .option-grid {
@@ -1914,7 +2052,7 @@ textarea {
   border-radius: var(--radius-sm);
   border: 1px solid var(--stroke);
   background: var(--surface-2);
-  color: var(--muted);
+  color: var(--muted-foreground);
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -1942,7 +2080,7 @@ input[type='range'] {
 
 .form-status {
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
   min-height: 1.4rem;
 }
 
@@ -1961,7 +2099,7 @@ input[type='range'] {
   display: block;
   font-size: 0.75rem;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .tier-value {
@@ -1972,7 +2110,7 @@ input[type='range'] {
 
 .tier-note {
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .score-grid {
@@ -1996,7 +2134,7 @@ input[type='range'] {
 
 .caps {
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin-bottom: 16px;
 }
 
@@ -2014,7 +2152,7 @@ input[type='range'] {
 
 .list {
   padding-left: 18px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: grid;
   gap: 8px;
 }
@@ -2127,7 +2265,7 @@ input[type='range'] {
 .event-detail-dl dt {
   margin: 0;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.85em;
 }
 
@@ -2149,7 +2287,7 @@ input[type='range'] {
 .event-detail-max-withdrawals {
   margin: 0;
   font-size: 0.9em;
-  color: var(--muted, #666);
+  color: var(--muted-foreground);
 }
 
 .task-list-item {
@@ -2212,7 +2350,7 @@ input[type='range'] {
 .task-detail-dl dt {
   margin: 0;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 0.85em;
 }
 
@@ -2248,7 +2386,7 @@ input[type='range'] {
 }
 
 .footer a {
-  color: var(--muted);
+  color: var(--muted-foreground);
   text-decoration: none;
 }
 

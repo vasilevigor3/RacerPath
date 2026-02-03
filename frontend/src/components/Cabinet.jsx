@@ -1,7 +1,10 @@
 import DisciplineSelect from './DisciplineSelect.jsx';
 import OptionGrid from './OptionGrid.jsx';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { SIM_GAMES, WHEEL_TYPES, PEDALS_CLASSES } from '../constants/uiData.js';
 
 const Cabinet = () => (
@@ -18,16 +21,16 @@ const Cabinet = () => (
 
     <div className="dashboard-grid">
       <aside className="profile-pane">
-        <Card className="profile-card border-border/80 shadow-md">
+        <Card className="profile-card border-border/80 shadow-lg shadow-black/20 transition-shadow hover:shadow-xl hover:shadow-black/25">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Driver identity
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
-            <div className="avatar" data-profile-initials>
-              RP
-            </div>
+            <Avatar className="h-14 w-14 border-2 border-border" data-profile-avatar>
+              <AvatarFallback className="text-lg" data-profile-initials>RP</AvatarFallback>
+            </Avatar>
             <h3 className="font-semibold text-foreground" data-profile-fullname>--</h3>
             <p className="text-sm text-muted-foreground" data-profile-location>
               Location not set
@@ -53,19 +56,12 @@ const Cabinet = () => (
                 Complete tasks to increase readiness.
               </div>
             </div>
-            <div className="pill-row">
-              <span className="pill" data-profile-discipline>
-                Discipline: --
-              </span>
-              <span className="pill" data-profile-tier>
-                Tier: --
-              </span>
-              <span className="pill" data-driver-snapshot-pill-crs>
-                CRS --
-              </span>
-              <span className="pill" data-profile-platforms>
-                Platforms: --
-              </span>
+            <Separator className="my-3 bg-border" />
+            <div className="pill-row flex flex-wrap gap-2">
+              <Badge variant="secondary" data-profile-discipline>Discipline: --</Badge>
+              <Badge variant="secondary" data-profile-tier>Tier: --</Badge>
+              <Badge variant="default" data-driver-snapshot-pill-crs>CRS --</Badge>
+              <Badge variant="outline" data-profile-platforms>Platforms: --</Badge>
             </div>
             <Button variant="outline" className="w-full" type="button" data-tab-jump="profile" data-profile-cta-button>
               Complete profile
@@ -187,9 +183,9 @@ const Cabinet = () => (
               </CardContent>
             </Card>
             {/* Upcoming events: loadDashboardEvents (dashboard.js). Event cards, same as Events tab. */}
-            <Card className="border-border/80 shadow-sm">
+            <Card className="border-border/80 shadow-md shadow-black/10 transition-shadow hover:shadow-lg hover:shadow-black/15">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Upcoming events
                 </CardTitle>
               </CardHeader>
@@ -242,7 +238,9 @@ const Cabinet = () => (
           </div>
           <div className="grid-2 risk-flags-incidents-penalties">
             <div className="card compact" data-focus-id="incidents-card">
-              <p className="card-title">My incidents (<span className="tab-count" data-incidents-total-card aria-label="Total incidents">0</span>)</p>
+              <p className="card-title flex items-center gap-2">
+                My incidents <Badge variant="secondary" className="font-mono text-xs" aria-label="Total incidents"><span data-incidents-total-card>0</span></Badge>
+              </p>
               <div data-incidents-list-view>
                 <div className="incident-cards-scroll" data-incident-scroll>
                   <div className="incident-cards" data-incident-list role="list">
@@ -259,7 +257,9 @@ const Cabinet = () => (
               </div>
             </div>
             <div className="card compact" data-focus-id="penalties-card">
-              <p className="card-title">My penalties (<span className="tab-count" data-penalties-total-card aria-label="Total penalties">0</span>)</p>
+              <p className="card-title flex items-center gap-2">
+                My penalties <Badge variant="secondary" className="font-mono text-xs" aria-label="Total penalties"><span data-penalties-total-card>0</span></Badge>
+              </p>
               <div data-penalties-list-view>
                 <div className="penalty-cards-scroll" data-penalty-scroll>
                   <div className="penalty-cards" data-penalty-list role="list">

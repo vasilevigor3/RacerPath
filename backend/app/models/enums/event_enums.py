@@ -55,6 +55,7 @@ class StewardingType(str, Enum):
     automated = "automated"
     live = "live"
     human_review = "human_review"
+    standard = "standard"  # legacy/alias for automated
 
 
 class LicenseRequirement(str, Enum):

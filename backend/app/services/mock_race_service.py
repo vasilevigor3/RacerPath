@@ -85,8 +85,48 @@ def _participations_to_simulate(session: Session, event: Event) -> List[Particip
     )
 
 
+# ACC GT3 typical lap times (seconds) — realistic base per track
+ACC_GT3_BASE_LAP_SECONDS = {
+    "monza": 106.0,
+    "spa": 138.0,
+    "nürburgring": 115.0,
+    "nurburgring": 115.0,
+    "silverstone": 118.0,
+    "barcelona": 106.0,
+    "paul ricard": 108.0,
+    "paul_ricard": 108.0,
+    "hungaroring": 112.0,
+    "zandvoort": 107.0,
+    "imola": 106.0,
+    "kyalami": 108.0,
+    "suzuka": 127.0,
+    "laguna seca": 79.0,
+    "laguna_seca": 79.0,
+    "misano": 106.0,
+    "brands_hatch": 88.0,
+    "brands hatch": 88.0,
+    "mount panorama": 132.0,
+    "bathurst": 132.0,
+    "cota": 133.0,
+    "watkins glen": 106.0,
+    "valencia": 97.0,
+    "donington": 72.0,
+    "oulton park": 72.0,
+}
+DEFAULT_BASE_LAP_SECONDS = 106.0  # fallback (e.g. Monza-like)
+
+
+def _base_lap_from_event(event: Event) -> float:
+    """Infer ACC-style base lap time (seconds) from event title/track."""
+    title = (getattr(event, "title", None) or "").lower()
+    for key, base in ACC_GT3_BASE_LAP_SECONDS.items():
+        if key in title:
+            return base + random.uniform(-1.5, 2.0)
+    return DEFAULT_BASE_LAP_SECONDS + random.uniform(-2.0, 2.0)
+
+
 def _one_lap_time(
-    base_seconds: float = 90.0,
+    base_seconds: float = 106.0,
     driver_speed_factor: float = 1.0,
     consistency: float = 0.7,
 ) -> float:
@@ -148,9 +188,9 @@ def tick_mock_races(session: Session, interval_seconds: int = 15) -> dict:
                 p.participation_state = ParticipationState.started
                 participations_updated += 1
 
-        # One lap per tick: append new lap(s) so we have laps_done total (usually +1 this tick)
+        # One lap per tick: base lap from event (ACC track‑aware), then append new lap(s)
         rng = random.Random(f"{event.id}-{now.isoformat()}")
-        base_lap = 88.0 + rng.uniform(0, 6)
+        base_lap = _base_lap_from_event(event)
         best_lap_session = base_lap - 1.5
 
         for part in participations:
@@ -172,7 +212,20 @@ def tick_mock_races(session: Session, interval_seconds: int = 15) -> dict:
             best_lap_session = min(best_lap_session, min(lap_times) if lap_times else base_lap)
 
             part.laps_completed = len(lap_times)
-            part.raw_metrics = {**(part.raw_metrics or {}), "lap_times": lap_times}
+            # ACC-like: sector_times as list of [s1, s2, s3] per lap (approx 40%/35%/25% + noise)
+            existing_sectors = list((part.raw_metrics or {}).get("sector_times") or [])
+            for i in range(len(existing_sectors), len(lap_times)):
+                lt = lap_times[i]
+                r = random.Random(f"{part.id}-{i}")
+                s1 = round(lt * (0.38 + r.uniform(0, 0.04)) + r.gauss(0, 0.2), 2)
+                s2 = round(lt * (0.34 + r.uniform(0, 0.04)) + r.gauss(0, 0.2), 2)
+                s3 = round(lt - s1 - s2, 2)
+                existing_sectors.append([max(0.1, s1), max(0.1, s2), max(0.1, s3)])
+            part.raw_metrics = {
+                **(part.raw_metrics or {}),
+                "lap_times": lap_times,
+                "sector_times": existing_sectors,
+            }
             part.consistency_score = _lap_times_to_consistency_score(lap_times)
 
             if race_finished:

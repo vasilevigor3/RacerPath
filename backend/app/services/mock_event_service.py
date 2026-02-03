@@ -22,13 +22,18 @@ from app.core.constants import TIER_LABELS
 
 logger = logging.getLogger("racerpath.mock_event")
 
+# ACC track names (display); same order as in mock_race base lap map for consistency
 MOCK_TRACKS = [
     "Monza", "Spa", "Nürburgring", "Silverstone", "Barcelona", "Paul Ricard",
     "Hungaroring", "Zandvoort", "Imola", "Kyalami", "Suzuka", "Laguna Seca",
+    "Misano", "Brands Hatch", "Mount Panorama", "COTA", "Watkins Glen", "Valencia",
 ]
 MOCK_TITLES = [
     "Sprint", "60 min", "Endurance", "GT3 Cup", "Mixed Class",
 ]
+# ACC-style session list (real servers often have Practice, Qualifying, Race)
+MOCK_SESSION_LIST_RACE = ["Race"]
+MOCK_SESSION_LIST_FULL = ["Practice", "Qualifying", "Race"]
 
 
 def _random_event_data(
@@ -44,6 +49,7 @@ def _random_event_data(
     track = random.choice(MOCK_TRACKS)
     suffix = random.choice(MOCK_TITLES)
     title = f"Mock {game} {tier} · {track} {suffix}"
+    session_list = MOCK_SESSION_LIST_FULL if duration >= 60 else MOCK_SESSION_LIST_RACE
     return {
         "title": title[:200],
         "source": "mock",
@@ -56,7 +62,7 @@ def _random_event_data(
         "schedule_type": "weekly",
         "event_type": "circuit",
         "format_type": "sprint",
-        "session_list": [],
+        "session_list": session_list,
         "team_size_min": 1,
         "team_size_max": 1,
         "rolling_start": False,
@@ -74,7 +80,7 @@ def _random_event_data(
         "time_acceleration": False,
         "surface_type": "asphalt",
         "track_type": "road",
-        "stewarding": "standard",
+        "stewarding": "automated",
         "team_event": False,
         "license_requirement": "none",
         "official_event": False,

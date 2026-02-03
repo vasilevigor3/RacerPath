@@ -341,9 +341,6 @@ const Cabinet = () => (
                 <p className="participation-detail-stats muted" data-participation-detail-stats>—</p>
                 <button type="button" className="btn ghost" data-participation-detail-back>Back</button>
               </div>
-              <button className="btn ghost" type="button" data-scroll-target="#operations">
-                Log participation
-              </button>
             </div>
           </div>
         </div>

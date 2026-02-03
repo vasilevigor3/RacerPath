@@ -14,6 +14,12 @@ const statLicenses = document.querySelector('[data-stat-licenses]');
 const statIncidents = document.querySelector('[data-stat-incidents]');
 const statRiskFlags = document.querySelector('[data-stat-risk-flags]');
 const dashboardParticipationsList = document.querySelector('[data-dashboard-participations]');
+const dashboardParticipationsListView = document.querySelector('[data-dashboard-participations-list-view]');
+const participationDetailPanel = document.querySelector('[data-participation-detail]');
+const participationDetailEvent = document.querySelector('[data-participation-detail-event]');
+const participationDetailMeta = document.querySelector('[data-participation-detail-meta]');
+const participationDetailStats = document.querySelector('[data-participation-detail-stats]');
+const participationDetailBack = document.querySelector('[data-participation-detail-back]');
 const riskFlagsTabList = document.querySelector('[data-risk-flags-tab-list]');
 const riskFlagsDetailPanel = document.querySelector('[data-risk-flags-detail]');
 const riskFlagsListView = document.querySelector('[data-risk-flags-list-view]');
@@ -57,6 +63,47 @@ const getParticipationMinutes = (participation) => {
   return minutes;
 };
 
+function showParticipationDetail(item) {
+  if (!participationDetailPanel || !participationDetailEvent || !participationDetailMeta || !participationDetailStats) return;
+  participationDetailEvent.textContent = item.event_title || '—';
+  const metaParts = [];
+  if (item.event_start_time_utc) metaParts.push(formatDateTime(item.event_start_time_utc));
+  const state = item.participation_state ?? item.status ?? '—';
+  metaParts.push(String(state));
+  if (item.discipline) metaParts.push(item.discipline.toUpperCase());
+  participationDetailMeta.textContent = metaParts.length ? metaParts.join(' · ') : '—';
+  const statParts = [];
+  if (item.position_overall != null) statParts.push(`Position: ${item.position_overall}`);
+  if (item.laps_completed != null) statParts.push(`Laps: ${item.laps_completed}`);
+  if (item.incidents_count != null) statParts.push(`Incidents: ${item.incidents_count}`);
+  if (item.penalties_count != null) statParts.push(`Penalties: ${item.penalties_count}`);
+  if (item.status) statParts.push(`Status: ${item.status}`);
+  participationDetailStats.textContent = statParts.length ? statParts.join(' · ') : '—';
+  if (dashboardParticipationsListView) dashboardParticipationsListView.classList.add('is-hidden');
+  participationDetailPanel.classList.remove('is-hidden');
+}
+
+function hideParticipationDetail() {
+  if (participationDetailPanel) participationDetailPanel.classList.add('is-hidden');
+  if (dashboardParticipationsListView) dashboardParticipationsListView.classList.remove('is-hidden');
+}
+
+function setupParticipationDetailListeners() {
+  if (dashboardParticipationsList) {
+    dashboardParticipationsList.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-participation-id]');
+      if (!card) return;
+      const id = card.getAttribute('data-participation-id');
+      const item = lastDriverParticipations.find((p) => p.id === id);
+      if (item) showParticipationDetail(item);
+    });
+  }
+  if (participationDetailBack) {
+    participationDetailBack.addEventListener('click', hideParticipationDetail);
+  }
+}
+setupParticipationDetailListeners();
+
 export const loadDashboardStats = async (driver) => {
   if (!driver) {
     lastDriverParticipations = [];
@@ -68,8 +115,9 @@ export const loadDashboardStats = async (driver) => {
     if (statLicenses) statLicenses.textContent = '0';
     if (statIncidents) statIncidents.textContent = '0';
     if (dashboardParticipationsList) {
-      setList(dashboardParticipationsList, [], 'No participations loaded.');
+      dashboardParticipationsList.innerHTML = '<div role="listitem">No participations loaded.</div>';
     }
+    hideParticipationDetail();
     lastRiskFlagsWithDetails = [];
     setRiskFlagsTabList([]);
     if (statRiskFlags) statRiskFlags.textContent = '--';
@@ -102,6 +150,9 @@ export const loadDashboardStats = async (driver) => {
   }
 
   let participations = [];
+  if (dashboardParticipationsList) {
+    dashboardParticipationsList.innerHTML = '<div role="listitem" class="participation-cards__loading">Loading...</div>';
+  }
   try {
     const res = await apiFetch(`/api/participations?driver_id=${driver.id}`);
     if (res.ok) {
@@ -120,11 +171,23 @@ export const loadDashboardStats = async (driver) => {
   if (statIncidents) statIncidents.textContent = incidentTotal.toString();
 
   if (dashboardParticipationsList) {
-    const items = participations.slice(0, 10).map((item) => {
-      const state = item.participation_state ?? item.status ?? '—';
-      return `${item.discipline?.toUpperCase() ?? '—'} - ${state} / ${(item.event_id || '').slice(0, 8)}...`;
-    });
-    setList(dashboardParticipationsList, items, 'No participations loaded.');
+    const limit = 50;
+    const slice = participations.slice(0, limit);
+    if (!slice.length) {
+      dashboardParticipationsList.innerHTML = '<div role="listitem">No participations loaded.</div>';
+    } else {
+      dashboardParticipationsList.innerHTML = slice
+        .map((item) => {
+          const state = item.participation_state ?? item.status ?? '—';
+          const title = item.event_title || (item.event_id ? `${String(item.event_id).slice(0, 8)}…` : '—');
+          const sub = item.position_overall != null ? `P${item.position_overall}` : state;
+          return `<button type="button" class="participation-card" data-participation-id="${item.id}" role="listitem">
+            <span class="participation-card__title">${title}</span>
+            <span class="participation-card__meta">${item.discipline?.toUpperCase() ?? '—'} · ${sub}</span>
+          </button>`;
+        })
+        .join('');
+    }
   }
 
   const riskFlagsWithDetails = [];

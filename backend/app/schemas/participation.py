@@ -67,6 +67,12 @@ class ParticipationRead(ParticipationCreate):
     model_config = {"from_attributes": True}
 
 
+class ParticipationWithEventRead(ParticipationRead):
+    """Participation with event (race) info for list views."""
+    event_title: str = ""
+    event_start_time_utc: datetime | None = None
+
+
 class ParticipationWithdrawUpdate(BaseModel):
     """Driver can only set participation_state to withdrawn (opt out of event)."""
     participation_state: Literal["withdrawn"] = "withdrawn"

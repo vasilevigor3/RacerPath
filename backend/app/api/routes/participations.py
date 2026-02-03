@@ -16,7 +16,13 @@ from app.repositories.participation import ParticipationRepository
 from app.repositories.penalty import PenaltyRepository
 from app.repositories.task_completion import TaskCompletionRepository
 from app.schemas.incident import IncidentCreate, IncidentRead
-from app.schemas.participation import ActiveParticipationRead, ParticipationCreate, ParticipationRead, ParticipationWithdrawUpdate
+from app.schemas.participation import (
+    ActiveParticipationRead,
+    ParticipationCreate,
+    ParticipationRead,
+    ParticipationWithEventRead,
+    ParticipationWithdrawUpdate,
+)
 from app.penalties.scores import get_score_for_penalty_type
 from app.schemas.penalty import PenaltyCreate, PenaltyRead, PenaltyTypeEnum
 from app.services.tasks import assign_tasks_on_registration, evaluate_tasks
@@ -98,7 +104,7 @@ def create_participation(
     return participation
 
 
-@router.get("", response_model=List[ParticipationRead])
+@router.get("", response_model=List[ParticipationWithEventRead])
 def list_participations(
     driver_id: str | None = None,
     event_id: str | None = None,
@@ -109,6 +115,7 @@ def list_participations(
 ):
     part_repo = ParticipationRepository(session)
     driver_repo = DriverRepository(session)
+    event_repo = EventRepository(session)
     if user.role not in {"admin"}:
         if driver_id:
             driver = driver_repo.get_by_id(driver_id)
@@ -120,7 +127,22 @@ def list_participations(
                 return []
             driver_id = driver.id
     limit = max(1, min(limit, 200))
-    return part_repo.list_filtered(driver_id=driver_id, event_id=event_id, offset=offset, limit=limit)
+    participations = part_repo.list_filtered(
+        driver_id=driver_id, event_id=event_id, offset=offset, limit=limit
+    )
+    if not participations:
+        return []
+    result = []
+    for p in participations:
+        event = event_repo.get_by_id(p.event_id)
+        result.append(
+            ParticipationWithEventRead(
+                **ParticipationRead.model_validate(p).model_dump(),
+                event_title=event.title if event else "",
+                event_start_time_utc=event.start_time_utc if event else None,
+            )
+        )
+    return result
 
 
 @router.get("/active", response_model=ActiveParticipationRead | None)

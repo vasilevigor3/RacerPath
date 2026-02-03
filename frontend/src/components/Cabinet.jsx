@@ -330,9 +330,17 @@ const Cabinet = () => (
             </div>
             <div className="card">
               <p className="card-title">Recent participations</p>
-              <ul className="list" data-dashboard-participations>
-                <li>No participations loaded.</li>
-              </ul>
+              <div data-dashboard-participations-list-view>
+                <div className="participation-cards" data-dashboard-participations role="list">
+                  <div role="listitem">No participations loaded.</div>
+                </div>
+              </div>
+              <div className="participation-detail-panel is-hidden" data-participation-detail>
+                <h3 className="participation-detail-title" data-participation-detail-event>—</h3>
+                <p className="participation-detail-meta" data-participation-detail-meta>—</p>
+                <p className="participation-detail-stats muted" data-participation-detail-stats>—</p>
+                <button type="button" className="btn ghost" data-participation-detail-back>Back</button>
+              </div>
               <button className="btn ghost" type="button" data-scroll-target="#operations">
                 Log participation
               </button>

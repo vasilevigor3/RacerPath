@@ -1,0 +1,31 @@
+# Frontend & Backend implementation guidelines
+
+**Always read this rule before implementing any code.**
+
+---
+
+## 1. Frontend
+
+When implementing or changing anything on the **frontend**:
+
+- Be guided by **classy, modern solutions** (UI/UX quality, clarity, consistency).
+- When in doubt or when designing new UI, **check current UI/UX trends** (e.g. via web search: "UI UX trends [year]", "best practices [component type]", "accessibility patterns").
+- Prefer: clear hierarchy, readable typography, sensible spacing, accessible patterns (focus, labels, ARIA where needed), responsive behavior, and a cohesive visual language with the rest of the app.
+
+---
+
+## 2. Backend
+
+When implementing or changing anything on the **backend**:
+
+- Be guided by a **modern, proven stack** and established best practices for the tech in use (e.g. FastAPI, SQLAlchemy, Pydantic in this project).
+- Prefer: clear layering (routes → services/repositories → models), validation at boundaries, consistent error handling, and patterns that are widely used and maintainable in the ecosystem.
+
+---
+
+## Summary
+
+| Area      | Principle                                      |
+|----------|-------------------------------------------------|
+| Frontend | Classy, modern UI/UX; check trends when needed |
+| Backend  | Modern, proven stack and best practices         |

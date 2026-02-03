@@ -323,9 +323,12 @@ const Cabinet = () => (
             <div className="card card-events">
               <p className="card-title">Upcoming events</p>
               <div data-events-list-view>
-                <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <input type="checkbox" data-events-same-tier />
-                  <span>Show only my lvl events</span>
+                <label className="events-tier-toggle" style={{ marginBottom: '0.75rem' }}>
+                  <input type="checkbox" data-events-same-tier className="sr-only" />
+                  <span className="events-tier-toggle__track">
+                    <span className="events-tier-toggle__thumb" />
+                  </span>
+                  <span className="events-tier-toggle__label">Match my level</span>
                 </label>
                 <div className="upcoming-events-scroll" data-upcoming-events-scroll>
                   <div className="event-cards" data-dashboard-events role="list">

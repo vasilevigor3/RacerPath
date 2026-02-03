@@ -1196,12 +1196,18 @@ function renderEventCard(event, driver) {
   const countdownHtml = showCountdown
     ? `<span class="rec-countdown-wrap"><span class="rec-countdown" data-start-utc="${escapeHtml(startUtcStr)}">${escapeHtml(formatCountdown(startUtcStr))}</span></span>`
     : '';
+  const participation = lastDriverParticipations.find((p) => p.event_id === event.id);
+  const isRegistered = participation && String(participation.participation_state || '').toLowerCase() === 'registered';
+  const registeredBadge = isRegistered
+    ? '<span class="event-card__registered"><span class="event-card__registered-dot" aria-hidden></span>Registered</span>'
+    : '';
   const title = escapeHtml(event.title || '—');
   const meta = [sessionLabel, event.format_type || ''].filter(Boolean).join(' · ') + (timeLabel ? ` · ${escapeHtml(timeLabel)}` : '');
   const driverId = driver ? escapeHtml(driver.id) : '';
   return `<button type="button" class="event-card" data-event-id="${escapeHtml(event.id)}" data-driver-id="${driverId}" role="listitem">
     <span class="event-card__title">${title}</span>
     <span class="event-card__meta">${meta}${countdownHtml ? ` · ${countdownHtml}` : ''}</span>
+    ${registeredBadge}
   </button>`;
 }
 

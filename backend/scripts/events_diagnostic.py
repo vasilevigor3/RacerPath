@@ -64,7 +64,7 @@ def main() -> None:
         elif reason == "no_events_in_db":
             hint = "Run create_test_task_and_event.py to create test events."
         elif reason == "no_events_match_tier":
-            hint = "Events have lower tier than driver. Uncheck 'Show only my lvl events' or create events with tier >= driver tier."
+            hint = "Events have lower tier than driver. Uncheck 'Match my level' or create events with tier >= driver tier."
         out = {
             "reason": reason,
             "driver_found": True,

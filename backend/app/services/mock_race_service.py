@@ -12,6 +12,7 @@ pace_delta, position_overall, position_class.
 
 from __future__ import annotations
 
+import logging
 import math
 import random
 from datetime import datetime, timedelta, timezone
@@ -21,6 +22,8 @@ from sqlalchemy.orm import Session
 
 from app.models.event import Event
 from app.models.participation import Participation, ParticipationState, ParticipationStatus
+
+logger = logging.getLogger("racerpath.mock_race")
 
 
 def _ensure_utc(dt: datetime | None) -> datetime | None:
@@ -108,6 +111,12 @@ def tick_mock_races(session: Session, interval_seconds: int = 15) -> dict:
     interval_sec = max(1, interval_seconds)
     total_laps = max(1, 60 // interval_sec)  # race completes in 1 minute of real time
 
+    if events:
+        logger.info(
+            "tick: now=%s interval=%ss total_laps=%s events_count=%s",
+            now.isoformat(), interval_sec, total_laps, len(events),
+        )
+
     for event in events:
         start_utc = _ensure_utc(event.start_time_utc)
         finished_utc = _ensure_utc(event.finished_time_utc)
@@ -121,6 +130,12 @@ def tick_mock_races(session: Session, interval_seconds: int = 15) -> dict:
         finish_at = start_utc + timedelta(seconds=total_laps * interval_sec) if race_finished else None
         if race_finished and finish_at:
             event.finished_time_utc = finish_at
+
+        event_title = getattr(event, "title", None) or event.id[:8]
+        logger.info(
+            "event: event_id=%s title=%s tick=%s laps_done=%s/%s finished=%s",
+            event.id[:8], event_title, tick_index, laps_done, total_laps, race_finished,
+        )
 
         participations = _participations_to_simulate(session, event)
         if not participations:
@@ -144,14 +159,15 @@ def tick_mock_races(session: Session, interval_seconds: int = 15) -> dict:
             speed = 0.92 + (driver_seed % 15) / 100.0
             consistency_val = 0.5 + (driver_seed % 50) / 100.0
             to_add = laps_done - len(existing)
+            new_laps: List[float] = []
             for _ in range(max(0, to_add)):
-                existing.append(
-                    _one_lap_time(
-                        base_seconds=base_lap,
-                        driver_speed_factor=speed,
-                        consistency=consistency_val,
-                    )
+                lap_s = _one_lap_time(
+                    base_seconds=base_lap,
+                    driver_speed_factor=speed,
+                    consistency=consistency_val,
                 )
+                existing.append(lap_s)
+                new_laps.append(lap_s)
             lap_times = existing
             best_lap_session = min(best_lap_session, min(lap_times) if lap_times else base_lap)
 
@@ -165,6 +181,16 @@ def tick_mock_races(session: Session, interval_seconds: int = 15) -> dict:
                 part.status = ParticipationStatus.finished
                 participations_finished += 1
                 finished_pairs.append((part.driver_id, part.id))
+                logger.info(
+                    "part_finished: event_id=%s part_id=%s driver_id=%s laps=%s",
+                    event.id[:8], part.id[:8], part.driver_id[:8], len(lap_times),
+                )
+            elif new_laps:
+                logger.info(
+                    "lap: event_id=%s part_id=%s driver_id=%s lap_s=%.2f laps=%s consistency=%.1f",
+                    event.id[:8], part.id[:8], part.driver_id[:8],
+                    new_laps[-1], len(lap_times), part.consistency_score,
+                )
 
             participations_updated += 1
 
@@ -180,6 +206,12 @@ def tick_mock_races(session: Session, interval_seconds: int = 15) -> dict:
                     p.position_overall = rank
                     p.position_class = rank
                     break
+
+        logger.info(
+            "positions: event_id=%s %s",
+            event.id[:8],
+            ", ".join(f"P{p.position_overall}({p.driver_id[:8]})" for p in participations),
+        )
 
         for part in participations:
             lt = (part.raw_metrics or {}).get("lap_times") or []

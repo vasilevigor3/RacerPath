@@ -10,7 +10,7 @@ import {
 } from '../state/session.js';
 import { setAuthVisibility, setOnboardingVisibility, isOnboardingComplete, setAdminVisibility, setDriverVisibility } from '../ui/visibility.js';
 import { updateReadiness } from '../ui/readiness.js';
-import { setList, getFormValue } from '../utils/dom.js';
+import { getFormValue } from '../utils/dom.js';
 import { formatDiscipline, toInitials } from '../utils/format.js';
 import { getCheckedValues, setCheckedValues } from '../utils/forms.js';
 import { parseOptionalInt } from '../utils/parse.js';
@@ -40,7 +40,6 @@ const profileNextTierMeta = document.querySelector('[data-profile-next-tier-meta
 const profileCta = document.querySelector('[data-profile-cta]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
-const licenseReqs = document.querySelector('[data-license-reqs]');
 const profileForm = document.querySelector('[data-profile-form]');
 const profileSaveStatus = document.querySelector('[data-profile-save-status]');
 const profileStatus = document.querySelector('[data-profile-status]');
@@ -83,7 +82,6 @@ export const setProfileEmpty = (message, options = {}) => {
     licenseNext.textContent = '--';
     delete licenseNext.dataset.licenseCode;
   }
-  if (licenseReqs) setList(licenseReqs, [], 'Log in to see license progress.');
   if (profileNextTier) profileNextTier.style.width = '0%';
   if (profileNextTierMeta) profileNextTierMeta.textContent = 'Complete profile and races to advance.';
   if (profileForm) {

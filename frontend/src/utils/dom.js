@@ -13,28 +13,6 @@ export const setList = (listEl, items, emptyText) => {
 };
 
 /**
- * Render license requirements as clickable rows; each item "CODE: ..." opens license detail.
- * requirements: array of strings (e.g. "E2: min CRS 100, tasks: ...")
- */
-export const setLicenseReqsList = (listEl, requirements, emptyText) => {
-  if (!listEl) return;
-  if (!requirements || requirements.length === 0) {
-    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
-    return;
-  }
-  listEl.innerHTML = requirements
-    .map((raw) => {
-      const text = typeof raw === 'string' ? raw : String(raw);
-      const colonIdx = text.indexOf(':');
-      const code = colonIdx >= 0 ? text.slice(0, colonIdx).trim() : text.trim();
-      const codeAttr = escapeHtml(code || '');
-      const textAttr = escapeHtml(text);
-      return `<li class="license-req-item"><button type="button" class="btn-link license-req-item__text" data-license-code="${codeAttr}">${textAttr}</button></li>`;
-    })
-    .join('');
-};
-
-/**
  * Render events as clickable rows; click opens event detail panel (no inline Register button).
  * events: array of { id, title, event_tier, ... }
  * driver: { id }
@@ -63,16 +41,16 @@ export const setEventListWithRegister = (listEl, events, driver, emptyText, form
 export const setTaskListClickable = (listEl, tasks, emptyText) => {
   if (!listEl) return;
   if (!tasks || tasks.length === 0) {
-    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
+    listEl.innerHTML = `<li class="task-list-item task-list-item--empty">${escapeHtml(emptyText)}</li>`;
     return;
   }
   listEl.innerHTML = tasks
     .map((task) => {
       const code = task.code ?? task.id ?? '';
       const name = task.name ?? task.id ?? '—';
-      const label = code ? `${escapeHtml(code)} - ${escapeHtml(name)}` : escapeHtml(name);
+      const label = code ? `${escapeHtml(code)} — ${escapeHtml(name)}` : escapeHtml(name);
       const taskId = escapeHtml(task.id);
-      return `<li class="task-list-item"><button type="button" class="task-list-item__text btn-link" data-task-id="${taskId}">${label}</button></li>`;
+      return `<li class="task-list-item"><button type="button" class="task-item-card" data-task-id="${taskId}">${label}</button></li>`;
     })
     .join('');
 };
@@ -108,7 +86,7 @@ export const setRecommendationTasksList = (listEl, taskItemStrings, taskDefiniti
       const name = text.slice(COMPLETE_TASK_PREFIX.length).trim();
       const task = byName[name];
       const taskId = task ? task.id : '';
-      const label = escapeHtml(text);
+      const label = escapeHtml(name);
       if (taskId) {
         return `<button type="button" class="next-action-card" data-task-id="${escapeHtml(taskId)}" role="listitem"><span class="next-action-card__title">${label}</span></button>`;
       }

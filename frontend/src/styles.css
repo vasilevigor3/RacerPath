@@ -397,7 +397,7 @@ footer {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--muted-foreground);
+  color: var(--accent-2);
 }
 
 .stat-card .stat-value {
@@ -413,22 +413,26 @@ footer {
 .tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   padding: 8px;
   background: var(--muted);
   border: 1px solid var(--border);
   border-radius: 999px;
-  width: fit-content;
+  width: 100%;
+  max-width: 100%;
 }
 
 .tab-button {
+  flex: 1 1 0;
+  min-width: 0;
   border: none;
   background: transparent;
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
   color: var(--muted-foreground);
+  text-align: center;
 }
 
 .tab-button:focus-visible {
@@ -891,19 +895,36 @@ footer {
   font-size: 0.95rem;
 }
 
-.license-task-code-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: inherit;
-  color: var(--link, #0066cc);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.license-required-tasks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-.license-task-code-link:hover {
-  color: var(--link-hover, #004499);
+.license-task-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.license-task-pill:hover {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--background);
+}
+
+.license-task-pill:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .license-detail-dl > div {
@@ -911,22 +932,6 @@ footer {
   grid-template-columns: 100px 1fr;
   gap: 0.5rem;
   align-items: baseline;
-}
-
-.license-req-item {
-  list-style: none;
-  margin: 0;
-}
-
-.license-req-item__text {
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-  padding: 0.25rem 0;
-}
-
-.license-req-item__text:hover {
-  color: var(--accent-2);
 }
 
 .hero-copy h1 {
@@ -978,7 +983,6 @@ footer {
 }
 
 .stat-label {
-  color: var(--muted-foreground);
   font-size: 0.85rem;
 }
 
@@ -2070,6 +2074,49 @@ textarea::placeholder {
   justify-self: start;
 }
 
+/* Profile tab: use full width so form can expand right first */
+.profile-tab-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.profile-editor-card {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Profile editor: flow right first, then wrap down */
+.profile-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.profile-editor-fields .field-group {
+  min-width: 0;
+}
+
+.profile-editor-field--wide {
+  grid-column: span 2;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .profile-editor-field--wide {
+    grid-column: span 1;
+  }
+}
+
+.profile-editor-rig-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.profile-editor-rig-row > div {
+  min-width: 0;
+}
+
 .readonly-field {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
@@ -2313,6 +2360,58 @@ input[type='range'] {
   color: var(--muted-foreground);
 }
 
+/* Tasks tab: card list (square like event cards) */
+.task-list-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.task-list-cards .task-list-item {
+  padding: 0;
+  border: none;
+}
+
+.task-list-cards .task-list-item--empty {
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.task-item-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--foreground);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.task-item-card:hover {
+  background: var(--card-bg-hover);
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.task-item-card:active {
+  transform: scale(0.99);
+}
+
+.task-item-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Legacy task list (e.g. other views) */
 .task-list-item {
   display: flex;
   align-items: center;

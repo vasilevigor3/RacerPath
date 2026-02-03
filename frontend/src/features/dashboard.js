@@ -1,5 +1,5 @@
 import { apiFetch } from '../api/client.js';
-import { setList, setLicenseReqsList, setEventListWithRegister, setTaskListClickable, setRecommendationTasksList, setRecommendationRacesList, tickRecommendationCountdowns } from '../utils/dom.js';
+import { setList, setEventListWithRegister, setTaskListClickable, setRecommendationTasksList, setRecommendationRacesList, tickRecommendationCountdowns } from '../utils/dom.js';
 import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { driverRigSatisfiesEvent } from '../utils/rigCompat.js';
@@ -43,7 +43,6 @@ const overviewUpcomingScrollEl = document.querySelector('[data-overview-upcoming
 const pastEventsScrollEl = document.querySelector('[data-past-events-scroll]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
-const licenseReqs = document.querySelector('[data-license-reqs]');
 const currentRaceCard = document.querySelector('[data-current-race-card]');
 const currentRaceEvent = document.querySelector('[data-current-race-event]');
 const currentRacePosition = document.querySelector('[data-current-race-position]');
@@ -454,7 +453,7 @@ function initTaskDetailDelegation() {
   if (document.body.dataset.taskDetailDelegation) return;
   document.body.dataset.taskDetailDelegation = '1';
   document.body.addEventListener('click', (e) => {
-    const taskRow = e.target.closest('.task-list-item__text[data-task-id]');
+    const taskRow = e.target.closest('.task-list-item__text[data-task-id], .task-item-pill[data-task-id], .task-item-card[data-task-id]');
     if (taskRow) {
       e.preventDefault();
       const taskId = taskRow.getAttribute('data-task-id');
@@ -634,7 +633,7 @@ export const loadDashboardRecommendations = async (driver) => {
 };
 
 export const loadLicenseProgress = async (driver) => {
-  if (!licenseCurrent || !licenseNext || !licenseReqs) return;
+  if (!licenseCurrent || !licenseNext) return;
   if (!driver) {
     lastDriverLicenseLevel = null;
     lastDriverForLicense = null;
@@ -643,7 +642,6 @@ export const loadLicenseProgress = async (driver) => {
     licenseNext.textContent = '--';
     delete licenseCurrent.dataset.licenseCode;
     delete licenseNext.dataset.licenseCode;
-    setList(licenseReqs, [], 'Create a driver profile to see license progress.');
     return;
   }
   lastDriverForLicense = driver;
@@ -671,11 +669,9 @@ export const loadLicenseProgress = async (driver) => {
       licenseNext.textContent = nextCode;
       if (nextCode && nextCode !== '--') licenseNext.dataset.licenseCode = nextCode;
       else delete licenseNext.dataset.licenseCode;
-      setLicenseReqsList(licenseReqs, requirements.requirements || [], 'No requirements loaded.');
     } else {
       licenseNext.textContent = '--';
       delete licenseNext.dataset.licenseCode;
-      setList(licenseReqs, ['Maintain performance to keep license.'], '');
     }
   } catch (err) {
     lastDriverLicenseLevel = null;
@@ -684,7 +680,6 @@ export const loadLicenseProgress = async (driver) => {
     licenseNext.textContent = '--';
     delete licenseCurrent.dataset.licenseCode;
     delete licenseNext.dataset.licenseCode;
-    setList(licenseReqs, [], 'Unable to load license progress.');
   }
 };
 
@@ -849,9 +844,9 @@ function showLicenseDetail(level) {
   if (!listView || !panel || !content) return;
   const codes = level.required_task_codes && Array.isArray(level.required_task_codes) ? level.required_task_codes : [];
   const requiredTasksHtml = codes.length
-    ? codes
-        .map((code) => `<button type="button" class="btn-link license-task-code-link" data-license-task-code="${escapeHtml(code)}">${escapeHtml(code)}</button>`)
-        .join(', ')
+    ? `<span class="license-required-tasks">${codes
+        .map((code) => `<button type="button" class="license-task-pill" data-license-task-code="${escapeHtml(code)}">${escapeHtml(code)}</button>`)
+        .join('')}</span>`
     : '—';
   content.innerHTML = `
     <dl class="event-detail-dl license-detail-dl">

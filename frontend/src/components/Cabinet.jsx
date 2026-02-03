@@ -23,7 +23,7 @@ const Cabinet = () => (
       <aside className="profile-pane">
         <Card className="profile-card border-border/80 shadow-lg shadow-black/20 transition-shadow hover:shadow-xl hover:shadow-black/25">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-[var(--accent-2)]">
               Driver identity
             </CardTitle>
           </CardHeader>
@@ -79,7 +79,7 @@ const Cabinet = () => (
             data-scroll-target="#dashboards"
             data-focus-target="crs-card"
           >
-            <span className="stat-label text-muted-foreground">CRS</span>
+            <span className="stat-label text-[var(--accent-2)]">CRS</span>
             <span className="stat-value text-foreground" data-stat-crs>
               --
             </span>
@@ -91,7 +91,7 @@ const Cabinet = () => (
             data-stat-target="events"
             data-tab-target="events"
           >
-            <span className="stat-label text-muted-foreground">Events raced</span>
+            <span className="stat-label text-[var(--accent-2)]">Events raced</span>
             <span className="stat-value text-foreground" data-stat-events>0</span>
             <span className="stat-meta text-muted-foreground">Last 30 days</span>
           </button>
@@ -101,7 +101,7 @@ const Cabinet = () => (
             data-stat-target="tasks"
             data-tab-target="tasks"
           >
-            <span className="stat-label text-muted-foreground">Tasks done</span>
+            <span className="stat-label text-[var(--accent-2)]">Tasks done</span>
             <span className="stat-value text-foreground" data-stat-tasks>0</span>
             <span className="stat-meta text-muted-foreground">Completed</span>
           </button>
@@ -112,7 +112,7 @@ const Cabinet = () => (
             data-tab-target="licenses"
             data-focus-target="licenses-card"
           >
-            <span className="stat-label text-muted-foreground">Licenses</span>
+            <span className="stat-label text-[var(--accent-2)]">Licenses</span>
             <span className="stat-value text-foreground" data-stat-licenses>0</span>
             <span className="stat-meta text-muted-foreground">Earned</span>
           </button>
@@ -123,7 +123,7 @@ const Cabinet = () => (
             data-tab-target="risk-flags"
             data-focus-target="risk-flags-card"
           >
-            <span className="stat-label text-muted-foreground">Risk flags</span>
+            <span className="stat-label text-[var(--accent-2)]">Risk flags</span>
             <span className="stat-value text-foreground" data-stat-risk-flags>0</span>
             <span className="stat-meta text-muted-foreground">Review</span>
           </button>
@@ -149,7 +149,7 @@ const Cabinet = () => (
             Teams
           </button>
           <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="garage">
-            My car / garage
+            Garage
           </button>
           <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="profile">
             Profile
@@ -209,9 +209,6 @@ const Cabinet = () => (
                 <span className="license-flow__arrow" aria-hidden />
                 <button type="button" className="license-flow__badge license-flow__badge--next" data-license-next>—</button>
               </div>
-              <ul className="list" data-license-reqs>
-                <li>No requirements loaded.</li>
-              </ul>
             </div>
             <div className="license-detail-panel is-hidden" data-license-detail-panel>
               <div className="license-detail-content" data-license-detail-content />
@@ -283,20 +280,20 @@ const Cabinet = () => (
           <div data-tasks-list-view className="grid-3">
             <div className="card compact card-tasks">
               <p className="card-title">Pending tasks</p>
-              <ul className="list" data-tasks-pending>
-                <li>No pending tasks.</li>
+              <ul className="list task-list-cards" data-tasks-pending>
+                <li className="task-list-item task-list-item--empty">No pending tasks.</li>
               </ul>
             </div>
             <div className="card compact card-tasks">
               <p className="card-title">In progress</p>
-              <ul className="list" data-tasks-in-progress>
-                <li>No tasks in progress.</li>
+              <ul className="list task-list-cards" data-tasks-in-progress>
+                <li className="task-list-item task-list-item--empty">No tasks in progress.</li>
               </ul>
             </div>
             <div className="card compact card-tasks">
               <p className="card-title">Completed</p>
-              <ul className="list" data-tasks-completed>
-                <li>No tasks completed yet.</li>
+              <ul className="list task-list-cards" data-tasks-completed>
+                <li className="task-list-item task-list-item--empty">No tasks completed yet.</li>
               </ul>
             </div>
           </div>
@@ -383,17 +380,17 @@ const Cabinet = () => (
 
         <div className="tab-panel" data-tab-panel="garage">
           <div className="card compact">
-            <p className="card-title">My car / garage</p>
+            <p className="card-title">Garage</p>
             <p className="muted">Coming soon.</p>
           </div>
         </div>
 
         <div className="tab-panel" data-tab-panel="profile">
-          <div className="grid-2">
-            <div className="card">
+          <div className="profile-tab-wrap">
+            <div className="card profile-editor-card">
               <p className="card-title">Profile editor</p>
-              <form data-profile-form>
-                <div className="grid-2">
+              <form data-profile-form className="profile-editor-form">
+                <div className="profile-editor-fields">
                   <div className="field-group">
                     <label htmlFor="profileFullName">Full name</label>
                     <input id="profileFullName" name="profileFullName" type="text" placeholder="Your name" />
@@ -402,8 +399,6 @@ const Cabinet = () => (
                     <label htmlFor="profileCountry">Country</label>
                     <input id="profileCountry" name="profileCountry" type="text" placeholder="Country" />
                   </div>
-                </div>
-                <div className="grid-2">
                   <div className="field-group">
                     <label htmlFor="profileCity">City</label>
                     <input id="profileCity" name="profileCity" type="text" placeholder="City" />
@@ -412,8 +407,6 @@ const Cabinet = () => (
                     <label htmlFor="profileAge">Age</label>
                     <input id="profileAge" name="profileAge" type="number" min="0" max="120" placeholder="Age" />
                   </div>
-                </div>
-                <div className="grid-2">
                   <div className="field-group">
                     <label htmlFor="profileExperience">Experience (years)</label>
                     <input id="profileExperience" name="profileExperience" type="number" min="0" max="60" placeholder="Experience" />
@@ -422,35 +415,35 @@ const Cabinet = () => (
                     <label htmlFor="profileDiscipline">Primary discipline</label>
                     <DisciplineSelect id="profileDiscipline" name="profileDiscipline" defaultValue="gt" />
                   </div>
-                </div>
-                <div className="field-group">
-                  <label>Sim platforms</label>
-                  <OptionGrid name="profilePlatforms" options={SIM_GAMES} />
-                </div>
-                <div className="field-group">
-                  <label>Rig options</label>
-                  <div className="grid-2" style={{ gap: '0.75rem' }}>
-                    <div>
-                      <label htmlFor="profileWheelType" className="muted" style={{ fontSize: '0.85rem' }}>Wheel</label>
-                      <select id="profileWheelType" name="profileWheelType">
-                        {WHEEL_TYPES.map((o) => (
-                          <option key={o.value || 'empty'} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="profilePedalsClass" className="muted" style={{ fontSize: '0.85rem' }}>Pedals</label>
-                      <select id="profilePedalsClass" name="profilePedalsClass">
-                        {PEDALS_CLASSES.map((o) => (
-                          <option key={o.value || 'empty'} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="field-group profile-editor-field--wide">
+                    <label>Sim platforms</label>
+                    <OptionGrid name="profilePlatforms" options={SIM_GAMES} />
                   </div>
-                  <label className="checkbox-label" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input type="checkbox" name="profileManualWithClutch" id="profileManualWithClutch" value="1" />
-                    <span>Manual gearbox with clutch</span>
-                  </label>
+                  <div className="field-group profile-editor-field--wide">
+                    <label>Rig options</label>
+                    <div className="profile-editor-rig-row">
+                      <div>
+                        <label htmlFor="profileWheelType" className="muted" style={{ fontSize: '0.85rem' }}>Wheel</label>
+                        <select id="profileWheelType" name="profileWheelType">
+                          {WHEEL_TYPES.map((o) => (
+                            <option key={o.value || 'empty'} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="profilePedalsClass" className="muted" style={{ fontSize: '0.85rem' }}>Pedals</label>
+                        <select id="profilePedalsClass" name="profilePedalsClass">
+                          {PEDALS_CLASSES.map((o) => (
+                            <option key={o.value || 'empty'} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <label className="checkbox-label" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" name="profileManualWithClutch" id="profileManualWithClutch" value="1" />
+                      <span>Manual gearbox with clutch</span>
+                    </label>
+                  </div>
                 </div>
                 <button className="btn primary" type="submit">
                   Save profile

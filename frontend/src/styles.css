@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Space+Mono:wght@400;600&display=swap');
 @import 'tailwindcss';
 
-/* ─── Dark theme: deep indigo/slate + warm amber accent (harmonious, high contrast) ─── */
+/* ─── Dark theme: deep indigo/slate + blue accent ─── */
 :root {
   --radius: 0.625rem;
   /* Base: deep indigo‑slate */
@@ -12,9 +12,9 @@
   --card-foreground: oklch(0.95 0.01 265);
   --popover: oklch(0.18 0.02 265);
   --popover-foreground: oklch(0.95 0.01 265);
-  /* Primary: warm amber (complementary accent) */
-  --primary: oklch(0.78 0.15 75);
-  --primary-foreground: oklch(0.18 0.02 265);
+  /* Primary: vivid blue (buttons, links, countdown, focus ring) */
+  --primary: oklch(0.58 0.22 255);
+  --primary-foreground: oklch(0.98 0.01 255);
   /* Secondary / muted — brighter for readability on dark */
   --secondary: oklch(0.22 0.02 265);
   --secondary-foreground: oklch(0.9 0.02 265);
@@ -28,7 +28,9 @@
   --border: oklch(0.28 0.02 265);
   --border-hover: oklch(0.38 0.03 265);
   --input: oklch(0.25 0.02 265);
-  --ring: oklch(0.78 0.15 75);
+  --placeholder-foreground: oklch(0.68 0.02 265);
+  --ring: oklch(0.58 0.22 255);
+  --countdown-color: oklch(0.78 0.15 75);
   /* Legacy aliases for existing CSS */
   --bg: oklch(0.13 0.02 265);
   --bg-accent: oklch(0.16 0.02 265);
@@ -233,12 +235,12 @@ footer {
   background: var(--primary);
   color: var(--primary-foreground);
   border-color: transparent;
-  box-shadow: 0 4px 14px oklch(0.78 0.15 75 / 0.35);
+  box-shadow: 0 2px 8px oklch(0.58 0.22 255 / 0.25);
 }
 
 .btn.primary:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 6px 20px oklch(0.78 0.15 75 / 0.4);
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.15), 0 2px 6px oklch(1 0 0 / 0.2);
 }
 
 .btn.ghost {
@@ -384,11 +386,11 @@ footer {
 
 .stat-card.is-link:focus-visible {
   outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  outline-offset: 1px;
 }
 
 .focus-highlight {
-  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.35);
+  box-shadow: 0 0 0 2px oklch(0.58 0.22 255 / 0.35);
 }
 
 .stat-card .stat-label {
@@ -545,8 +547,7 @@ footer {
 
 .upcoming-events-scroll,
 .past-events-scroll {
-  height: 10rem;
-  min-height: 10rem;
+  height: 20rem;
   overflow-y: auto;
 }
 
@@ -1069,7 +1070,7 @@ footer {
 }
 
 .overview-upcoming-scroll {
-  max-height: 10rem;
+  height: 20rem;
   overflow-y: auto;
 }
 
@@ -1472,6 +1473,7 @@ footer {
 
 .admin-constructors__label {
   font-size: 0.8125rem;
+  color: var(--foreground);
 }
 
 .admin-constructors__input {
@@ -1479,8 +1481,15 @@ footer {
   min-width: 0;
   padding: 4px 6px;
   font-size: 0.8125rem;
-  border: 1px solid var(--border, #ddd);
+  border: 1px solid var(--border);
   border-radius: 4px;
+  background: var(--input);
+  color: var(--foreground);
+}
+
+.admin-constructors__input option {
+  background: var(--card);
+  color: var(--card-foreground);
 }
 
 .admin-constructors__input--short {
@@ -1994,7 +2003,7 @@ footer {
 .field-group label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--muted-foreground);
+  color: var(--foreground);
 }
 
 .option-grid {
@@ -2009,8 +2018,9 @@ footer {
   gap: 8px;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 32, 0.12);
+  border: 1px solid var(--border);
   background: var(--surface-2);
+  color: var(--foreground);
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -2025,16 +2035,29 @@ select {
   font-family: 'Sora', sans-serif;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--stroke);
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--foreground);
+}
+
+select option {
+  background: var(--card);
+  color: var(--card-foreground);
 }
 
 textarea {
   font-family: 'Sora', sans-serif;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--stroke);
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder-foreground);
+  opacity: 1;
 }
 
 .card form {
@@ -2186,8 +2209,8 @@ input[type='range'] {
   display: block;
   margin-top: 4px;
   font-size: 0.85em;
-  color: var(--accent);
-  font-weight: 500;
+  color: var(--countdown-color);
+  font-weight: 600;
 }
 
 .event-list-item {

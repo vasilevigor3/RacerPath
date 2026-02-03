@@ -39,6 +39,7 @@ const upcomingEventsList = document.querySelector('[data-upcoming-events]');
 const dashboardEventsList = document.querySelector('[data-dashboard-events]');
 const dashboardPastEventsList = document.querySelector('[data-dashboard-past-events]');
 const upcomingEventsScrollEl = document.querySelector('[data-upcoming-events-scroll]');
+const overviewUpcomingScrollEl = document.querySelector('[data-overview-upcoming-scroll]');
 const pastEventsScrollEl = document.querySelector('[data-past-events-scroll]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
@@ -694,7 +695,7 @@ let lastDriverForActiveRace = null;
 let lastDashboardEventsData = [];
 let lastDashboardPastEventsData = [];
 let lastUpcomingEventsData = [];
-const EVENT_PAGE_SIZE = 3;
+const EVENT_PAGE_SIZE = 12;
 let upcomingEventsCache = [];
 let upcomingEventsTotalCount = 0;
 let upcomingEventsLoadingMore = false;
@@ -1192,12 +1193,20 @@ export const loadActiveRace = async (driver) => {
 function renderEventCard(event, driver) {
   const sessionLabel = event.session_type === 'training' ? 'Training' : 'Race';
   const timeLabel = event.start_time_utc ? formatDateTime(event.start_time_utc) : '';
+  const status = getEventStatus(event);
+  const showCountdown = status === 'waiting_start' && event.start_time_utc;
+  const startUtcStr = showCountdown
+    ? (typeof event.start_time_utc === 'string' ? event.start_time_utc : event.start_time_utc?.iso?.() ?? String(event.start_time_utc))
+    : '';
+  const countdownHtml = showCountdown
+    ? `<span class="rec-countdown-wrap"><span class="rec-countdown" data-start-utc="${escapeHtml(startUtcStr)}">${escapeHtml(formatCountdown(startUtcStr))}</span></span>`
+    : '';
   const title = escapeHtml(event.title || '—');
   const meta = [sessionLabel, event.format_type || ''].filter(Boolean).join(' · ') + (timeLabel ? ` · ${escapeHtml(timeLabel)}` : '');
   const driverId = driver ? escapeHtml(driver.id) : '';
   return `<button type="button" class="event-card" data-event-id="${escapeHtml(event.id)}" data-driver-id="${driverId}" role="listitem">
     <span class="event-card__title">${title}</span>
-    <span class="event-card__meta">${meta}</span>
+    <span class="event-card__meta">${meta}${countdownHtml ? ` · ${countdownHtml}` : ''}</span>
   </button>`;
 }
 
@@ -1213,6 +1222,7 @@ async function fetchUpcomingNextPage() {
     upcomingEventsCache.push(...page);
     const html = page.map((ev) => renderEventCard(ev, lastUpcomingEventsDriver)).join('');
     if (dashboardEventsList && html) dashboardEventsList.insertAdjacentHTML('beforeend', html);
+    if (upcomingEventsList && html) upcomingEventsList.insertAdjacentHTML('beforeend', html);
   } finally {
     upcomingEventsLoadingMore = false;
   }
@@ -1243,10 +1253,13 @@ async function resetUpcomingEventsToFirstPage() {
     if (!res.ok) return;
     const page = await res.json();
     upcomingEventsCache = page;
-    dashboardEventsList.innerHTML = page.length
+    const html = page.length
       ? page.map((ev) => renderEventCard(ev, lastUpcomingEventsDriver)).join('')
       : '<div role="listitem">No upcoming events.</div>';
+    dashboardEventsList.innerHTML = html;
+    if (upcomingEventsList) upcomingEventsList.innerHTML = html;
     if (upcomingEventsScrollEl) upcomingEventsScrollEl.scrollTop = 0;
+    if (overviewUpcomingScrollEl) overviewUpcomingScrollEl.scrollTop = 0;
   } catch (_) {}
 }
 
@@ -1265,14 +1278,36 @@ async function resetPastEventsToFirstPage() {
   } catch (_) {}
 }
 
-function setupEventsScrollLoad() {
-  if (upcomingEventsScrollEl) {
-    upcomingEventsScrollEl.addEventListener('scroll', () => {
-      const { scrollTop, clientHeight, scrollHeight } = upcomingEventsScrollEl;
-      if (scrollHeight <= clientHeight) return;
-      if (scrollTop + clientHeight < scrollHeight - 30) return;
-      fetchUpcomingNextPage();
+function tickEventCardCountdowns() {
+  const containers = document.querySelectorAll('[data-dashboard-events], [data-upcoming-events]');
+  containers.forEach((el) => {
+    el.querySelectorAll('.rec-countdown').forEach((node) => {
+      const startUtc = node.getAttribute('data-start-utc');
+      if (startUtc) node.textContent = formatCountdown(startUtc);
     });
+  });
+}
+
+let eventCardCountdownInterval = null;
+function startEventCardCountdownInterval() {
+  if (eventCardCountdownInterval) return;
+  eventCardCountdownInterval = setInterval(tickEventCardCountdowns, 1000);
+}
+
+function setupEventsScrollLoad() {
+  const onUpcomingScroll = () => {
+    const el = upcomingEventsScrollEl || overviewUpcomingScrollEl;
+    if (!el) return;
+    const { scrollTop, clientHeight, scrollHeight } = el;
+    if (scrollHeight <= clientHeight) return;
+    if (scrollTop + clientHeight < scrollHeight - 30) return;
+    fetchUpcomingNextPage();
+  };
+  if (upcomingEventsScrollEl) {
+    upcomingEventsScrollEl.addEventListener('scroll', onUpcomingScroll);
+  }
+  if (overviewUpcomingScrollEl) {
+    overviewUpcomingScrollEl.addEventListener('scroll', onUpcomingScroll);
   }
   if (pastEventsScrollEl) {
     pastEventsScrollEl.addEventListener('scroll', () => {
@@ -1450,6 +1485,7 @@ export const loadDashboardEvents = async (driver) => {
         upcomingEventsList.innerHTML = lastUpcomingEventsData.map((ev) => renderEventCard(ev, driver)).join('');
       }
     }
+    startEventCardCountdownInterval();
     loadActiveRace(driver);
   } catch (err) {
     if (dashboardEventsList) {

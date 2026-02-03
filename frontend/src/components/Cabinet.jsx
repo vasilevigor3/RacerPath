@@ -161,7 +161,7 @@ const Cabinet = () => (
             {/* Next actions: 2 columns — Tasks (open task card), Race of d/w/m/y (open event card). */}
             <Card className="border-border/80 shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-[var(--accent-2)]">
                   Next actions
                 </CardTitle>
               </CardHeader>
@@ -185,12 +185,12 @@ const Cabinet = () => (
             {/* Upcoming events: loadDashboardEvents (dashboard.js). Event cards, same as Events tab. */}
             <Card className="border-border/80 shadow-md shadow-black/10 transition-shadow hover:shadow-lg hover:shadow-black/15">
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--accent-2)]">
                   Upcoming events
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="overview-upcoming-scroll">
+                <div className="overview-upcoming-scroll" data-overview-upcoming-scroll>
                   <div className="event-cards" data-upcoming-events role="list">
                     <div role="listitem">Log in to load events.</div>
                   </div>

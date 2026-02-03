@@ -402,6 +402,10 @@ footer {
   margin-top: 1rem;
 }
 
+.risk-flags-bottom-back {
+  margin-top: 1rem;
+}
+
 .penalty-cards {
   display: flex;
   flex-direction: column;

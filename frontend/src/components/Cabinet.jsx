@@ -136,12 +136,6 @@ const Cabinet = () => (
           <button className="tab-button" type="button" data-tab-button="licenses">
             Licenses
           </button>
-          <button className="tab-button" type="button" data-tab-button="incidents">
-            Incidents (<span className="tab-count" data-incidents-total aria-label="Total incidents">0</span>)
-          </button>
-          <button className="tab-button" type="button" data-tab-button="penalties">
-            Penalties (<span className="tab-count" data-penalties-total aria-label="Total penalties">0</span>)
-          </button>
           <button className="tab-button" type="button" data-tab-button="risk-flags">
             Risk flags
           </button>
@@ -206,38 +200,6 @@ const Cabinet = () => (
           </div>
         </div>
 
-        <div className="tab-panel" data-tab-panel="incidents">
-          <div data-incidents-list-view className="card compact" data-focus-id="incidents-card">
-            <p className="card-title">My incidents (<span className="tab-count" data-incidents-total-card aria-label="Total incidents">0</span>)</p>
-            <div className="incident-cards" data-incident-list role="list">
-              <div role="listitem">Log in to see incidents.</div>
-            </div>
-          </div>
-          <div className="incident-detail-panel is-hidden" data-incident-detail>
-            <h3 className="incident-detail-title" data-incident-detail-type>—</h3>
-            <p className="incident-detail-race muted" data-incident-detail-race>—</p>
-            <p className="incident-detail-meta" data-incident-detail-meta>—</p>
-            <p className="incident-detail-desc muted" data-incident-detail-desc></p>
-            <button type="button" className="btn ghost" data-incident-detail-back>Back</button>
-          </div>
-        </div>
-
-        <div className="tab-panel" data-tab-panel="penalties">
-          <div data-penalties-list-view className="card compact" data-focus-id="penalties-card">
-            <p className="card-title">My penalties (<span className="tab-count" data-penalties-total-card aria-label="Total penalties">0</span>)</p>
-            <div className="penalty-cards" data-penalty-list role="list">
-              <div role="listitem">Log in to see penalties.</div>
-            </div>
-          </div>
-          <div className="penalty-detail-panel is-hidden" data-penalty-detail>
-            <h3 className="penalty-detail-title" data-penalty-detail-type>—</h3>
-            <p className="penalty-detail-race muted" data-penalty-detail-race>—</p>
-            <p className="penalty-detail-meta" data-penalty-detail-meta>—</p>
-            <p className="penalty-detail-desc muted" data-penalty-detail-desc></p>
-            <button type="button" className="btn ghost" data-penalty-detail-back>Back</button>
-          </div>
-        </div>
-
         <div className="tab-panel" data-tab-panel="risk-flags">
           <div data-risk-flags-list-view className="card compact" data-focus-id="risk-flags-card">
             <p className="card-title">Risk flags</p>
@@ -254,6 +216,39 @@ const Cabinet = () => (
             </ul>
             <button type="button" className="btn ghost" data-risk-flags-detail-back>Back</button>
           </div>
+          <div className="grid-2 risk-flags-incidents-penalties">
+            <div className="card compact" data-focus-id="incidents-card">
+              <p className="card-title">My incidents (<span className="tab-count" data-incidents-total-card aria-label="Total incidents">0</span>)</p>
+              <div data-incidents-list-view>
+                <div className="incident-cards" data-incident-list role="list">
+                  <div role="listitem">Log in to see incidents.</div>
+                </div>
+              </div>
+              <div className="incident-detail-panel is-hidden" data-incident-detail>
+                <h3 className="incident-detail-title" data-incident-detail-type>—</h3>
+                <p className="incident-detail-race muted" data-incident-detail-race>—</p>
+                <p className="incident-detail-meta" data-incident-detail-meta>—</p>
+                <p className="incident-detail-desc muted" data-incident-detail-desc></p>
+                <button type="button" className="btn ghost" data-incident-detail-back>Back</button>
+              </div>
+            </div>
+            <div className="card compact" data-focus-id="penalties-card">
+              <p className="card-title">My penalties (<span className="tab-count" data-penalties-total-card aria-label="Total penalties">0</span>)</p>
+              <div data-penalties-list-view>
+                <div className="penalty-cards" data-penalty-list role="list">
+                  <div role="listitem">Log in to see penalties.</div>
+                </div>
+              </div>
+              <div className="penalty-detail-panel is-hidden" data-penalty-detail>
+                <h3 className="penalty-detail-title" data-penalty-detail-type>—</h3>
+                <p className="penalty-detail-race muted" data-penalty-detail-race>—</p>
+                <p className="penalty-detail-meta" data-penalty-detail-meta>—</p>
+                <p className="penalty-detail-desc muted" data-penalty-detail-desc></p>
+                <button type="button" className="btn ghost" data-penalty-detail-back>Back</button>
+              </div>
+            </div>
+          </div>
+          <button type="button" className="btn ghost risk-flags-bottom-back" data-risk-flags-detail-back>Back</button>
         </div>
 
         <div className="tab-panel" data-tab-panel="tasks">

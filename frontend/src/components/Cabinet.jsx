@@ -76,6 +76,7 @@ const Cabinet = () => (
             className="stat-card is-link rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             type="button"
             data-stat-target="crs"
+            data-tab-target="overview"
             data-scroll-target="#dashboards"
             data-focus-target="crs-card"
           >
@@ -103,7 +104,10 @@ const Cabinet = () => (
           >
             <span className="stat-label text-[var(--accent-2)]">Tasks done</span>
             <span className="stat-value text-foreground" data-stat-tasks>0</span>
-            <span className="stat-meta text-muted-foreground">Completed</span>
+            <span className="stat-meta stat-meta-completed" data-stat-tasks-meta>
+              <span className="stat-meta-completed__dot" aria-hidden />
+              Completed
+            </span>
           </button>
           <button
             className="stat-card is-link rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

@@ -493,6 +493,8 @@ export const loadTasksOverview = async (driver) => {
     if (tasksPendingList) setList(tasksPendingList, [], 'No pending tasks.');
     if (tasksInProgressList) setList(tasksInProgressList, [], 'No tasks in progress.');
     if (statTasks) statTasks.textContent = '0';
+    const tasksMetaEl = document.querySelector('[data-stat-tasks-meta]');
+    if (tasksMetaEl) tasksMetaEl.classList.remove('stat-meta-completed--has-pending');
     readinessState.tasksCompleted = 0;
     readinessState.tasksTotal = 0;
     updateReadiness();
@@ -522,6 +524,11 @@ export const loadTasksOverview = async (driver) => {
     if (tasksInProgressList) setTaskListClickable(tasksInProgressList, inProgressTasks, 'No tasks in progress.');
     if (tasksCompletedList) setTaskListClickable(tasksCompletedList, completedTasks, 'No tasks completed yet.');
     if (statTasks) statTasks.textContent = completedTasks.length.toString();
+    const tasksMetaEl = document.querySelector('[data-stat-tasks-meta]');
+    if (tasksMetaEl) {
+      if (pendingTasks.length > 0) tasksMetaEl.classList.add('stat-meta-completed--has-pending');
+      else tasksMetaEl.classList.remove('stat-meta-completed--has-pending');
+    }
     readinessState.tasksCompleted = completedTasks.length;
     readinessState.tasksTotal = filteredDefinitions.length;
     updateReadiness();
@@ -530,6 +537,8 @@ export const loadTasksOverview = async (driver) => {
     if (tasksPendingList) setList(tasksPendingList, [], 'No pending tasks.');
     if (tasksInProgressList) setList(tasksInProgressList, [], 'No tasks in progress.');
     if (statTasks) statTasks.textContent = '0';
+    const tasksMetaErr = document.querySelector('[data-stat-tasks-meta]');
+    if (tasksMetaErr) tasksMetaErr.classList.remove('stat-meta-completed--has-pending');
     readinessState.tasksCompleted = 0;
     readinessState.tasksTotal = 0;
     updateReadiness();

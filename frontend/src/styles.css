@@ -410,6 +410,36 @@ footer {
   color: var(--muted-foreground);
 }
 
+.stat-meta-completed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stat-meta-completed__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.stat-meta-completed--has-pending {
+  color: var(--accent-2);
+}
+
+.stat-meta-completed--has-pending .stat-meta-completed__dot {
+  opacity: 1;
+  background: var(--accent-2);
+  animation: stat-meta-completed-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes stat-meta-completed-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 .tabs {
   display: flex;
   flex-wrap: wrap;

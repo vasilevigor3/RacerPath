@@ -99,17 +99,19 @@ def _build_read(
 
 @router.get("/me", response_model=UserProfileRead)
 def get_my_profile(
+    driver_id: str | None = None,
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
     profile = UserProfileRepository(session).get_by_user_id(user.id)
-    next_tier, next_tier_data = compute_next_tier_progress(session, user.id)
+    next_tier, next_tier_data = compute_next_tier_progress(session, user.id, driver_id=driver_id)
     return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)
 
 
 @router.put("/me", response_model=UserProfileRead)
 def upsert_my_profile(
     payload: UserProfileUpsert,
+    driver_id: str | None = None,
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
@@ -128,7 +130,12 @@ def upsert_my_profile(
         setattr(profile, field, value)
 
     profile.updated_at = datetime.now(timezone.utc)
-    driver = driver_repo.get_by_user_id(user.id)
+    if driver_id:
+        driver = driver_repo.get_by_id(driver_id)
+        if driver and driver.user_id != user.id:
+            driver = None
+    else:
+        driver = driver_repo.get_by_user_id(user.id)
     if profile.sim_platforms and driver:
         driver.sim_games = profile.sim_platforms
     if driver and rig_options is not None:
@@ -145,5 +152,7 @@ def upsert_my_profile(
         ensure_task_completion(session, driver.id, f"ONBOARD_DRIVER_{suffix}")
         check_and_complete_global_tasks(session, driver.id)
         session.commit()
-    next_tier, next_tier_data = compute_next_tier_progress(session, user.id)
+    next_tier, next_tier_data = compute_next_tier_progress(
+        session, user.id, driver_id=driver_id or (driver.id if driver else None)
+    )
     return _build_read(profile, next_tier_progress_percent=next_tier, next_tier_data=next_tier_data)

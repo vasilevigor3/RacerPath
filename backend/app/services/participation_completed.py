@@ -43,7 +43,7 @@ def on_participation_completed(
     # Recalc tier (and auto-promote if progress 100% and required licenses earned)
     driver = session.query(Driver).filter(Driver.id == driver_id).first()
     if driver and driver.user_id:
-        compute_next_tier_progress(session, driver.user_id)
+        compute_next_tier_progress(session, driver.user_id, driver_id=driver_id)
 
     return ParticipationCompletedResult(
         task_completions_count=len(completions),

@@ -55,12 +55,13 @@ def list_drivers(
     return repo.list_for_user(user.id)
 
 
-@router.get("/me", response_model=DriverRead | None)
-def get_my_driver(
+@router.get("/me", response_model=List[DriverRead])
+def list_my_drivers(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    return DriverRepository(session).get_by_user_id(user.id)
+    """List all drivers (careers) for the current user. Use for career switcher; if empty, show onboarding."""
+    return DriverRepository(session).list_for_user(user.id)
 
 
 @router.post("/me", response_model=DriverRead)
@@ -78,9 +79,13 @@ def create_my_driver(
         raise HTTPException(status_code=400, detail="At least one sim game is required")
     driver_repo = DriverRepository(session)
     profile_repo = UserProfileRepository(session)
-    existing = driver_repo.get_by_user_id(user.id)
-    if existing:
-        raise HTTPException(status_code=400, detail="Driver profile already exists")
+    discipline = (payload.primary_discipline or "gt").strip().lower()
+    existing_same_discipline = driver_repo.get_by_user_id_and_discipline(user.id, discipline)
+    if existing_same_discipline:
+        raise HTTPException(
+            status_code=400,
+            detail=f"You already have a driver for discipline '{discipline}'. One career per discipline.",
+        )
     driver = Driver(
         name=payload.name,
         primary_discipline=payload.primary_discipline,
@@ -135,9 +140,32 @@ def update_my_driver(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
+    """Update first/only driver (backward compat). Prefer PATCH /{driver_id} when using multiple careers."""
     driver = DriverRepository(session).get_by_user_id(user.id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver profile not found")
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        if hasattr(driver, key):
+            setattr(driver, key, value)
+    session.commit()
+    session.refresh(driver)
+    return driver
+
+
+@router.patch("/{driver_id}", response_model=DriverRead)
+def update_driver(
+    driver_id: str,
+    payload: DriverUpdate,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Update a specific driver (career). Allowed only for own drivers."""
+    driver = DriverRepository(session).get_by_id(driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    if user.role not in {"admin"} and driver.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Insufficient role")
     data = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         if hasattr(driver, key):

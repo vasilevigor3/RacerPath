@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, JSON, String
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -15,6 +15,7 @@ class Driver(Base):
             "tier IN ('E0', 'E1', 'E2', 'E3', 'E4', 'E5')",
             name="ck_drivers_tier",
         ),
+        UniqueConstraint("user_id", "primary_discipline", name="uq_drivers_user_id_primary_discipline"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

@@ -1,5 +1,5 @@
 import { apiFetch } from '../api/client.js';
-import { getApiKey, getCurrentUserName } from '../state/session.js';
+import { getApiKey, getCurrentUserName, setCurrentDriverId } from '../state/session.js';
 import { getSimGames } from '../utils/forms.js';
 import { loadProfile } from './profile.js';
 
@@ -45,6 +45,8 @@ export const initOnboarding = () => {
         myDriverStatus.textContent = err.detail || 'Driver create failed.';
         return;
       }
+      const created = await res.json();
+      if (created && created.id) setCurrentDriverId(created.id);
       if (nameInput) nameInput.value = '';
       myDriverStatus.textContent = 'Driver profile created.';
       await loadProfile();

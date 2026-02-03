@@ -6,7 +6,12 @@ import {
   getCurrentUserName,
   setCurrentProfileGoals,
   getCurrentProfileGoals,
-  setIsAdmin
+  setIsAdmin,
+  setMyDrivers,
+  setCurrentDriverId,
+  getCurrentDriverId,
+  getCurrentDriver,
+  getMyDrivers
 } from '../state/session.js';
 import { setAuthVisibility, setOnboardingVisibility, isOnboardingComplete, setAdminVisibility, setDriverVisibility } from '../ui/visibility.js';
 import { updateReadiness } from '../ui/readiness.js';
@@ -49,6 +54,46 @@ const profileDriver = document.querySelector('[data-profile-driver]');
 const loginStatus = document.querySelector('[data-login-status]');
 
 let currentUserId = '';
+
+function renderCareerSwitcher() {
+  if (!careerSwitcherEl) return;
+  const drivers = getMyDrivers();
+  const currentId = getCurrentDriverId();
+  if (!drivers.length) {
+    careerSwitcherEl.innerHTML = '';
+    careerSwitcherEl.classList.add('is-hidden');
+    return;
+  }
+  careerSwitcherEl.classList.remove('is-hidden');
+  const DISCIPLINE_LABELS = { gt: 'GT / Touring', formula: 'Formula', rally: 'Rally', karting: 'Karting', historic: 'Historic' };
+  const items = drivers
+    .map(
+      (d) =>
+        `<button type="button" class="career-switcher__pill ${d.id === currentId ? 'is-active' : ''}" data-career-id="${d.id}" title="${d.name}">${DISCIPLINE_LABELS[d.primary_discipline] || d.primary_discipline}</button>`
+    )
+    .join('');
+  const addBtn =
+    drivers.length < 5
+      ? `<button type="button" class="career-switcher__add" data-add-career title="Add another discipline career">+ Career</button>`
+      : '';
+  careerSwitcherEl.innerHTML = `<div class="career-switcher__pills">${items}${addBtn}</div>`;
+  careerSwitcherEl.querySelectorAll('[data-career-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-career-id');
+      if (id && id !== currentId) {
+        setCurrentDriverId(id);
+        loadProfile();
+      }
+    });
+  });
+  const addCareerBtn = careerSwitcherEl.querySelector('[data-add-career]');
+  if (addCareerBtn) {
+    addCareerBtn.addEventListener('click', () => {
+      setOnboardingVisibility(false);
+      document.querySelector('#onboarding')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+}
 
 const setProfileIdLabel = (value, label = 'Driver ID') => {
   if (!profileUserId) return;
@@ -100,7 +145,10 @@ export const setProfileEmpty = (message, options = {}) => {
 const loadUserProfile = async (driver) => {
   if (!getApiKey()) return null;
   try {
-    const res = await apiFetch('/api/profile/me');
+    const url = driver && driver.id
+      ? `/api/profile/me?driver_id=${encodeURIComponent(driver.id)}`
+      : '/api/profile/me';
+    const res = await apiFetch(url);
     if (!res.ok) throw new Error('failed');
     const profile = await res.json();
     const displayName = profile.full_name || (dashboardName ? dashboardName.textContent : '');
@@ -231,12 +279,22 @@ const loadMyDriver = async () => {
       if (profileDriver) profileDriver.textContent = 'Unable to load driver profile.';
       return null;
     }
-    const driver = await res.json();
-    if (!driver) {
+    const list = await res.json();
+    if (!Array.isArray(list) || list.length === 0) {
+      setMyDrivers([]);
+      renderCareerSwitcher();
       if (profileDriver) profileDriver.textContent = 'No driver profile yet.';
       return null;
     }
-    if (profileDriver) profileDriver.textContent = `${driver.name} / ${driver.primary_discipline}`;
+    setMyDrivers(list);
+    const currentId = getCurrentDriverId();
+    const found = list.some((d) => d.id === currentId);
+    if (!found) setCurrentDriverId(list[0].id);
+    const driver = getCurrentDriver();
+    if (profileDriver && driver) {
+      profileDriver.textContent = `${driver.name} / ${driver.primary_discipline}`;
+    }
+    renderCareerSwitcher();
     return driver;
   } catch (err) {
     if (profileDriver) profileDriver.textContent = 'Unable to load driver profile.';
@@ -404,8 +462,12 @@ export const initProfileForm = () => {
     const wheelType = getFormValue(form, '#profileWheelType') || null;
     const pedalsClass = getFormValue(form, '#profilePedalsClass') || null;
     const manualWithClutch = form.querySelector('#profileManualWithClutch')?.checked ?? false;
+    const driverId = getCurrentDriverId();
+    const profileUrl = driverId
+      ? `/api/profile/me?driver_id=${encodeURIComponent(driverId)}`
+      : '/api/profile/me';
     try {
-      const res = await apiFetch('/api/profile/me', {
+      const res = await apiFetch(profileUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

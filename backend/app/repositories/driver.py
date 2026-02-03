@@ -13,7 +13,20 @@ class DriverRepository:
         return self._session.query(Driver).filter(Driver.id == driver_id).first()
 
     def get_by_user_id(self, user_id: str) -> Driver | None:
-        return self._session.query(Driver).filter(Driver.user_id == user_id).first()
+        """First driver for user (by created_at desc). For multi-career, use list_for_user + pick one."""
+        return (
+            self._session.query(Driver)
+            .filter(Driver.user_id == user_id)
+            .order_by(Driver.created_at.desc())
+            .first()
+        )
+
+    def get_by_user_id_and_discipline(self, user_id: str, primary_discipline: str) -> Driver | None:
+        return (
+            self._session.query(Driver)
+            .filter(Driver.user_id == user_id, Driver.primary_discipline == primary_discipline)
+            .first()
+        )
 
     def list_for_user(self, user_id: str) -> list[Driver]:
         return (

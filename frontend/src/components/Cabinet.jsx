@@ -28,6 +28,7 @@ const Cabinet = () => (
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
+            <div data-career-switcher className="career-switcher is-hidden" aria-label="Career (discipline) selection" />
             <Avatar className="h-14 w-14 border-2 border-border" data-profile-avatar>
               <AvatarFallback className="text-lg" data-profile-initials>RP</AvatarFallback>
             </Avatar>

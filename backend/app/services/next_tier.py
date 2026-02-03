@@ -30,15 +30,22 @@ def _next_tier(current: str) -> str | None:
     return None
 
 
-def compute_next_tier_progress(session: Session, user_id: str) -> tuple[int, dict[str, Any] | None]:
+def compute_next_tier_progress(
+    session: Session, user_id: str, driver_id: str | None = None
+) -> tuple[int, dict[str, Any] | None]:
     """
-    Progress (0–100) toward next driver tier.
-    Counts only finished events where event's classification.difficulty_score > rule.difficulty_threshold.
-    Requires at least rule.min_events such events to advance; progress = count / min_events * 100 (capped 100).
-    Also returns next_tier_data (events_done, events_required, difficulty_threshold, missing_license_codes).
-    E5 or no rule -> (100, None).
+    Progress (0–100) toward next driver tier for the given driver.
+    If driver_id is provided and belongs to user_id, use that driver; else use first driver for user.
     """
-    driver = session.query(Driver).filter(Driver.user_id == user_id).first()
+    if driver_id:
+        driver = session.query(Driver).filter(Driver.id == driver_id, Driver.user_id == user_id).first()
+    else:
+        driver = (
+            session.query(Driver)
+            .filter(Driver.user_id == user_id)
+            .order_by(Driver.created_at.desc())
+            .first()
+        )
     if not driver:
         return 0, None
 

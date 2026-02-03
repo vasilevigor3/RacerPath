@@ -1156,6 +1156,59 @@ footer {
   margin: 16px 0;
 }
 
+/* Career switcher: one driver = one career (discipline) */
+.career-switcher {
+  margin-bottom: 12px;
+}
+.career-switcher.is-hidden {
+  display: none;
+}
+.career-switcher__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.career-switcher__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.career-switcher__pill:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: var(--primary);
+}
+.career-switcher__pill.is-active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+.career-switcher__add {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.career-switcher__add:hover {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
 .pill {
   background: var(--surface-2);
   padding: 6px 12px;

@@ -9,7 +9,9 @@ import time
 from app.core.settings import settings
 from app.db.session import SessionLocal
 from app.events.participation_events import dispatch_participation_completed
+from app.services.mock_incident_service import tick_mock_incidents
 from app.services.mock_race_service import tick_mock_races
+from app.services.crs import recompute_crs
 
 logger = logging.getLogger("racerpath")
 
@@ -19,6 +21,16 @@ def _run_tick() -> None:
     interval = max(1, getattr(settings, "mock_race_interval_seconds", 60))
     try:
         result = tick_mock_races(session, interval_seconds=interval)
+        if getattr(settings, "mock_incident_enabled", True):
+            inc_result = tick_mock_incidents(
+                session,
+                probability=getattr(settings, "mock_incident_probability", 0.15),
+            )
+            for driver_id, discipline in inc_result.get("driver_discipline_pairs") or []:
+                try:
+                    recompute_crs(session, driver_id, discipline, trigger_participation_id=None)
+                except Exception:
+                    pass
         session.commit()
         for driver_id, participation_id in result.get("finished_driver_participation_pairs") or []:
             dispatch_session = SessionLocal()

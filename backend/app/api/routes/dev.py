@@ -173,3 +173,50 @@ def dev_mock_race_tick(
         "participations_updated": result["participations_updated"],
         "participations_finished": result["participations_finished"],
     }
+
+
+@router.post("/mock-incident/tick")
+def dev_mock_incident_tick(
+    session: Session = Depends(get_session),
+    _: User = Depends(require_roles("admin")),
+) -> dict[str, Any]:
+    """Run one tick of the mock incident service. Adds incidents for participations with state started."""
+    from app.core.settings import settings
+    from app.services.crs import recompute_crs
+    from app.services.mock_incident_service import tick_mock_incidents
+    result = tick_mock_incidents(
+        session,
+        probability=getattr(settings, "mock_incident_probability", 0.15),
+    )
+    for driver_id, discipline in result.get("driver_discipline_pairs") or []:
+        try:
+            recompute_crs(session, driver_id, discipline, trigger_participation_id=None)
+        except Exception:
+            pass
+    session.commit()
+    return {
+        "incidents_created": result["incidents_created"],
+        "driver_discipline_pairs": result["driver_discipline_pairs"],
+    }
+
+
+@router.post("/mock-event/tick")
+def dev_mock_event_tick(
+    session: Session = Depends(get_session),
+    _: User = Depends(require_roles("admin")),
+) -> dict[str, Any]:
+    """Create one random E2 ACC event (start in 5 min)."""
+    from app.core.settings import settings
+    from app.services.mock_event_service import tick_mock_events
+    minutes_until_start = max(0, getattr(settings, "mock_event_minutes_until_start", 5))
+    result = tick_mock_events(
+        session,
+        tier="E2",
+        game="ACC",
+        minutes_until_start=minutes_until_start,
+        count=1,
+    )
+    session.commit()
+    return {
+        "events_created": result["events_created"],
+    }

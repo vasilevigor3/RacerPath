@@ -1487,6 +1487,40 @@ footer {
   gap: 6px 10px;
 }
 
+.admin-flow-menu {
+  padding: 8px 0;
+}
+
+.admin-flow-menu__intro {
+  margin: 0 0 20px;
+  font-size: 0.9375rem;
+  max-width: 56ch;
+}
+
+.admin-flow-menu__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.admin-flow-menu__card {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-flow-menu__card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.admin-flow-menu__step {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+  margin-bottom: 4px;
+}
+
 .admin-lookup__form {
   display: flex;
   flex-direction: column;

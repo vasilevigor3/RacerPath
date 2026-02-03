@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../api/client.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 const MetricsBoard = () => {
   const [metrics, setMetrics] = useState(null);
@@ -110,8 +112,8 @@ const WEATHER_TYPES = ['fixed', 'dynamic'];
 const STEWARDING_TYPES = ['none', 'automated', 'live', 'human_review'];
 const LICENSE_REQUIREMENTS = ['none', 'entry', 'rookie', 'intermediate', 'pro'];
 
-const TABS = ['drivers', 'events', 'classifications', 'participations', 'tasks', 'licenses', 'tier', 'schema'];
-const TAB_LABELS = { drivers: 'Drivers', events: 'Events', classifications: 'Classifications', participations: 'Participations', tasks: 'Tasks', licenses: 'Licenses', tier: 'Tier rules', schema: 'Project schema' };
+const TABS = ['flow', 'drivers', 'events', 'classifications', 'participations', 'tasks', 'licenses', 'tier', 'schema'];
+const TAB_LABELS = { flow: 'Race flow', drivers: 'Drivers', events: 'Events', classifications: 'Classifications', participations: 'Participations', tasks: 'Tasks', licenses: 'Licenses', tier: 'Tier rules', schema: 'Project schema' };
 
 const TimelineFlowPanel = () => (
   <div className="admin-constructors card admin-schema admin-schema--timeline">
@@ -147,11 +149,55 @@ const TimelineFlowPanel = () => (
   </div>
 );
 
+const FLOW_STEPS = [
+  { step: 1, title: 'Create event', description: 'Add a new race or training event with start/finish times.', tab: 'events', cta: 'Create event' },
+  { step: 2, title: 'Driver registers', description: 'Driver signs up for the event (participations).', tab: 'participations', cta: 'Participations' },
+  { step: 3, title: 'Race / participation starts', description: 'Set started_at and state to started when the driver joins the session.', tab: 'participations', cta: 'Update participation' },
+  { step: 4, title: 'Incidents & penalties', description: 'Add incidents and penalties during or after the race (between start and finish).', tab: 'participations', cta: 'Lookup & add' },
+  { step: 5, title: 'Participation finished', description: 'Set finished_at and state to completed when the driver finishes.', tab: 'participations', cta: 'Update participation' },
+  { step: 6, title: '≤ Event finished', description: 'Participation.finished_at must be ≤ Event.finished_time_utc. Adjust event times if needed.', tab: 'events', cta: 'Update event' },
+];
+
+const initialFlowContext = {
+  lastEventId: '',
+  lastEventStartUtc: null,
+  lastEventFinishedUtc: null,
+  lastParticipationId: '',
+  lastPartStartedAt: null,
+  lastPartFinishedAt: null,
+};
+
+const TimelineFlowMenuPanel = ({ onGoToTab, flowContext }) => (
+  <div className="admin-flow-menu">
+    <p className="admin-flow-menu__intro text-muted-foreground">
+      Follow the timeline order: create the event, then participations, then start → incidents/penalties → finish. Data from the previous step is passed and pre-filled in the next.
+    </p>
+    <div className="admin-flow-menu__grid" role="navigation" aria-label="Timeline flow steps">
+      {FLOW_STEPS.map(({ step, title, description, tab, cta }) => (
+        <Card key={step} className="admin-flow-menu__card">
+          <CardHeader className="pb-2">
+            <span className="admin-flow-menu__step" aria-hidden>Step {step}</span>
+            <CardTitle className="text-base">{title}</CardTitle>
+            <CardDescription className="text-sm">{description}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Button variant={step <= 2 ? 'default' : 'outline'} size="sm" onClick={() => onGoToTab(tab)}>
+              Next step
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  </div>
+);
+
 const ProjectSchemaPanel = () => {
   return (
     <div className="admin-constructors card admin-schema">
       <h3 className="admin-constructors__title">Project schema</h3>
-      <p className="admin-constructors__hint">Arrows: “from → to” = “to depends on from”. Create in order: User → Driver; Event → Classification; then Participation (Driver + Event with Classification); Incident needs Participation.</p>
+      <p className="admin-constructors__hint">
+        Arrows: “from → to” = to depends on from. Create order: User → Driver; Event → Classification; then Participation (Driver + Event + Classification); Incident → Penalty (penalty belongs to incident only). Timeline: Event.created_at ≤ start_time_utc ≤ finished_time_utc; Participation: created_at &lt; started_at ≤ finished_at; incidents/penalties between participation start and finish. Other: UserProfile (User), RawEvent, CRSHistory, Recommendation, AntiGamingReport, RealWorldReadiness, AuditLog.
+      </p>
       <div className="admin-schema__diagram" role="img" aria-label="Entity dependency diagram">
         <div className="admin-schema__row">
           <div className="admin-schema__node" title="Auth / registration">
@@ -163,7 +209,7 @@ const ProjectSchemaPanel = () => {
           </div>
         </div>
         <div className="admin-schema__row">
-          <div className="admin-schema__node" title="Created first">
+          <div className="admin-schema__node" title="Created first; timeline: created_at ≤ start_time_utc ≤ finished_time_utc">
             <span className="admin-schema__node-label">Event</span>
           </div>
           <span className="admin-schema__arrow" aria-hidden>→</span>
@@ -186,7 +232,7 @@ const ProjectSchemaPanel = () => {
             </div>
           </div>
           <span className="admin-schema__arrow" aria-hidden>→</span>
-          <div className="admin-schema__node" title="Participation requires Driver and Event (with Classification)">
+          <div className="admin-schema__node" title="Participation: created_at < started_at ≤ finished_at; finished_at ≤ Event.finished_time_utc">
             <span className="admin-schema__node-label">Participation</span>
           </div>
         </div>
@@ -195,8 +241,17 @@ const ProjectSchemaPanel = () => {
             <span className="admin-schema__node-label">Participation</span>
           </div>
           <span className="admin-schema__arrow" aria-hidden>→</span>
-          <div className="admin-schema__node" title="Requires Participation">
+          <div className="admin-schema__node" title="Requires Participation; created_at between part.started_at and part.finished_at">
             <span className="admin-schema__node-label">Incident</span>
+          </div>
+        </div>
+        <div className="admin-schema__row">
+          <div className="admin-schema__node">
+            <span className="admin-schema__node-label">Incident</span>
+          </div>
+          <span className="admin-schema__arrow" aria-hidden>→</span>
+          <div className="admin-schema__node" title="Penalty belongs to Incident only (no direct participation_id)">
+            <span className="admin-schema__node-label">Penalty</span>
           </div>
         </div>
         <div className="admin-schema__row">
@@ -248,7 +303,7 @@ const ProjectSchemaPanel = () => {
   );
 };
 
-const AdminConstructors = ({ tab }) => {
+const AdminConstructors = ({ tab, flowContext = initialFlowContext, setFlowContext }) => {
   const [raceOfDayLoading, setRaceOfDayLoading] = useState(false);
   const [raceOfDayMsg, setRaceOfDayMsg] = useState(null);
 
@@ -447,7 +502,17 @@ const AdminConstructors = ({ tab }) => {
     };
     apiFetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
-      .then((data) => setEventMsg(`Event created: ${data.id}`))
+      .then((data) => {
+        setEventMsg(`Event created: ${data.id}`);
+        if (setFlowContext) {
+          setFlowContext((prev) => ({
+            ...prev,
+            lastEventId: data.id ?? prev.lastEventId,
+            lastEventStartUtc: data.start_time_utc ?? prev.lastEventStartUtc,
+            lastEventFinishedUtc: data.finished_time_utc ?? prev.lastEventFinishedUtc,
+          }));
+        }
+      })
       .catch((err) => setEventMsg(err?.message || 'Error'))
       .finally(() => setEventLoading(false));
   };
@@ -481,7 +546,12 @@ const AdminConstructors = ({ tab }) => {
     };
     apiFetch('/api/participations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
-      .then((data) => setPartMsg(`Participation created: ${data.id}`))
+      .then((data) => {
+        setPartMsg(`Participation created: ${data.id}`);
+        if (setFlowContext) {
+          setFlowContext((prev) => ({ ...prev, lastParticipationId: data.id ?? prev.lastParticipationId }));
+        }
+      })
       .catch((err) => setPartMsg(err?.message || 'Error'))
       .finally(() => setPartLoading(false));
   };
@@ -553,10 +623,36 @@ const AdminConstructors = ({ tab }) => {
     if (updatePartForm.finished_at) body.finished_at = updatePartForm.finished_at;
     apiFetch(`/api/admin/participations/${encodeURIComponent(pid)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
-      .then(() => setUpdatePartMsg('Participation updated'))
+      .then(() => {
+        setUpdatePartMsg('Participation updated');
+        if (setFlowContext) {
+          setFlowContext((prev) => ({
+            ...prev,
+            lastPartStartedAt: updatePartForm.started_at || prev.lastPartStartedAt,
+            lastPartFinishedAt: updatePartForm.finished_at || prev.lastPartFinishedAt,
+          }));
+        }
+      })
       .catch((err) => setUpdatePartMsg(err?.message || 'Error'))
       .finally(() => setUpdatePartLoading(false));
   };
+
+  useEffect(() => {
+    if (!flowContext) return;
+    if (tab === 'participations') {
+      setPartForm((prev) => (!prev.event_id?.trim() && flowContext.lastEventId ? { ...prev, event_id: flowContext.lastEventId } : prev));
+      setUpdatePartForm((prev) => ({
+        ...prev,
+        participation_id: (!prev.participation_id?.trim() && flowContext.lastParticipationId) ? flowContext.lastParticipationId : prev.participation_id,
+        started_at: (!prev.started_at?.trim() && (flowContext.lastEventStartUtc || flowContext.lastPartStartedAt)) ? (flowContext.lastEventStartUtc || flowContext.lastPartStartedAt || '') : prev.started_at,
+        finished_at: (!prev.finished_at?.trim() && (flowContext.lastEventFinishedUtc || flowContext.lastPartFinishedAt)) ? (flowContext.lastEventFinishedUtc || flowContext.lastPartFinishedAt || '') : prev.finished_at,
+      }));
+      setIncidentForm((prev) => (!prev.participation_id?.trim() && flowContext.lastParticipationId ? { ...prev, participation_id: flowContext.lastParticipationId } : prev));
+    }
+    if (tab === 'events') {
+      setUpdateEventId((prev) => (!prev?.trim() && flowContext.lastEventId ? flowContext.lastEventId : prev));
+    }
+  }, [tab, flowContext?.lastEventId, flowContext?.lastEventStartUtc, flowContext?.lastEventFinishedUtc, flowContext?.lastParticipationId, flowContext?.lastPartStartedAt, flowContext?.lastPartFinishedAt]);
 
   const showEvents = tab === undefined || tab === 'events';
   const showParticipations = tab === undefined || tab === 'participations';
@@ -2107,7 +2203,8 @@ const ParticipationIncPenRow = ({ participationId, onSet }) => {
 };
 
 const AdminLookup = () => {
-  const [activeTab, setActiveTab] = useState('drivers');
+  const [activeTab, setActiveTab] = useState('flow');
+  const [flowContext, setFlowContext] = useState(initialFlowContext);
   const [q, setQ] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -2401,6 +2498,12 @@ const AdminLookup = () => {
       </div>
 
       <div className="admin-tabpanels">
+        {activeTab === 'flow' && (
+          <div id="admin-tabpanel-flow" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-flow">
+            <TimelineFlowMenuPanel onGoToTab={setActiveTab} flowContext={flowContext} />
+          </div>
+        )}
+
         {activeTab === 'drivers' && (
           <div id="admin-tabpanel-drivers" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-drivers">
             <form className="admin-lookup__form" onSubmit={handleSubmit} data-admin-lookup-form>
@@ -2672,7 +2775,7 @@ const AdminLookup = () => {
 
         {activeTab === 'events' && (
           <div id="admin-tabpanel-events" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-events">
-            <AdminConstructors tab="events" />
+            <AdminConstructors tab="events" flowContext={flowContext} setFlowContext={setFlowContext} />
           </div>
         )}
 
@@ -2684,7 +2787,7 @@ const AdminLookup = () => {
 
         {activeTab === 'participations' && (
           <div id="admin-tabpanel-participations" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-participations">
-            <AdminConstructors tab="participations" />
+            <AdminConstructors tab="participations" flowContext={flowContext} setFlowContext={setFlowContext} />
           </div>
         )}
 

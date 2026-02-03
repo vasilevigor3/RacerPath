@@ -140,12 +140,15 @@ def list_task_completions(
     user: User = Depends(require_user()),
 ):
     if user.role not in {"admin"}:
-        driver = DriverRepository(session).get_by_user_id(user.id)
-        if not driver:
-            return []
-        if driver_id and driver_id != driver.id:
-            raise HTTPException(status_code=403, detail="Insufficient role")
-        driver_id = driver.id
+        if driver_id:
+            driver = DriverRepository(session).get_by_id(driver_id)
+            if not driver or driver.user_id != user.id:
+                raise HTTPException(status_code=403, detail="Insufficient role")
+        else:
+            driver = DriverRepository(session).get_by_user_id(user.id)
+            if not driver:
+                return []
+            driver_id = driver.id
     if not driver_id:
         return []
     return TaskCompletionRepository(session).list_by_driver(driver_id, task_id)

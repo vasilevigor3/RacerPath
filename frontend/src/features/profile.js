@@ -52,6 +52,7 @@ const profileName = document.querySelector('[data-profile-name]');
 const profileRole = document.querySelector('[data-profile-role]');
 const profileDriver = document.querySelector('[data-profile-driver]');
 const loginStatus = document.querySelector('[data-login-status]');
+const careerSwitcherEl = document.querySelector('[data-career-switcher]');
 
 let currentUserId = '';
 
@@ -90,6 +91,7 @@ function renderCareerSwitcher() {
   if (addCareerBtn) {
     addCareerBtn.addEventListener('click', () => {
       setOnboardingVisibility(false);
+      import('./onboarding.js').then((m) => m.updateOnboardingDisciplineOptions());
       document.querySelector('#onboarding')?.scrollIntoView({ behavior: 'smooth' });
     });
   }

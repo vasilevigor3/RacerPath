@@ -1,5 +1,7 @@
 import DisciplineSelect from './DisciplineSelect.jsx';
 import OptionGrid from './OptionGrid.jsx';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SIM_GAMES, WHEEL_TYPES, PEDALS_CLASSES } from '../constants/uiData.js';
 
 const Cabinet = () => (
@@ -16,54 +18,60 @@ const Cabinet = () => (
 
     <div className="dashboard-grid">
       <aside className="profile-pane">
-        <div className="card profile-card">
-          <p className="card-title">Driver identity</p>
-          <div className="avatar" data-profile-initials>
-            RP
-          </div>
-          <h3 data-profile-fullname>--</h3>
-          <p className="muted" data-profile-location>
-            Location not set
-          </p>
-          <p className="muted" data-profile-user-id>
-            Driver ID: --
-          </p>
-          <div className="progress">
-            <div className="progress-label">Next tier</div>
-            <div className="progress-track">
-              <div className="progress-fill" data-profile-next-tier style={{ width: '0%' }}></div>
+        <Card className="profile-card border-border/80 shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Driver identity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            <div className="avatar" data-profile-initials>
+              RP
             </div>
-            <div className="progress-meta" data-profile-next-tier-meta>
-              Complete profile and races to advance.
+            <h3 className="font-semibold text-foreground" data-profile-fullname>--</h3>
+            <p className="text-sm text-muted-foreground" data-profile-location>
+              Location not set
+            </p>
+            <p className="text-sm text-muted-foreground" data-profile-user-id>
+              Driver ID: --
+            </p>
+            <div className="progress">
+              <div className="progress-label">Next tier</div>
+              <div className="progress-track">
+                <div className="progress-fill" data-profile-next-tier style={{ width: '0%' }}></div>
+              </div>
+              <div className="progress-meta" data-profile-next-tier-meta>
+                Complete profile and races to advance.
+              </div>
             </div>
-          </div>
-          <div className="progress">
-            <div className="progress-label">Readiness index <span className="readiness-score" data-readiness-score>--</span></div>
-            <div className="progress-track">
-              <div className="progress-fill" data-readiness-fill style={{ width: '0%' }}></div>
+            <div className="progress">
+              <div className="progress-label">Readiness index <span className="readiness-score" data-readiness-score>--</span></div>
+              <div className="progress-track">
+                <div className="progress-fill" data-readiness-fill style={{ width: '0%' }}></div>
+              </div>
+              <div className="progress-meta" data-readiness-note>
+                Complete tasks to increase readiness.
+              </div>
             </div>
-            <div className="progress-meta" data-readiness-note>
-              Complete tasks to increase readiness.
+            <div className="pill-row">
+              <span className="pill" data-profile-discipline>
+                Discipline: --
+              </span>
+              <span className="pill" data-profile-tier>
+                Tier: --
+              </span>
+              <span className="pill" data-driver-snapshot-pill-crs>
+                CRS --
+              </span>
+              <span className="pill" data-profile-platforms>
+                Platforms: --
+              </span>
             </div>
-          </div>
-          <div className="pill-row">
-            <span className="pill" data-profile-discipline>
-              Discipline: --
-            </span>
-            <span className="pill" data-profile-tier>
-              Tier: --
-            </span>
-            <span className="pill" data-driver-snapshot-pill-crs>
-              CRS --
-            </span>
-            <span className="pill" data-profile-platforms>
-              Platforms: --
-            </span>
-          </div>
-          <button className="btn ghost" type="button" data-tab-jump="profile" data-profile-cta-button>
-            Complete profile
-          </button>
-        </div>
+            <Button variant="outline" className="w-full" type="button" data-tab-jump="profile" data-profile-cta-button>
+              Complete profile
+            </Button>
+          </CardContent>
+        </Card>
       </aside>
 
       <div className="dashboard-main">
@@ -153,30 +161,44 @@ const Cabinet = () => (
         <div className="tab-panel active" data-tab-panel="overview">
           <div className="grid-2">
             {/* Next actions: 2 columns — Tasks (open task card), Race of d/w/m/y (open event card). */}
-            <div className="card compact">
-              <p className="card-title">Next actions</p>
-              <div className="next-actions-grid">
-                <div>
-                  <p className="next-actions-column-title">Tasks</p>
-                  <ul className="list" data-recommendation-tasks>
-                    <li>Log in to load recommendations.</li>
-                  </ul>
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Next actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="next-actions-grid">
+                  <div>
+                    <p className="next-actions-column-title">Tasks</p>
+                    <div className="next-action-cards" data-recommendation-tasks role="list">
+                      <div role="listitem">Log in to load recommendations.</div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="next-actions-column-title">Race of d/w/m/y</p>
+                    <div className="next-action-cards" data-recommendation-races role="list">
+                      <div role="listitem">—</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="next-actions-column-title">Race of d/w/m/y</p>
-                  <ul className="list" data-recommendation-races>
-                    <li>—</li>
-                  </ul>
+              </CardContent>
+            </Card>
+            {/* Upcoming events: loadDashboardEvents (dashboard.js). Event cards, same as Events tab. */}
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Upcoming events
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="overview-upcoming-scroll">
+                  <div className="event-cards" data-upcoming-events role="list">
+                    <div role="listitem">Log in to load events.</div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            {/* Upcoming events: loadDashboardEvents (dashboard.js). GET /api/events → filter by driver.sim_games (only events for selected games) → only future events (start_time_utc > now), max 3. */}
-            <div className="card compact">
-              <p className="card-title">Upcoming events</p>
-              <ul className="list" data-upcoming-events>
-                <li>Log in to load events.</li>
-              </ul>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 

@@ -88,20 +88,20 @@ const RACE_OF_PREFIX_TO_SLOT = {
 const COMPLETE_TASK_PREFIX = 'Complete task: ';
 
 /**
- * Set "Next actions" Tasks column: items "Complete task: {name}" as clickable rows with data-task-id.
+ * Set "Next actions" Tasks column: items as clickable cards with data-task-id.
  * taskDefinitions: array of { id, name, ... } to resolve name -> id.
  */
 export const setRecommendationTasksList = (listEl, taskItemStrings, taskDefinitions, emptyText) => {
   if (!listEl) return;
   if (!taskItemStrings || taskItemStrings.length === 0) {
-    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
+    listEl.innerHTML = `<div role="listitem">${escapeHtml(emptyText)}</div>`;
     return;
   }
   const byName = (taskDefinitions || []).reduce((acc, t) => {
     if (t.name) acc[t.name] = t;
     return acc;
   }, {});
-  listEl.innerHTML = taskItemStrings
+  const cards = taskItemStrings
     .map((raw) => {
       const text = typeof raw === 'string' ? raw : String(raw);
       if (!text.startsWith(COMPLETE_TASK_PREFIX)) return '';
@@ -110,29 +110,29 @@ export const setRecommendationTasksList = (listEl, taskItemStrings, taskDefiniti
       const taskId = task ? task.id : '';
       const label = escapeHtml(text);
       if (taskId) {
-        return `<li class="rec-item rec-item--clickable" data-task-id="${escapeHtml(taskId)}"><button type="button" class="rec-item__text btn-link">${label}</button></li>`;
+        return `<button type="button" class="next-action-card" data-task-id="${escapeHtml(taskId)}" role="listitem"><span class="next-action-card__title">${label}</span></button>`;
       }
-      return `<li class="rec-item">${label}</li>`;
+      return `<div class="next-action-card next-action-card--static" role="listitem"><span class="next-action-card__title">${label}</span></div>`;
     })
-    .filter(Boolean)
-    .join('') || `<li>${escapeHtml(emptyText)}</li>`;
+    .filter(Boolean);
+  listEl.innerHTML = cards.length ? cards.join('') : `<div role="listitem">${escapeHtml(emptyText)}</div>`;
 };
 
 /**
- * Set "Next actions" Race of d/w/m/y column: only "Race of day/week/month/year" items with countdown; click opens event.
+ * Set "Next actions" Race of d/w/m/y column: "Race of day/week/month/year" as clickable cards with countdown.
  */
 export const setRecommendationRacesList = (listEl, raceItemStrings, special_events, emptyText, formatCountdownFn) => {
   if (!listEl) return;
   if (!formatCountdownFn) formatCountdownFn = () => '';
   if (!raceItemStrings || raceItemStrings.length === 0) {
-    listEl.innerHTML = `<li>${escapeHtml(emptyText)}</li>`;
+    listEl.innerHTML = `<div role="listitem">${escapeHtml(emptyText)}</div>`;
     return;
   }
   const bySlot = (special_events || []).reduce((acc, se) => {
     if (se.slot && se.start_time_utc) acc[se.slot] = se;
     return acc;
   }, {});
-  listEl.innerHTML = raceItemStrings
+  const cards = raceItemStrings
     .map((item) => {
       const text = typeof item === 'string' ? item : '';
       let slot = null;
@@ -149,14 +149,15 @@ export const setRecommendationRacesList = (listEl, raceItemStrings, special_even
       const countdown = startUtc
         ? `<span class="rec-countdown" data-start-utc="${escapeHtml(startUtc)}">${escapeHtml(formatCountdownFn(startUtc))}</span>`
         : '';
-      const inner = `${escapeHtml(text)}${countdown ? `<br><small class="rec-countdown-wrap">${countdown}</small>` : ''}`;
+      const title = escapeHtml(text);
+      const metaHtml = countdown ? `<span class="next-action-card__meta rec-countdown-wrap">${countdown}</span>` : '';
       if (special && special.event_id) {
         const eventId = escapeHtml(String(special.event_id));
-        return `<li class="rec-item rec-item--clickable" data-event-id="${eventId}"><button type="button" class="rec-item__text btn-link">${inner}</button></li>`;
+        return `<button type="button" class="next-action-card" data-event-id="${eventId}" role="listitem"><span class="next-action-card__title">${title}</span>${metaHtml}</button>`;
       }
-      return `<li class="rec-item">${inner}</li>`;
-    })
-    .join('');
+      return `<div class="next-action-card next-action-card--static" role="listitem"><span class="next-action-card__title">${title}</span>${metaHtml}</div>`;
+    });
+  listEl.innerHTML = cards.join('');
 };
 
 /**

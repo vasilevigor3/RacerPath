@@ -580,8 +580,8 @@ export const loadDashboardRecommendations = async (driver) => {
     recommendationCountdownInterval = null;
   }
   const setEmpty = () => {
-    if (tasksEl) setList(tasksEl, ['Log in and create a driver profile to see next steps.'], '');
-    if (racesEl) setList(racesEl, ['—'], '');
+    if (tasksEl) tasksEl.innerHTML = '<div role="listitem">Log in and create a driver profile to see next steps.</div>';
+    if (racesEl) racesEl.innerHTML = '<div role="listitem">—</div>';
   };
   if (!driver) {
     setEmpty();
@@ -592,8 +592,8 @@ export const loadDashboardRecommendations = async (driver) => {
     const discipline = driver.primary_discipline || 'gt';
     const res = await apiFetch(`/api/recommendations/latest?driver_id=${driver.id}&discipline=${discipline}`);
     if (!res.ok) {
-      if (tasksEl) setList(tasksEl, ['No recommendations yet.'], '');
-      if (racesEl) setList(racesEl, ['—'], '');
+      if (tasksEl) tasksEl.innerHTML = '<div role="listitem">No recommendations yet.</div>';
+      if (racesEl) racesEl.innerHTML = '<div role="listitem">—</div>';
       updateRecommendationCards(null);
       return;
     }
@@ -601,8 +601,8 @@ export const loadDashboardRecommendations = async (driver) => {
     try {
       data = await res.json();
     } catch (parseErr) {
-      if (tasksEl) setList(tasksEl, ['Unable to load recommendations.'], '');
-      if (racesEl) setList(racesEl, ['—'], '');
+      if (tasksEl) tasksEl.innerHTML = '<div role="listitem">Unable to load recommendations.</div>';
+      if (racesEl) racesEl.innerHTML = '<div role="listitem">—</div>';
       updateRecommendationCards(null);
       return;
     }
@@ -621,8 +621,8 @@ export const loadDashboardRecommendations = async (driver) => {
       }, 1000);
       updateRecommendationCards(data);
     } else {
-      if (tasksEl) setList(tasksEl, ['No recommendations yet.'], '');
-      if (racesEl) setList(racesEl, ['—'], '');
+      if (tasksEl) tasksEl.innerHTML = '<div role="listitem">No recommendations yet.</div>';
+      if (racesEl) racesEl.innerHTML = '<div role="listitem">—</div>';
       updateRecommendationCards(null);
     }
   } catch (err) {
@@ -1059,7 +1059,7 @@ function initDashboardEventsRegisterDelegation() {
       return;
     }
     const recTasksList = e.target.closest('[data-recommendation-tasks]');
-    const recTaskItem = recTasksList ? e.target.closest('.rec-item[data-task-id]') : null;
+    const recTaskItem = recTasksList ? e.target.closest('.next-action-card[data-task-id]') : null;
     if (recTaskItem && recTasksList) {
       e.preventDefault();
       const taskId = recTaskItem.getAttribute('data-task-id');
@@ -1074,7 +1074,7 @@ function initDashboardEventsRegisterDelegation() {
       return;
     }
     const recRacesList = e.target.closest('[data-recommendation-races]');
-    const recRaceItem = recRacesList ? e.target.closest('.rec-item[data-event-id]') : null;
+    const recRaceItem = recRacesList ? e.target.closest('.next-action-card[data-event-id]') : null;
     if (recRaceItem && recRacesList) {
       e.preventDefault();
       const eventId = recRaceItem.getAttribute('data-event-id');
@@ -1094,7 +1094,7 @@ function initDashboardEventsRegisterDelegation() {
     const upcomingList = e.target.closest('[data-upcoming-events]');
     const pastList = e.target.closest('[data-dashboard-past-events]');
     const textBtn = (list || upcomingList || pastList) ? e.target.closest('.event-list-item__text') : null;
-    const cardBtn = (list || pastList) ? e.target.closest('.event-card') : null;
+    const cardBtn = (list || upcomingList || pastList) ? e.target.closest('.event-card') : null;
     const eventBtn = textBtn || cardBtn;
     if (eventBtn && (list || upcomingList || pastList)) {
       e.preventDefault();
@@ -1335,7 +1335,7 @@ export const loadDashboardEvents = async (driver) => {
     if (dashboardEventsList) {
       dashboardEventsList.innerHTML = '<div role="listitem">Log in to load events.</div>';
     }
-    if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
+    if (upcomingEventsList) upcomingEventsList.innerHTML = '<div role="listitem">Log in to load events.</div>';
     if (dashboardPastEventsList) {
       dashboardPastEventsList.innerHTML = '<div role="listitem">No past events.</div>';
     }
@@ -1444,7 +1444,11 @@ export const loadDashboardEvents = async (driver) => {
       const emptyText = hintNoEvents || (driver.sim_games && driver.sim_games.length
         ? 'No upcoming events for your games.'
         : 'No upcoming events. Add sim games to see events.');
-      setEventListWithRegister(upcomingEventsList, lastUpcomingEventsData, driver, emptyText, formatEventItem);
+      if (!lastUpcomingEventsData.length) {
+        upcomingEventsList.innerHTML = `<div role="listitem">${escapeHtml(emptyText)}</div>`;
+      } else {
+        upcomingEventsList.innerHTML = lastUpcomingEventsData.map((ev) => renderEventCard(ev, driver)).join('');
+      }
     }
     loadActiveRace(driver);
   } catch (err) {
@@ -1455,7 +1459,7 @@ export const loadDashboardEvents = async (driver) => {
       dashboardPastEventsList.innerHTML = '<div role="listitem">Unable to load events.</div>';
     }
     if (upcomingEventsList) {
-      setList(upcomingEventsList, [], 'Unable to load events.');
+      upcomingEventsList.innerHTML = '<div role="listitem">Unable to load events.</div>';
     }
   }
 };

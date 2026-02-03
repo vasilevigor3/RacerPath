@@ -75,85 +75,87 @@ const Cabinet = () => (
       </aside>
 
       <div className="dashboard-main">
-        <div className="stats-grid">
+        <div className="stats-grid gap-3">
           <button
-            className="stat-card is-link"
+            className="stat-card is-link rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             type="button"
             data-stat-target="crs"
             data-scroll-target="#dashboards"
             data-focus-target="crs-card"
           >
-            <span className="stat-label">CRS</span>
-            <span className="stat-value" data-stat-crs>
+            <span className="stat-label text-muted-foreground">CRS</span>
+            <span className="stat-value text-foreground" data-stat-crs>
               --
             </span>
-            <span className="stat-meta">Latest score</span>
-          </button>
-          <button className="stat-card is-link" type="button" data-stat-target="events" data-tab-target="events">
-            <span className="stat-label">Events raced</span>
-            <span className="stat-value" data-stat-events>
-              0
-            </span>
-            <span className="stat-meta">Last 30 days</span>
-          </button>
-          <button className="stat-card is-link" type="button" data-stat-target="tasks" data-tab-target="tasks">
-            <span className="stat-label">Tasks done</span>
-            <span className="stat-value" data-stat-tasks>
-              0
-            </span>
-            <span className="stat-meta">Completed</span>
+            <span className="stat-meta text-muted-foreground">Latest score</span>
           </button>
           <button
-            className="stat-card is-link"
+            className="stat-card is-link rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            type="button"
+            data-stat-target="events"
+            data-tab-target="events"
+          >
+            <span className="stat-label text-muted-foreground">Events raced</span>
+            <span className="stat-value text-foreground" data-stat-events>0</span>
+            <span className="stat-meta text-muted-foreground">Last 30 days</span>
+          </button>
+          <button
+            className="stat-card is-link rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            type="button"
+            data-stat-target="tasks"
+            data-tab-target="tasks"
+          >
+            <span className="stat-label text-muted-foreground">Tasks done</span>
+            <span className="stat-value text-foreground" data-stat-tasks>0</span>
+            <span className="stat-meta text-muted-foreground">Completed</span>
+          </button>
+          <button
+            className="stat-card is-link rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             type="button"
             data-stat-target="licenses"
             data-tab-target="licenses"
             data-focus-target="licenses-card"
           >
-            <span className="stat-label">Licenses</span>
-            <span className="stat-value" data-stat-licenses>
-              0
-            </span>
-            <span className="stat-meta">Earned</span>
+            <span className="stat-label text-muted-foreground">Licenses</span>
+            <span className="stat-value text-foreground" data-stat-licenses>0</span>
+            <span className="stat-meta text-muted-foreground">Earned</span>
           </button>
           <button
-            className="stat-card is-link"
+            className="stat-card is-link rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             type="button"
             data-stat-target="risk-flags"
             data-tab-target="risk-flags"
             data-focus-target="risk-flags-card"
           >
-            <span className="stat-label">Risk flags</span>
-            <span className="stat-value" data-stat-risk-flags>
-              0
-            </span>
-            <span className="stat-meta">Review</span>
+            <span className="stat-label text-muted-foreground">Risk flags</span>
+            <span className="stat-value text-foreground" data-stat-risk-flags>0</span>
+            <span className="stat-meta text-muted-foreground">Review</span>
           </button>
         </div>
 
-        <div className="tabs">
-          <button className="tab-button active" type="button" data-tab-button="overview">
+        <div className="tabs flex flex-wrap gap-1 rounded-lg bg-muted/50 p-1">
+          <button className="tab-button active rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="overview">
             Overview
           </button>
-          <button className="tab-button" type="button" data-tab-button="tasks">
+          <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="tasks">
             Tasks
           </button>
-          <button className="tab-button" type="button" data-tab-button="events">
+          <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="events">
             Events
           </button>
-          <button className="tab-button" type="button" data-tab-button="licenses">
+          <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="licenses">
             Licenses
           </button>
-          <button className="tab-button" type="button" data-tab-button="risk-flags">
+          <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="risk-flags">
             Risk flags
           </button>
-          <button className="tab-button" type="button" data-tab-button="teams">
+          <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="teams">
             Teams
           </button>
-          <button className="tab-button" type="button" data-tab-button="garage">
+          <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="garage">
             My car / garage
           </button>
-          <button className="tab-button" type="button" data-tab-button="profile">
+          <button className="tab-button rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground" type="button" data-tab-button="profile">
             Profile
           </button>
         </div>

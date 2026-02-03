@@ -85,7 +85,10 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
     penalty_repo = PenaltyRepository(session)
     for participation in participations:
         penalty_score_sum = penalty_repo.sum_score_by_participation_id(participation.id)
-        base_score = _participation_score(participation, penalty_score_sum)
+        penalty_rows = penalty_repo.count_filtered(participation_id=participation.id)
+        # Use sum from Penalty rows when we have any; else fall back to penalties_count * 6 (legacy)
+        effective_penalty_deduction = penalty_score_sum if penalty_rows > 0 else None
+        base_score = _participation_score(participation, effective_penalty_deduction)
         classification = _classification_for_participation(session, participation)
         if not classification:
             raise ValueError(

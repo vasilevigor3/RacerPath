@@ -137,6 +137,14 @@ def create_penalty_for_incident(
         description=payload.description,
     )
     PenaltyRepository(session).add(penalty)
+    session.flush()
+    event = EventRepository(session).get_by_id(participation.event_id) if participation else None
+    try:
+        from app.services.timeline_validation import validate_penalty_timeline
+        validate_penalty_timeline(penalty, incident, participation, event)
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if payload.penalty_type == PenaltyTypeEnum.dsq and participation:
         participation.status = ParticipationStatus.dsq
     session.commit()

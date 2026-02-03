@@ -24,6 +24,7 @@ from app.services.event_service import (
     list_upcoming_count as service_list_upcoming_count,
     list_upcoming_events as service_list_upcoming_events,
 )
+from app.services.timeline_validation import validate_event_timeline
 from app.utils.special_events import special_slot_tier_conflict
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -46,6 +47,12 @@ def create_event(
 ):
     event = Event(**_event_create_to_orm_data(payload))
     session.add(event)
+    session.flush()
+    try:
+        validate_event_timeline(event)
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     session.commit()
     session.refresh(event)
 

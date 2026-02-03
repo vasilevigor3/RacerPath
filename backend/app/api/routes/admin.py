@@ -32,6 +32,7 @@ from app.repositories.task_definition import TaskDefinitionRepository
 from app.repositories.tier_progression_rule import TierProgressionRuleRepository
 from app.repositories.user import UserRepository
 from app.repositories.user_profile import UserProfileRepository
+from app.services.timeline_validation import validate_participation_timeline
 from app.schemas.admin import (
     AdminLookupRead,
     AdminDriverCrsDiagnostic,
@@ -565,6 +566,12 @@ def update_participation(
                 status_code=400,
                 detail="finished_at must be greater than or equal to started_at.",
             )
+
+    event = EventRepository(session).get_by_id(part.event_id)
+    try:
+        validate_participation_timeline(part, event)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     session.commit()
     session.refresh(part)

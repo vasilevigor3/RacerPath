@@ -21,6 +21,15 @@ class Event(Base):
             "special_event IS NULL OR special_event IN ('race_of_day', 'race_of_week', 'race_of_month', 'race_of_year')",
             name="ck_events_special_event",
         ),
+        # Timeline: created_at <= start_time_utc; start_time_utc <= finished_time_utc when set
+        CheckConstraint(
+            "start_time_utc IS NULL OR created_at <= start_time_utc",
+            name="ck_events_created_at_lte_start_time_utc",
+        ),
+        CheckConstraint(
+            "finished_time_utc IS NULL OR start_time_utc IS NULL OR start_time_utc <= finished_time_utc",
+            name="ck_events_start_lte_finished",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

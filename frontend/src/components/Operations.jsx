@@ -113,6 +113,40 @@ const LICENSE_REQUIREMENTS = ['none', 'entry', 'rookie', 'intermediate', 'pro'];
 const TABS = ['drivers', 'events', 'classifications', 'participations', 'tasks', 'licenses', 'tier', 'schema'];
 const TAB_LABELS = { drivers: 'Drivers', events: 'Events', classifications: 'Classifications', participations: 'Participations', tasks: 'Tasks', licenses: 'Licenses', tier: 'Tier rules', schema: 'Project schema' };
 
+const TimelineFlowPanel = () => (
+  <div className="admin-constructors card admin-schema admin-schema--timeline">
+    <h3 className="admin-constructors__title">Timeline flow</h3>
+    <p className="admin-constructors__hint">Order of timestamps: event created → driver registers → race/participation starts → incidents &amp; penalties (between start and finish) → participation finished → no later than event finish.</p>
+    <div className="admin-schema__diagram admin-schema__diagram--timeline" role="img" aria-label="Timeline flow: event creation to participation finish">
+      <div className="admin-schema__row admin-schema__row--timeline">
+        <div className="admin-schema__node" title="Event created">
+          <span className="admin-schema__node-label">Create event</span>
+        </div>
+        <span className="admin-schema__arrow" aria-hidden>→</span>
+        <div className="admin-schema__node" title="Participation created">
+          <span className="admin-schema__node-label">Driver registers</span>
+        </div>
+        <span className="admin-schema__arrow" aria-hidden>→</span>
+        <div className="admin-schema__node" title="started_at">
+          <span className="admin-schema__node-label">Race / participation starts</span>
+        </div>
+        <span className="admin-schema__arrow" aria-hidden>→</span>
+        <div className="admin-schema__node admin-schema__node--small" title="Between start and finish">
+          <span className="admin-schema__node-label">Incidents &amp; penalties</span>
+        </div>
+        <span className="admin-schema__arrow" aria-hidden>→</span>
+        <div className="admin-schema__node" title="finished_at">
+          <span className="admin-schema__node-label">Participation finished</span>
+        </div>
+        <span className="admin-schema__arrow" aria-hidden>→</span>
+        <div className="admin-schema__node admin-schema__node--small" title="part.finished_at ≤ event.finished_time_utc">
+          <span className="admin-schema__node-label">≤ Event finished</span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const ProjectSchemaPanel = () => {
   return (
     <div className="admin-constructors card admin-schema">
@@ -2699,6 +2733,7 @@ const AdminLookup = () => {
 
         {activeTab === 'schema' && (
           <div id="admin-tabpanel-schema" className="admin-tabpanel" role="tabpanel" aria-labelledby="admin-tab-schema">
+            <TimelineFlowPanel />
             <ProjectSchemaPanel />
           </div>
         )}

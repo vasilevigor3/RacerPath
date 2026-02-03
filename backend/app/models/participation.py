@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 from enum import Enum
 
-from sqlalchemy import DateTime, Enum as SAEnum, Float, ForeignKey, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -36,6 +36,15 @@ class Participation(Base):
     __tablename__ = "participations"
     __table_args__ = (
         UniqueConstraint("driver_id", "event_id", name="uq_participations_driver_event"),
+        # Timeline: created_at < started_at; started_at <= finished_at when set
+        CheckConstraint(
+            "started_at IS NULL OR created_at < started_at",
+            name="ck_participations_created_lt_started",
+        ),
+        CheckConstraint(
+            "finished_at IS NULL OR started_at IS NULL OR started_at <= finished_at",
+            name="ck_participations_started_lte_finished",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

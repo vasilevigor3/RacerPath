@@ -27,6 +27,7 @@ from app.penalties.scores import get_score_for_penalty_type
 from app.schemas.penalty import PenaltyCreate, PenaltyRead, PenaltyTypeEnum
 from app.services.tasks import assign_tasks_on_registration, evaluate_tasks
 from app.services.crs import recompute_crs
+from app.services.timeline_validation import validate_participation_timeline
 from app.services.auth import require_user
 from app.utils.rig_compat import driver_rig_satisfies_event
 
@@ -89,6 +90,12 @@ def create_participation(
     participation = Participation(**payload.model_dump())
     participation.classification_id = classification.id
     part_repo.add(participation)
+    session.flush()
+    try:
+        validate_participation_timeline(participation, event)
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     session.commit()
     session.refresh(participation)
     assign_tasks_on_registration(session, driver.id, participation.id)
@@ -243,6 +250,14 @@ def create_incident(
         description=payload.description,
     )
     IncidentRepository(session).add(incident)
+    session.flush()
+    event = EventRepository(session).get_by_id(participation.event_id)
+    try:
+        from app.services.timeline_validation import validate_incident_timeline
+        validate_incident_timeline(incident, participation, event)
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     session.commit()
     session.refresh(incident)
     discipline_str = (
@@ -303,6 +318,14 @@ def create_penalty(
         description=payload.description,
     )
     PenaltyRepository(session).add(penalty)
+    session.flush()
+    event = EventRepository(session).get_by_id(participation.event_id)
+    try:
+        from app.services.timeline_validation import validate_penalty_timeline
+        validate_penalty_timeline(penalty, incident, participation, event)
+    except ValueError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if payload.penalty_type == PenaltyTypeEnum.dsq:
         participation.status = ParticipationStatus.dsq
     session.commit()

@@ -1478,6 +1478,15 @@ footer {
   flex-shrink: 0;
 }
 
+.admin-schema--timeline {
+  margin-bottom: 16px;
+}
+
+.admin-schema__diagram--timeline .admin-schema__row--timeline {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
 .admin-lookup__form {
   display: flex;
   flex-direction: column;

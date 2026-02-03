@@ -23,5 +23,10 @@ class Settings:
     gridfinder_events_url: str | None = os.getenv("GRIDFINDER_EVENTS_URL") or None
     gridfinder_api_key: str | None = os.getenv("GRIDFINDER_API_KEY") or None
 
+    # Mock race service: simulate race data for events that have started until event finished
+    # mock_race_enabled: bool = os.getenv("MOCK_RACE_ENABLED", "false").lower() == "true"
+    mock_race_enabled: bool = True
+    mock_race_interval_seconds: int = int(os.getenv("MOCK_RACE_INTERVAL_SECONDS", "2"))
+
 
 settings = Settings()

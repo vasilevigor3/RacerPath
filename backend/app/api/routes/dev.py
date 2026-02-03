@@ -147,3 +147,29 @@ def mock_participation_finish(
     session.refresh(part)
     dispatch_participation_completed(session, part.driver_id, part.id)
     return part
+
+
+@router.post("/mock-race/tick")
+def dev_mock_race_tick(
+    session: Session = Depends(get_session),
+    _: User = Depends(require_roles("admin")),
+) -> dict[str, Any]:
+    """Run one tick of the mock race service. Updates participations for events in progress."""
+    from app.core.settings import settings
+    from app.db.session import SessionLocal
+    from app.services.mock_race_service import tick_mock_races
+    interval = max(1, getattr(settings, "mock_race_interval_seconds", 60))
+    result = tick_mock_races(session, interval_seconds=interval)
+    session.commit()
+    for driver_id, participation_id in result.get("finished_driver_participation_pairs") or []:
+        disp_session = SessionLocal()
+        try:
+            dispatch_participation_completed(disp_session, driver_id, participation_id)
+            disp_session.commit()
+        finally:
+            disp_session.close()
+    return {
+        "events_processed": result["events_processed"],
+        "participations_updated": result["participations_updated"],
+        "participations_finished": result["participations_finished"],
+    }

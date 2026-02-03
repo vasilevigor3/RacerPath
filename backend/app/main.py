@@ -12,6 +12,7 @@ from app.core.logging import configure_logging
 from app.db.redis import create_redis_client
 from app.db.session import SessionLocal, init_db
 from app.services.auth import get_user_by_key, log_audit
+from app.services.mock_race_runner import start_mock_race_background
 
 app = FastAPI(title="RacerPath", version="0.1.0")
 app.include_router(api_router)
@@ -28,6 +29,7 @@ def startup() -> None:
         app.state.redis.ping()
     except Exception:
         app.state.redis = None
+    start_mock_race_background()
 
 
 @app.middleware("http")

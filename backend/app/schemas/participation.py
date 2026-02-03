@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Literal
+from typing import Any, Dict, Literal
 
 from pydantic import BaseModel, Field
 
@@ -49,7 +49,7 @@ class ParticipationCreate(BaseModel):
     pace_delta: float | None = None
     consistency_score: float | None = None
 
-    raw_metrics: Dict[str, float | int | str] = Field(default_factory=dict)
+    raw_metrics: Dict[str, Any] = Field(default_factory=dict)
 
     started_at: datetime | None = None
     finished_at: datetime | None = None

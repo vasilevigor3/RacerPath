@@ -8,7 +8,11 @@ const AuthLanding = () => (
     <div className="auth-hero">
       <div>
         <p className="eyebrow text-primary font-medium text-sm uppercase tracking-widest">Start here</p>
-        <h1 className="text-foreground font-bold tracking-tight">Sign in to your private racing cabinet.</h1>
+        <h1 className="text-foreground font-bold tracking-tight">
+          <span className="text-[var(--countdown-color)]">Sign in</span>
+          {' '}
+          to your private racing cabinet.
+        </h1>
         <p className="lead text-muted-foreground mt-2 max-w-lg">
           Create an account, log in, and unlock your personal dashboard with tasks, events, and readiness stats.
         </p>

@@ -64,8 +64,7 @@ const bootstrapFeatures = async () => {
   classifierModule.loadEvents();
   dashboardModule.loadDashboardEvents();
   participationsModule.loadParticipations();
-  incidentsModule.loadIncidents();
-  penaltiesModule.loadPenalties();
+  // incidents & penalties loaded from loadProfile(driver) to avoid duplicate/no-driver calls
   profileModule.loadProfile();
 
   tabsModule.setupTabs();

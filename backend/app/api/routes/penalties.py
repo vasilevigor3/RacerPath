@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.models.user import User
 from app.repositories.driver import DriverRepository
 from app.repositories.event import EventRepository
+from app.repositories.incident import IncidentRepository
 from app.repositories.participation import ParticipationRepository
 from app.repositories.penalty import PenaltyRepository
 from app.schemas.penalty import PenaltyRead, PenaltyWithEventRead
@@ -82,12 +83,13 @@ def list_all_penalties(
     event_repo = EventRepository(session)
     result = []
     for p in penalties:
-        part = part_repo.get_by_id(p.participation_id)
+        inc = getattr(p, "incident", None)  # loaded via selectinload
+        part = part_repo.get_by_id(inc.participation_id) if inc else None
         event = event_repo.get_by_id(part.event_id) if part else None
         result.append(
             PenaltyWithEventRead(
                 id=p.id,
-                participation_id=p.participation_id,
+                participation_id=inc.participation_id if inc else None,
                 penalty_type=p.penalty_type,
                 score=p.score,
                 time_seconds=p.time_seconds,
@@ -108,11 +110,14 @@ def get_penalty(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    penalty = PenaltyRepository(session).get_by_id(penalty_id)
+    penalty = PenaltyRepository(session).get_by_id(penalty_id, load_incident=True)
     if not penalty:
         raise HTTPException(status_code=404, detail="Penalty not found")
     if user.role not in {"admin"}:
-        participation = ParticipationRepository(session).get_by_id(penalty.participation_id)
+        incident = IncidentRepository(session).get_by_id(penalty.incident_id)
+        if not incident:
+            raise HTTPException(status_code=404, detail="Incident not found")
+        participation = ParticipationRepository(session).get_by_id(incident.participation_id)
         driver = DriverRepository(session).get_by_id(participation.driver_id) if participation else None
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")

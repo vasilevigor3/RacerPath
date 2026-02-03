@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import sys
 
+from sqlalchemy.orm import selectinload
+
 from app.db.session import SessionLocal
 from app.models.classification import Classification
 from app.models.driver import Driver
 from app.models.event import Event
+from app.models.incident import Incident
 from app.models.participation import Participation, ParticipationState
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
@@ -48,6 +51,9 @@ def main() -> None:
 
         participations = (
             session.query(Participation)
+            .options(
+                selectinload(Participation.incidents).selectinload(Incident.penalties),
+            )
             .filter(Participation.driver_id == driver_id)
             .order_by(Participation.created_at.desc())
             .all()

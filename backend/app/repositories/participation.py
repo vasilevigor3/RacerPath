@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
+from app.models.incident import Incident
 from app.models.participation import Participation, ParticipationState
 
 
@@ -13,12 +14,15 @@ class ParticipationRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_by_id(self, participation_id: str) -> Optional[Participation]:
-        return (
-            self._session.query(Participation)
-            .filter(Participation.id == participation_id)
-            .first()
-        )
+    def get_by_id(
+        self, participation_id: str, with_counts: bool = False
+    ) -> Optional[Participation]:
+        q = self._session.query(Participation).filter(Participation.id == participation_id)
+        if with_counts:
+            q = q.options(
+                selectinload(Participation.incidents).selectinload(Incident.penalties),
+            )
+        return q.first()
 
     def list_filtered(
         self,
@@ -27,7 +31,12 @@ class ParticipationRepository:
         offset: int = 0,
         limit: int = 100,
     ) -> List[Participation]:
-        query = self._session.query(Participation)
+        query = (
+            self._session.query(Participation)
+            .options(
+                selectinload(Participation.incidents).selectinload(Incident.penalties),
+            )
+        )
         if driver_id:
             query = query.filter(Participation.driver_id == driver_id)
         if event_id:
@@ -107,11 +116,14 @@ class ParticipationRepository:
     def list_by_event_id_with_drivers(
         self, event_id: str, limit: int = 200
     ) -> List[tuple[Participation, Optional["Driver"]]]:
-        """Return (Participation, Driver) pairs for event."""
+        """Return (Participation, Driver) pairs for event (incidents/penalties loaded for counts)."""
         from app.models.driver import Driver
         rows = (
             self._session.query(Participation, Driver)
             .outerjoin(Driver, Participation.driver_id == Driver.id)
+            .options(
+                selectinload(Participation.incidents).selectinload(Incident.penalties),
+            )
             .filter(Participation.event_id == event_id)
             .order_by(Participation.started_at.desc(), Participation.created_at.desc())
             .limit(limit)

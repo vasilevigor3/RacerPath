@@ -469,7 +469,7 @@ def get_participation_detail(
     _: User | None = Depends(require_roles("admin")),
 ):
     """Participation details + driver + event + incidents list."""
-    part = ParticipationRepository(session).get_by_id(participation_id)
+    part = ParticipationRepository(session).get_by_id(participation_id, with_counts=True)
     if not part:
         raise HTTPException(status_code=404, detail="Participation not found")
     driver = DriverRepository(session).get_by_id(part.driver_id)
@@ -494,6 +494,8 @@ def get_participation_detail(
         incidents=[
             AdminParticipationIncidentItem(
                 id=i.id,
+                code=getattr(i, "code", None),
+                score=getattr(i, "score", 0.0),
                 incident_type=i.incident_type,
                 severity=i.severity,
                 lap=i.lap,
@@ -590,6 +592,8 @@ def get_incident_detail(
         incident=AdminIncidentRead(
             id=incident.id,
             participation_id=incident.participation_id,
+            code=getattr(incident, "code", None),
+            score=getattr(incident, "score", 0.0),
             incident_type=incident.incident_type,
             severity=incident.severity,
             lap=incident.lap,

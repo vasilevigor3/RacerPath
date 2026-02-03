@@ -250,8 +250,6 @@ def seed() -> None:
                     position_overall=6 if index == 0 else 12,
                     position_class=3 if index == 0 else 5,
                     laps_completed=45 if index == 0 else 18,
-                    incidents_count=2 if index == 2 else 0,
-                    penalties_count=1 if index == 2 else 0,
                     consistency_score=7.2 if index == 0 else 6.1,
                     pace_delta=0.8 if index == 0 else 1.4,
                     started_at=started_at,
@@ -275,6 +273,19 @@ def seed() -> None:
                     )
                 )
             session.commit()
+        # Penalty belongs to Incident; get one incident for this participation to attach penalty
+        if incident_event:
+            one_incident = session.query(Incident).filter(Incident.participation_id == incident_event.id).first()
+            if one_incident and session.query(PenaltyModel).filter(PenaltyModel.incident_id == one_incident.id).count() == 0:
+                session.add(
+                    PenaltyModel(
+                        incident_id=one_incident.id,
+                        penalty_type="time_penalty",
+                        time_seconds=5,
+                        lap=12,
+                    )
+                )
+                session.commit()
 
         seed_templates(session)
         for participation in participations:

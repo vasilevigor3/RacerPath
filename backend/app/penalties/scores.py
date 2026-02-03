@@ -1,8 +1,8 @@
 """
-Penalty and incident scores for CRS and reporting.
+Penalty and incident scores for UI and reporting.
 
-PENALTY_TYPE_SCORES: [PenaltyType enum code -> score]. CRS subtracts this score per penalty.
-When creating a Penalty, score is set from this map and stored in DB (snapshot at creation time).
+CRS (driver rating) uses only Incident.score per participation; Penalty is for UI/result/audit only.
+PENALTY_TYPE_SCORES: used when creating a Penalty (stored in DB for display). Not used in CRS.
 """
 
 from enum import IntEnum

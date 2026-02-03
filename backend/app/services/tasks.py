@@ -4,11 +4,12 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.classification import Classification
 from app.models.driver import Driver
 from app.models.event import Event
+from app.models.incident import Incident
 from app.models.participation import Participation, ParticipationState
 from app.models.task_completion import TaskCompletion
 from app.models.task_definition import TaskDefinition
@@ -380,6 +381,9 @@ def _latest_completion(session: Session, driver_id: str, task_id: str) -> TaskCo
 def evaluate_tasks(session: Session, driver_id: str, participation_id: str) -> list[TaskCompletion]:
     participation = (
         session.query(Participation)
+        .options(
+            selectinload(Participation.incidents).selectinload(Incident.penalties),
+        )
         .filter(Participation.id == participation_id, Participation.driver_id == driver_id)
         .first()
     )
@@ -601,6 +605,9 @@ def assign_participation_id_for_completed_participation(
     """
     participation = (
         session.query(Participation)
+        .options(
+            selectinload(Participation.incidents).selectinload(Incident.penalties),
+        )
         .filter(Participation.id == participation_id, Participation.driver_id == driver_id)
         .first()
     )

@@ -62,12 +62,13 @@ function hideIncidentDetail() {
 function renderIncidentCard(item) {
   const typeLabel = item.incident_type || '—';
   const severity = item.severity ? `S${item.severity}` : 'S1';
+  const scoreLabel = item.score != null && item.score !== undefined ? ` · ${item.score}` : '';
   const race = item.event_title || '—';
   const lapHtml = item.lap != null && item.lap !== undefined
     ? `<span class="incident-card__lap">Lap ${item.lap}</span>`
     : '';
   return `<button type="button" class="incident-card" data-incident-id="${item.id}" role="listitem">
-    <span class="incident-card__type">${typeLabel} · ${severity}</span>
+    <span class="incident-card__type">${typeLabel} · ${severity}${scoreLabel}</span>
     <span class="incident-card__race">${race}</span>
     ${lapHtml}
   </button>`;
@@ -204,6 +205,8 @@ export const initIncidents = () => {
     event.preventDefault();
     const participationId = getFormValue(incidentForm, '#incidentParticipationId');
     const incidentType = getFormValue(incidentForm, '#incidentType');
+    const code = (getFormValue(incidentForm, '#incidentCode') || '').trim() || (incidentType ? incidentType.toLowerCase().replace(/\s+/g, '_') : 'other');
+    const score = parseFloat(getFormValue(incidentForm, '#incidentScore')) >= 0 ? parseFloat(getFormValue(incidentForm, '#incidentScore')) : 0;
     if (!participationId || !incidentType) {
       incidentStatus.textContent = 'Participation and incident type required.';
       return;
@@ -215,6 +218,8 @@ export const initIncidents = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           participation_id: participationId,
+          code,
+          score,
           incident_type: incidentType,
           severity: parseOptionalInt(getFormValue(incidentForm, '#incidentSeverity')) || 1,
           lap: parseOptionalInt(getFormValue(incidentForm, '#incidentLap')),

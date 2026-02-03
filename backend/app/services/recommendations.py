@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.classification import Classification
 from app.services.crs import compute_inputs, compute_inputs_hash
@@ -105,6 +105,7 @@ def _build_recommendation_content(
 
     participations = (
         session.query(Participation)
+        .options(selectinload(Participation.incidents))
         .filter(Participation.driver_id == driver_id, Participation.discipline == discipline)
         .order_by(Participation.created_at.desc())
         .limit(20)

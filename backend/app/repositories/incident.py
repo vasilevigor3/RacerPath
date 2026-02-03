@@ -71,6 +71,16 @@ class IncidentRepository:
             .count()
         )
 
+    def sum_score_by_participation_id(self, participation_id: str) -> float:
+        """Sum incident scores for a participation (CRS v2: single source of truth for rating)."""
+        from sqlalchemy import func
+        total = (
+            self._session.query(func.coalesce(func.sum(Incident.score), 0.0))
+            .filter(Incident.participation_id == participation_id)
+            .scalar()
+        )
+        return float(total) if total is not None else 0.0
+
     def count_filtered(
         self,
         driver_id: Optional[str] = None,

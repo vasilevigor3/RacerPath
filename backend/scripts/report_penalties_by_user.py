@@ -14,8 +14,11 @@ from __future__ import annotations
 import sys
 from datetime import datetime
 
+from sqlalchemy.orm import selectinload
+
 from app.db.session import SessionLocal
 from app.models.driver import Driver
+from app.models.incident import Incident
 from app.models.participation import Participation
 from app.models.user import User
 from app.penalties.scores import PENALTY_TYPE_SCORES, DEFAULT_PENALTY_SCORE, get_score_for_penalty_type
@@ -70,6 +73,9 @@ def main() -> None:
 
         participations = (
             session.query(Participation)
+            .options(
+                selectinload(Participation.incidents).selectinload(Incident.penalties),
+            )
             .filter(Participation.driver_id == driver.id)
             .order_by(Participation.created_at.desc())
             .limit(30)
@@ -109,8 +115,8 @@ def main() -> None:
                     lap_s = f" lap={pen.lap}" if pen.lap is not None else ""
                     print(f"    {i}. id={pen.id[:8]}…  type={pen.penalty_type}{time_s}{lap_s}")
                     print(f"       score in DB: {stored}  (expected from map: {expected})  created={_format_dt(pen.created_at)}")
-            elif p.penalties_count > 0:
-                print(f"    (no Penalty rows; CRS uses penalties_count * 6 = {p.penalties_count * 6.0:.1f})")
+            elif penalty_count > 0:
+                print(f"    (no Penalty rows; CRS uses penalties_count * 6 = {penalty_count * 6.0:.1f})")
             print()
 
         print("=" * 60)

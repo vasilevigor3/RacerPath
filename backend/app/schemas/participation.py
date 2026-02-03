@@ -45,8 +45,6 @@ class ParticipationCreate(BaseModel):
     position_class: int | None = Field(default=None, ge=0)
 
     laps_completed: int = Field(default=0, ge=0)
-    incidents_count: int = Field(default=0, ge=0)
-    penalties_count: int = Field(default=0, ge=0)
 
     pace_delta: float | None = None
     consistency_score: float | None = None
@@ -62,6 +60,8 @@ class ParticipationRead(ParticipationCreate):
     classification_id: str | None = None
     duration_minutes: int | None = None
     withdraw_count: int = 0
+    incidents_count: int = 0  # derived from participation.incidents
+    penalties_count: int = 0  # derived from participation.penalties
     created_at: datetime
 
     model_config = {"from_attributes": True}

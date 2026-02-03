@@ -23,7 +23,7 @@ def main() -> None:
         print(f"Found {len(rows)} penalty row(s) with null score.")
         for p in rows:
             score = get_score_for_penalty_type(p.penalty_type)
-            print(f"  id={p.id[:8]}… participation_id={p.participation_id[:8]}… type={p.penalty_type} -> score={score}")
+            print(f"  id={p.id[:8]}… incident_id={p.incident_id[:8] if p.incident_id else 'N/A'}… type={p.penalty_type} -> score={score}")
             if not dry_run:
                 p.score = score
         if not dry_run and rows:

@@ -3,7 +3,7 @@ import { setList, setEventListWithRegister, setTaskListClickable, setRecommendat
 import { formatDateTime, formatCountdown } from '../utils/format.js';
 import { eventGameMatchesDriverGames } from '../utils/gameAliases.js';
 import { driverRigSatisfiesEvent } from '../utils/rigCompat.js';
-import { readinessState } from '../state/session.js';
+import { readinessState, getCurrentDriver } from '../state/session.js';
 import { updateReadiness } from '../ui/readiness.js';
 import { updateDriverSnapshotMeta, resetDriverSnapshot } from './driverSnapshot.js';
 
@@ -144,6 +144,7 @@ export const loadDashboardStats = async (driver) => {
   const discipline = driver.primary_discipline || 'gt';
 
   try {
+    await apiFetch(`/api/crs/compute?driver_id=${encodeURIComponent(driver.id)}&discipline=${encodeURIComponent(discipline)}`, { method: 'POST' });
     const res = await apiFetch(`/api/crs/latest?driver_id=${driver.id}&discipline=${discipline}`);
     if (res.ok) {
       const crs = await res.json();
@@ -1361,6 +1362,8 @@ window.addEventListener('cabinet-tab-change', (e) => {
   }
   if (e.detail?.tab === 'overview') {
     resetParticipationsToFirstPage();
+    const driver = getCurrentDriver();
+    if (driver) loadDashboardStats(driver);
   }
 });
 

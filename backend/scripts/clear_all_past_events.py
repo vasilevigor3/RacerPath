@@ -13,6 +13,7 @@ from app.models.crs_history import CRSHistory
 from app.models.event import Event
 from app.models.incident import Incident
 from app.models.participation import Participation
+from app.models.penalty import Penalty
 from app.models.raw_event import RawEvent
 from app.models.recommendation import Recommendation
 from app.models.task_completion import TaskCompletion

@@ -131,8 +131,6 @@ export const initParticipations = () => {
           position_overall: parseOptionalInt(getFormValue(participationForm, '#participationPositionOverall')),
           position_class: parseOptionalInt(getFormValue(participationForm, '#participationPositionClass')),
           laps_completed: parseOptionalInt(getFormValue(participationForm, '#participationLaps')) || 0,
-          incidents_count: parseOptionalInt(getFormValue(participationForm, '#participationIncidents')) || 0,
-          penalties_count: parseOptionalInt(getFormValue(participationForm, '#participationPenalties')) || 0,
           pace_delta: parseOptionalFloat(getFormValue(participationForm, '#participationPaceDelta')),
           consistency_score: parseOptionalFloat(
             getFormValue(participationForm, '#participationConsistency')

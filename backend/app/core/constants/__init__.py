@@ -38,10 +38,13 @@ from app.core.constants.validation import (
 from app.core.constants.profile import PROFILE_REQUIRED_FIELDS
 from app.core.constants.algorithms import (
     CRS_ALGO_VERSION,
+    FREE_INCIDENTS,
     GT_GLOBAL_PROFILE,
     GT_GLOBAL_SIM_GAMES,
+    INCIDENT_K,
     PARTICIPATIONS_INPUT_LIMIT,
     REC_ALGO_VERSION,
+    REPEAT_K,
     TIER_WEIGHTS,
 )
 from app.core.constants.rig import (
@@ -81,10 +84,13 @@ __all__ = [
     "ALLOWED_WEATHER",
     "PROFILE_REQUIRED_FIELDS",
     "CRS_ALGO_VERSION",
+    "FREE_INCIDENTS",
     "GT_GLOBAL_PROFILE",
     "GT_GLOBAL_SIM_GAMES",
+    "INCIDENT_K",
     "PARTICIPATIONS_INPUT_LIMIT",
     "REC_ALGO_VERSION",
+    "REPEAT_K",
     "TIER_WEIGHTS",
     "DEFAULT_DRIVER_RIG",
     "PEDALS_ORDER",

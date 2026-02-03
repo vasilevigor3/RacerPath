@@ -47,11 +47,15 @@ def reset_all_tasks_licenses_events(session: Session) -> dict:
             {Recommendation.computed_from_participation_id: None},
             synchronize_session=False,
         )
+        incident_ids = [r[0] for r in session.query(Incident.id).filter(
+            Incident.participation_id.in_(participation_ids)
+        ).all()]
+        if incident_ids:
+            session.query(Penalty).filter(
+                Penalty.incident_id.in_(incident_ids)
+            ).delete(synchronize_session=False)
         session.query(Incident).filter(
             Incident.participation_id.in_(participation_ids)
-        ).delete(synchronize_session=False)
-        session.query(Penalty).filter(
-            Penalty.participation_id.in_(participation_ids)
         ).delete(synchronize_session=False)
 
     task_completions_deleted = session.query(TaskCompletion).delete(synchronize_session=False)

@@ -34,6 +34,8 @@ def _normalize_incident_type(value: str) -> str:
 
 class IncidentCreate(BaseModel):
     participation_id: str
+    code: str = Field(..., min_length=1, max_length=40)  # required; e.g. off_track, contact
+    score: float = Field(default=0.0, ge=0)  # CRS deduction input
     incident_type: IncidentType
     severity: int = Field(default=1, ge=1, le=5)
     lap: int | None = Field(default=None, ge=0)
@@ -56,6 +58,8 @@ class IncidentCreate(BaseModel):
 
 class IncidentRead(IncidentCreate):
     id: str
+    code: str | None = None  # optional when loading legacy rows from DB
+    score: float = 0.0
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -4,13 +4,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
+from app.models.participation import ParticipationStatus
 from app.models.user import User
+from app.penalties.scores import get_score_for_penalty_type
 from app.repositories.driver import DriverRepository
 from app.repositories.event import EventRepository
 from app.repositories.incident import IncidentRepository
 from app.repositories.participation import ParticipationRepository
+from app.repositories.penalty import PenaltyRepository
 from app.schemas.incident import IncidentRead, IncidentWithEventRead
+from app.schemas.penalty import PenaltyCreateByIncident, PenaltyRead, PenaltyTypeEnum
 from app.services.auth import require_user
+from app.models.penalty import Penalty
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
@@ -86,6 +91,8 @@ def list_all_incidents(
             IncidentWithEventRead(
                 id=inc.id,
                 participation_id=inc.participation_id,
+                code=getattr(inc, "code", None),
+                score=getattr(inc, "score", 0.0),
                 incident_type=inc.incident_type,
                 severity=inc.severity,
                 lap=inc.lap,
@@ -98,6 +105,44 @@ def list_all_incidents(
             )
         )
     return result
+
+
+@router.post("/{incident_id}/penalties", response_model=PenaltyRead)
+def create_penalty_for_incident(
+    incident_id: str,
+    payload: PenaltyCreateByIncident,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Create a penalty for an incident. Participation is derived from the incident."""
+    incident = IncidentRepository(session).get_by_id(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    participation_id = incident.participation_id
+    if user.role not in {"admin"}:
+        participation = ParticipationRepository(session).get_by_id(participation_id)
+        if not participation:
+            raise HTTPException(status_code=404, detail="Participation not found")
+        driver = DriverRepository(session).get_by_id(participation.driver_id)
+        if not driver or driver.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+    participation = ParticipationRepository(session).get_by_id(participation_id)
+    score = payload.score if payload.score is not None else get_score_for_penalty_type(payload.penalty_type.value)
+    penalty = Penalty(
+        incident_id=incident_id,
+        penalty_type=payload.penalty_type.value,
+        score=score,
+        time_seconds=payload.time_seconds,
+        lap=payload.lap,
+        description=payload.description,
+    )
+    PenaltyRepository(session).add(penalty)
+    if payload.penalty_type == PenaltyTypeEnum.dsq and participation:
+        participation.status = ParticipationStatus.dsq
+    session.commit()
+    session.refresh(penalty)
+    session.refresh(penalty, attribute_names=["incident"])
+    return penalty
 
 
 @router.get("/{incident_id}", response_model=IncidentRead)

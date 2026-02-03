@@ -5,7 +5,7 @@ import uuid
 from enum import Enum
 
 from sqlalchemy import DateTime, Enum as SAEnum, Float, ForeignKey, Integer, JSON, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -66,8 +66,6 @@ class Participation(Base):
     position_class: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     laps_completed: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    incidents_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    penalties_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     withdraw_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     pace_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -78,6 +76,20 @@ class Participation(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    incidents: Mapped[list["Incident"]] = relationship(
+        "Incident",
+        back_populates="participation",
+        lazy="selectin",
+    )
+
+    @property
+    def incidents_count(self) -> int:
+        return len(self.incidents)
+
+    @property
+    def penalties_count(self) -> int:
+        return sum(len(inc.penalties) for inc in self.incidents)
 
     @property
     def duration_minutes(self) -> int | None:

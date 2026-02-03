@@ -13,6 +13,7 @@ from app.models.crs_history import CRSHistory
 from app.models.event import Event
 from app.models.incident import Incident
 from app.models.participation import Participation
+from app.models.penalty import Penalty
 from app.models.raw_event import RawEvent
 from app.models.recommendation import Recommendation
 from app.models.task_completion import TaskCompletion
@@ -50,6 +51,13 @@ def clear_past_test_events(session: Session) -> int:
             {Recommendation.computed_from_participation_id: None},
             synchronize_session=False,
         )
+        incident_ids = [r[0] for r in session.query(Incident.id).filter(
+            Incident.participation_id.in_(participation_ids)
+        ).all()]
+        if incident_ids:
+            session.query(Penalty).filter(
+                Penalty.incident_id.in_(incident_ids)
+            ).delete(synchronize_session=False)
         session.query(Incident).filter(
             Incident.participation_id.in_(participation_ids)
         ).delete(synchronize_session=False)

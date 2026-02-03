@@ -4,18 +4,21 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.classification import Classification
 from app.models.anti_gaming import AntiGamingReport
 from app.models.crs_history import CRSHistory
 from app.models.participation import Participation
 from app.models.task_completion import TaskCompletion
-from app.repositories.penalty import PenaltyRepository
+from app.repositories.incident import IncidentRepository
 from app.core.settings import settings
 from app.core.constants import (
     CRS_ALGO_VERSION,
+    FREE_INCIDENTS,
+    INCIDENT_K,
     PARTICIPATIONS_INPUT_LIMIT,
+    REPEAT_K,
     TIER_WEIGHTS,
 )
 
@@ -43,33 +46,40 @@ def _classification_for_participation(
     )
 
 
-def _participation_score(participation: Participation, penalty_score_sum: float | None = None) -> float:
-    score = 100.0
-    score -= participation.incidents_count * 4.0
-    if penalty_score_sum is not None:
-        score -= penalty_score_sum
-    else:
-        score -= participation.penalties_count * 6.0
-
+def _participation_score(
+    participation: Participation,
+    incident_score_sum: float,
+    incidents_count: int,
+) -> float:
+    """CRS v2: rating from Incident.score only. Penalty is UI/result only, no impact on CRS."""
+    base = 100.0
+    incident_deduction = incident_score_sum * INCIDENT_K
+    status_deduction = 0.0
     if participation.status == "dnf":
-        score -= 25.0
-    if participation.status == "dsq":
-        score -= 35.0
-    if participation.status == "dns":
-        score -= 40.0
+        status_deduction = 25.0
+    elif participation.status == "dsq":
+        status_deduction = 35.0
+    elif participation.status == "dns":
+        status_deduction = 40.0
 
+    consistency_bonus = 0.0
     if participation.consistency_score is not None:
-        score += (participation.consistency_score - 5.0) * 4.0
+        consistency_bonus = (participation.consistency_score - 5.0) * 4.0
 
+    pace_penalty = 0.0
     if participation.pace_delta is not None and participation.pace_delta > 0:
-        score -= min(10.0, participation.pace_delta * 2.0)
+        pace_penalty = min(10.0, participation.pace_delta * 2.0)
 
+    repeat_penalty = max(0.0, incidents_count - FREE_INCIDENTS) * REPEAT_K
+
+    score = base - incident_deduction - status_deduction + consistency_bonus - pace_penalty - repeat_penalty
     return clamp_score(score)
 
 
 def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
     participations = (
         session.query(Participation)
+        .options(selectinload(Participation.incidents))
         .filter(Participation.driver_id == driver_id, Participation.discipline == discipline)
         .order_by(Participation.created_at.desc())
         .limit(30)
@@ -82,13 +92,10 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
     weighted_scores = []
     weights = []
 
-    penalty_repo = PenaltyRepository(session)
     for participation in participations:
-        penalty_score_sum = penalty_repo.sum_score_by_participation_id(participation.id)
-        penalty_rows = penalty_repo.count_filtered(participation_id=participation.id)
-        # Use sum from Penalty rows when we have any; else fall back to penalties_count * 6 (legacy)
-        effective_penalty_deduction = penalty_score_sum if penalty_rows > 0 else None
-        base_score = _participation_score(participation, effective_penalty_deduction)
+        incident_score_sum = sum(i.score for i in participation.incidents)
+        incidents_count = len(participation.incidents)
+        base_score = _participation_score(participation, incident_score_sum, incidents_count)
         classification = _classification_for_participation(session, participation)
         if not classification:
             raise ValueError(
@@ -113,10 +120,10 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
     multiplier = max(settings.anti_gaming_min_multiplier, min(settings.anti_gaming_max_multiplier, multiplier))
     score *= multiplier
 
+    total_incident_score = sum(sum(i.score for i in p.incidents) for p in participations)
     inputs = {
         "participations": len(participations),
-        "avg_incidents": sum(p.incidents_count for p in participations) / len(participations),
-        "avg_penalties": sum(p.penalties_count for p in participations) / len(participations),
+        "avg_incident_score_sum": total_incident_score / len(participations) if participations else 0,
         "dnf_rate": sum(1 for p in participations if p.status in {"dnf", "dsq"}) / len(participations),
         "weighted_tier_average": sum(weights) / len(weights),
         "anti_gaming_multiplier": multiplier,
@@ -144,7 +151,8 @@ def compute_inputs(session: Session, driver_id: str, discipline: str) -> dict:
             "finished_count": 0,
             "task_completions_count": 0,
         }
-    incidents_count = sum(p.incidents_count for p in participations)
+    incident_repo = IncidentRepository(session)
+    incidents_count = sum(incident_repo.count_by_participation_id(p.id) for p in participations)
     finished_count = sum(1 for p in participations if p.status == "finished")
     task_completions_count = (
         session.query(TaskCompletion)
@@ -157,7 +165,7 @@ def compute_inputs(session: Session, driver_id: str, discipline: str) -> dict:
         "incidents_count": incidents_count,
         "finished_count": finished_count,
         "task_completions_count": task_completions_count,
-        "avg_incidents": incidents_count / len(participations),
+        "avg_incidents": incidents_count / len(participations) if participations else 0,
     }
 
 

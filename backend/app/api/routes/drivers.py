@@ -204,8 +204,10 @@ def _delete_driver_cascade(session: Session, driver_id: str) -> None:
     """Delete driver and all related records (participations, incidents, penalties, etc.)."""
     part_ids = [r[0] for r in session.execute(select(Participation.id).where(Participation.driver_id == driver_id))]
     if part_ids:
+        incident_ids = [r[0] for r in session.execute(select(Incident.id).where(Incident.participation_id.in_(part_ids)))]
+        if incident_ids:
+            session.execute(Penalty.__table__.delete().where(Penalty.incident_id.in_(incident_ids)))
         session.execute(Incident.__table__.delete().where(Incident.participation_id.in_(part_ids)))
-        session.execute(Penalty.__table__.delete().where(Penalty.participation_id.in_(part_ids)))
     session.execute(Participation.__table__.delete().where(Participation.driver_id == driver_id))
     session.execute(TaskCompletion.__table__.delete().where(TaskCompletion.driver_id == driver_id))
     session.execute(Recommendation.__table__.delete().where(Recommendation.driver_id == driver_id))

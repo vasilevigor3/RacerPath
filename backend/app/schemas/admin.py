@@ -164,6 +164,8 @@ class AdminParticipationEventRef(BaseModel):
 
 class AdminParticipationIncidentItem(BaseModel):
     id: str
+    code: str | None = None
+    score: float = 0.0
     incident_type: str
     severity: int
     lap: int | None
@@ -185,8 +187,6 @@ class AdminParticipationUpdate(BaseModel):
     position_overall: int | None = None
     position_class: int | None = None
     laps_completed: int | None = None
-    incidents_count: int | None = None
-    penalties_count: int | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
@@ -213,6 +213,8 @@ class AdminIncidentDriverRef(BaseModel):
 class AdminIncidentRead(BaseModel):
     id: str
     participation_id: str
+    code: str | None = None
+    score: float = 0.0
     incident_type: str
     severity: int
     lap: int | None

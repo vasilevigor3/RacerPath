@@ -239,25 +239,26 @@ const AdminConstructors = ({ tab }) => {
 
   const [partForm, setPartForm] = useState({
     driver_id: '', event_id: '', discipline: 'gt', status: 'finished',
-    participation_state: 'registered', position_overall: '', laps_completed: '0',
+    participation_state: 'registered', position_overall: '', position_class: '',
+    laps_completed: '0', pace_delta: '', consistency_score: '', started_at: '', finished_at: '',
   });
   const [partLoading, setPartLoading] = useState(false);
   const [partMsg, setPartMsg] = useState(null);
 
   const [incidentForm, setIncidentForm] = useState({
-    participation_id: '', incident_type: 'Contact', severity: '1', lap: '', description: '',
+    participation_id: '', code: 'contact', score: '2', incident_type: 'Contact', severity: '1', lap: '', timestamp_utc: '', description: '',
   });
   const [incidentLoading, setIncidentLoading] = useState(false);
   const [incidentMsg, setIncidentMsg] = useState(null);
 
   const [penaltyForm, setPenaltyForm] = useState({
-    participation_id: '', penalty_type: 'time_penalty', time_seconds: '5', lap: '', description: '',
+    incident_id: '', penalty_type: 'time_penalty', score: '', time_seconds: '5', lap: '', description: '',
   });
   const [penaltyLoading, setPenaltyLoading] = useState(false);
   const [penaltyMsg, setPenaltyMsg] = useState(null);
 
   const [updatePartForm, setUpdatePartForm] = useState({
-    participation_id: '', status: '', participation_state: '', position_overall: '',
+    participation_id: '', status: '', participation_state: '', position_overall: '', position_class: '',
     laps_completed: '', started_at: '', finished_at: '',
   });
   const [updatePartLoading, setUpdatePartLoading] = useState(false);
@@ -429,7 +430,20 @@ const AdminConstructors = ({ tab }) => {
       status: partForm.status,
       participation_state: partForm.participation_state,
       position_overall: partForm.position_overall ? parseInt(partForm.position_overall, 10) : null,
+      position_class: partForm.position_class ? parseInt(partForm.position_class, 10) : null,
       laps_completed: parseInt(partForm.laps_completed, 10) || 0,
+      pace_delta: partForm.pace_delta !== '' ? parseFloat(partForm.pace_delta) : null,
+      consistency_score: partForm.consistency_score !== '' ? parseFloat(partForm.consistency_score) : null,
+      started_at: (() => {
+        const v = partForm.started_at?.trim();
+        if (!v) return null;
+        return v.endsWith('Z') ? v : (/T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z');
+      })(),
+      finished_at: (() => {
+        const v = partForm.finished_at?.trim();
+        if (!v) return null;
+        return v.endsWith('Z') ? v : (/T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z');
+      })(),
     };
     apiFetch('/api/participations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
@@ -446,9 +460,16 @@ const AdminConstructors = ({ tab }) => {
     setIncidentMsg(null);
     const body = {
       participation_id: pid,
+      code: (incidentForm.code || 'contact').trim(),
+      score: parseFloat(incidentForm.score) >= 0 ? parseFloat(incidentForm.score) : 0,
       incident_type: incidentForm.incident_type,
       severity: parseInt(incidentForm.severity, 10) || 1,
       lap: incidentForm.lap ? parseInt(incidentForm.lap, 10) : null,
+      timestamp_utc: (() => {
+        const v = incidentForm.timestamp_utc?.trim();
+        if (!v) return null;
+        return v.endsWith('Z') ? v : (/T\d{2}:\d{2}$/.test(v) ? v + ':00.000Z' : v + '.000Z');
+      })(),
       description: incidentForm.description?.trim() || null,
     };
     apiFetch(`/api/participations/${encodeURIComponent(pid)}/incidents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -460,22 +481,22 @@ const AdminConstructors = ({ tab }) => {
 
   const createPenalty = (e) => {
     e.preventDefault();
-    const pid = penaltyForm.participation_id?.trim();
-    if (!pid) return;
+    const incidentId = penaltyForm.incident_id?.trim();
+    if (!incidentId) return;
     setPenaltyLoading(true);
     setPenaltyMsg(null);
     const body = {
-      participation_id: pid,
       penalty_type: penaltyForm.penalty_type,
       lap: penaltyForm.lap ? parseInt(penaltyForm.lap, 10) : null,
       description: penaltyForm.description?.trim() || null,
     };
+    if (penaltyForm.score !== '' && parseFloat(penaltyForm.score) >= 0) body.score = parseFloat(penaltyForm.score);
     if (penaltyForm.penalty_type === 'time_penalty') {
       body.time_seconds = parseInt(penaltyForm.time_seconds, 10) || 5;
     } else if (penaltyForm.penalty_type === 'stop_and_go' && penaltyForm.time_seconds) {
       body.time_seconds = parseInt(penaltyForm.time_seconds, 10) || null;
     }
-    apiFetch(`/api/participations/${encodeURIComponent(pid)}/penalties`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    apiFetch(`/api/incidents/${encodeURIComponent(incidentId)}/penalties`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => res.ok ? res.json() : res.json().then((d) => Promise.reject(new Error(d.detail?.[0]?.msg || d.detail || res.statusText))))
       .then((data) => setPenaltyMsg(`Penalty created: ${data.id}`))
       .catch((err) => setPenaltyMsg(err?.message || 'Error'))
@@ -492,6 +513,7 @@ const AdminConstructors = ({ tab }) => {
     if (updatePartForm.status) body.status = updatePartForm.status;
     if (updatePartForm.participation_state) body.participation_state = updatePartForm.participation_state;
     if (updatePartForm.position_overall !== '') body.position_overall = parseInt(updatePartForm.position_overall, 10);
+    if (updatePartForm.position_class !== '') body.position_class = parseInt(updatePartForm.position_class, 10);
     if (updatePartForm.laps_completed !== '') body.laps_completed = parseInt(updatePartForm.laps_completed, 10);
     if (updatePartForm.started_at) body.started_at = updatePartForm.started_at;
     if (updatePartForm.finished_at) body.finished_at = updatePartForm.finished_at;
@@ -767,9 +789,20 @@ const AdminConstructors = ({ tab }) => {
             </select>
           </div>
           <div className="admin-constructors__row">
-            <label className="admin-constructors__label">Position / Laps</label>
+            <label className="admin-constructors__label">Position overall / class / Laps</label>
             <input type="number" min="0" value={partForm.position_overall} onChange={(e) => setPartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--num" />
+            <input type="number" min="0" value={partForm.position_class} onChange={(e) => setPartForm((f) => ({ ...f, position_class: e.target.value }))} placeholder="class" className="admin-constructors__input admin-constructors__input--num" />
             <input type="number" min="0" value={partForm.laps_completed} onChange={(e) => setPartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--num" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Pace delta / Consistency score</label>
+            <input type="number" step="0.01" value={partForm.pace_delta} onChange={(e) => setPartForm((f) => ({ ...f, pace_delta: e.target.value }))} placeholder="optional" className="admin-constructors__input admin-constructors__input--num" />
+            <input type="number" step="0.01" min="0" max="100" value={partForm.consistency_score} onChange={(e) => setPartForm((f) => ({ ...f, consistency_score: e.target.value }))} placeholder="optional" className="admin-constructors__input admin-constructors__input--num" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Started / Finished (UTC)</label>
+            <input type="datetime-local" value={partForm.started_at} onChange={(e) => setPartForm((f) => ({ ...f, started_at: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" />
+            <input type="datetime-local" value={partForm.finished_at} onChange={(e) => setPartForm((f) => ({ ...f, finished_at: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" />
           </div>
           <button type="submit" className="btn primary admin-constructors__btn" disabled={partLoading}>{partLoading ? '…' : 'Create Participation'}</button>
           {partMsg && (
@@ -786,12 +819,21 @@ const AdminConstructors = ({ tab }) => {
             <input type="text" value={incidentForm.participation_id} onChange={(e) => setIncidentForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Code / Score (CRS)</label>
+            <input type="text" value={incidentForm.code} onChange={(e) => setIncidentForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. contact, off_track" className="admin-constructors__input admin-constructors__input--narrow" />
+            <input type="number" min="0" step="0.5" value={incidentForm.score} onChange={(e) => setIncidentForm((f) => ({ ...f, score: e.target.value }))} placeholder="score" title="Incident score (affects CRS)" className="admin-constructors__input admin-constructors__input--num" />
+          </div>
+          <div className="admin-constructors__row">
             <label className="admin-constructors__label">Type / Severity / Lap</label>
             <select value={incidentForm.incident_type} onChange={(e) => setIncidentForm((f) => ({ ...f, incident_type: e.target.value }))} className="admin-constructors__input admin-constructors__input--narrow">
               {INCIDENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <input type="number" min="1" max="5" value={incidentForm.severity} onChange={(e) => setIncidentForm((f) => ({ ...f, severity: e.target.value }))} className="admin-constructors__input admin-constructors__input--num" />
             <input type="number" min="0" value={incidentForm.lap} onChange={(e) => setIncidentForm((f) => ({ ...f, lap: e.target.value }))} placeholder="lap" className="admin-constructors__input admin-constructors__input--num" />
+          </div>
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Timestamp (UTC)</label>
+            <input type="datetime-local" value={incidentForm.timestamp_utc} onChange={(e) => setIncidentForm((f) => ({ ...f, timestamp_utc: e.target.value }))} className="admin-constructors__input admin-constructors__input--datetime" placeholder="optional" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Description</label>
@@ -804,11 +846,11 @@ const AdminConstructors = ({ tab }) => {
 
       <section className="admin-constructors__block">
         <h4 className="admin-constructors__subtitle">Create Penalty</h4>
-        <p className="admin-constructors__hint">Participation ID required. Time penalty: time_seconds must be 1, 2, 5, 10, 15 or 30. DSQ will set participation status to dsq.</p>
+        <p className="admin-constructors__hint">Penalty belongs to an Incident (Incident → Participation). Enter Incident ID; participation is derived automatically. Score is for UI/result only (CRS uses Incident.score). Time penalty: 1, 2, 5, 10, 15 or 30 s.</p>
         <form onSubmit={createPenalty} className="admin-constructors__form">
           <div className="admin-constructors__row">
-            <label className="admin-constructors__label">Participation ID</label>
-            <input type="text" value={penaltyForm.participation_id} onChange={(e) => setPenaltyForm((f) => ({ ...f, participation_id: e.target.value }))} placeholder="participation uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
+            <label className="admin-constructors__label">Incident ID</label>
+            <input type="text" value={penaltyForm.incident_id} onChange={(e) => setPenaltyForm((f) => ({ ...f, incident_id: e.target.value }))} placeholder="incident uuid" required className="admin-constructors__input admin-constructors__input--uuid" />
           </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Penalty type</label>
@@ -824,6 +866,10 @@ const AdminConstructors = ({ tab }) => {
               </select>
             </div>
           )}
+          <div className="admin-constructors__row">
+            <label className="admin-constructors__label">Score (UI only, optional)</label>
+            <input type="number" min="0" step="0.5" value={penaltyForm.score} onChange={(e) => setPenaltyForm((f) => ({ ...f, score: e.target.value }))} placeholder="optional" className="admin-constructors__input admin-constructors__input--num" />
+          </div>
           <div className="admin-constructors__row">
             <label className="admin-constructors__label">Lap</label>
             <input type="number" min="0" value={penaltyForm.lap} onChange={(e) => setPenaltyForm((f) => ({ ...f, lap: e.target.value }))} placeholder="optional" className="admin-constructors__input admin-constructors__input--num" />
@@ -856,8 +902,9 @@ const AdminConstructors = ({ tab }) => {
             </select>
           </div>
           <div className="admin-constructors__row">
-            <label className="admin-constructors__label">Position / Laps</label>
+            <label className="admin-constructors__label">Position overall / class / Laps</label>
             <input type="number" min="0" value={updatePartForm.position_overall} onChange={(e) => setUpdatePartForm((f) => ({ ...f, position_overall: e.target.value }))} placeholder="position" className="admin-constructors__input admin-constructors__input--num" />
+            <input type="number" min="0" value={updatePartForm.position_class} onChange={(e) => setUpdatePartForm((f) => ({ ...f, position_class: e.target.value }))} placeholder="class" className="admin-constructors__input admin-constructors__input--num" />
             <input type="number" min="0" value={updatePartForm.laps_completed} onChange={(e) => setUpdatePartForm((f) => ({ ...f, laps_completed: e.target.value }))} placeholder="laps" className="admin-constructors__input admin-constructors__input--num" />
           </div>
           <div className="admin-constructors__row">

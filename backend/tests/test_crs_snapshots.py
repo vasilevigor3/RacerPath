@@ -49,7 +49,7 @@ class TestRecomputeCrsSnapshot:
         rec = recompute_crs(session, driver.id, discipline, trigger_participation_id=None)
         assert rec.inputs_hash is not None
         assert rec.inputs_hash != ""
-        assert rec.algo_version == "crs_v1"
+        assert rec.algo_version == "crs_v2"
         assert rec.computed_from_participation_id is None
 
     def test_recompute_crs_stable_inputs_hash_same_data(self, session):

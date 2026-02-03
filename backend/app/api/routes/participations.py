@@ -174,7 +174,7 @@ def get_participation(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    participation = ParticipationRepository(session).get_by_id(participation_id)
+    participation = ParticipationRepository(session).get_by_id(participation_id, with_counts=True)
     if not participation:
         raise HTTPException(status_code=404, detail="Participation not found")
     if user.role not in {"admin"}:
@@ -232,11 +232,25 @@ def create_incident(
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
 
-    incident = Incident(**payload.model_dump())
+    incident = Incident(
+        participation_id=payload.participation_id,
+        code=payload.code,
+        score=payload.score,
+        incident_type=payload.incident_type.value,
+        severity=payload.severity,
+        lap=payload.lap,
+        timestamp_utc=payload.timestamp_utc,
+        description=payload.description,
+    )
     IncidentRepository(session).add(incident)
-    participation.incidents_count += 1
     session.commit()
     session.refresh(incident)
+    discipline_str = (
+        participation.discipline.value
+        if hasattr(participation.discipline, "value")
+        else str(participation.discipline)
+    )
+    recompute_crs(session, participation.driver_id, discipline_str, trigger_participation_id=participation.id)
     return incident
 
 
@@ -263,8 +277,13 @@ def create_penalty(
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    if participation_id != payload.participation_id:
-        raise HTTPException(status_code=400, detail="Participation mismatch")
+    if not payload.incident_id:
+        raise HTTPException(status_code=400, detail="incident_id is required; penalty belongs to an incident")
+    incident = IncidentRepository(session).get_by_id(payload.incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    if incident.participation_id != participation_id:
+        raise HTTPException(status_code=400, detail="Incident does not belong to this participation")
 
     participation = ParticipationRepository(session).get_by_id(participation_id)
     if not participation:
@@ -276,7 +295,7 @@ def create_penalty(
 
     score = payload.score if payload.score is not None else get_score_for_penalty_type(payload.penalty_type.value)
     penalty = Penalty(
-        participation_id=payload.participation_id,
+        incident_id=payload.incident_id,
         penalty_type=payload.penalty_type.value,
         score=score,
         time_seconds=payload.time_seconds,
@@ -284,11 +303,11 @@ def create_penalty(
         description=payload.description,
     )
     PenaltyRepository(session).add(penalty)
-    participation.penalties_count += 1
     if payload.penalty_type == PenaltyTypeEnum.dsq:
         participation.status = ParticipationStatus.dsq
     session.commit()
     session.refresh(penalty)
+    session.refresh(penalty, attribute_names=["incident"])
     return penalty
 
 

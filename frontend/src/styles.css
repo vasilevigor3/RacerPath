@@ -406,6 +406,55 @@ footer {
   margin-top: 1rem;
 }
 
+.upcoming-events-scroll,
+.past-events-scroll {
+  height: 10rem;
+  min-height: 10rem;
+  overflow-y: auto;
+}
+
+.event-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.event-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 6px;
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.event-card:hover {
+  background: var(--card-bg-hover, #f5f5f5);
+  border-color: var(--border-hover, #ccc);
+}
+
+.event-card__title {
+  font-weight: 600;
+  display: block;
+}
+
+.event-card__meta {
+  font-size: 0.9rem;
+  color: var(--muted, #666);
+  display: block;
+}
+
+.penalty-cards-scroll {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
 .penalty-cards {
   display: flex;
   flex-direction: column;
@@ -487,6 +536,11 @@ footer {
   color: var(--muted, #666);
 }
 
+.incident-cards-scroll {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
 .incident-cards {
   display: flex;
   flex-direction: column;
@@ -566,6 +620,12 @@ footer {
 .incident-cards__loading {
   padding: 0.5rem 0;
   color: var(--muted, #666);
+}
+
+.participation-cards-scroll {
+  height: 10rem;
+  min-height: 10rem;
+  overflow-y: auto;
 }
 
 .participation-cards {

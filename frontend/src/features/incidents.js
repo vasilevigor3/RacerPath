@@ -5,6 +5,7 @@ import { parseOptionalInt, parseDateTime } from '../utils/parse.js';
 const incidentForm = document.querySelector('[data-incident-form]');
 const incidentStatus = document.querySelector('[data-incident-status]');
 const incidentList = document.querySelector('[data-incident-list]');
+const incidentScrollEl = document.querySelector('[data-incident-scroll]');
 const incidentsTotalEls = document.querySelectorAll('[data-incidents-total], [data-incidents-total-card]');
 const incidentsListView = document.querySelector('[data-incidents-list-view]');
 const incidentDetailPanel = document.querySelector('[data-incident-detail]');
@@ -15,6 +16,11 @@ const incidentDetailDesc = document.querySelector('[data-incident-detail-desc]')
 const incidentDetailBack = document.querySelector('[data-incident-detail-back]');
 
 let incidentsCache = [];
+let incidentsTotalCount = 0;
+let incidentLoadingMore = false;
+let lastIncidentsDriver = null;
+const INCIDENT_PAGE_SIZE = 3;
+let incidentDisplayLimit = INCIDENT_PAGE_SIZE;
 
 function setIncidentsTotal(total) {
   const value = total == null ? '0' : String(total);
@@ -53,6 +59,73 @@ function hideIncidentDetail() {
   if (incidentsListView) incidentsListView.classList.remove('is-hidden');
 }
 
+function renderIncidentCard(item) {
+  const typeLabel = item.incident_type || '—';
+  const severity = item.severity ? `S${item.severity}` : 'S1';
+  const race = item.event_title || '—';
+  const lapHtml = item.lap != null && item.lap !== undefined
+    ? `<span class="incident-card__lap">Lap ${item.lap}</span>`
+    : '';
+  return `<button type="button" class="incident-card" data-incident-id="${item.id}" role="listitem">
+    <span class="incident-card__type">${typeLabel} · ${severity}</span>
+    <span class="incident-card__race">${race}</span>
+    ${lapHtml}
+  </button>`;
+}
+
+function renderIncidentsSlice(from, to) {
+  const slice = incidentsCache.slice(from, to);
+  return slice.map((item) => renderIncidentCard(item)).join('');
+}
+
+async function resetIncidentsToFirstPage() {
+  incidentDisplayLimit = INCIDENT_PAGE_SIZE;
+  if (!incidentList || !lastIncidentsDriver) return;
+  try {
+    const url = `/api/incidents?driver_id=${lastIncidentsDriver.id}&limit=${INCIDENT_PAGE_SIZE}&offset=0`;
+    const res = await apiFetch(url);
+    if (!res.ok) return;
+    const page = await res.json();
+    incidentsCache = page;
+    incidentList.innerHTML = page.length ? page.map((item) => renderIncidentCard(item)).join('') : '<div role="listitem">No incidents yet.</div>';
+    if (incidentScrollEl) incidentScrollEl.scrollTop = 0;
+  } catch (_) {}
+}
+
+async function fetchIncidentsNextPage() {
+  if (!lastIncidentsDriver || incidentLoadingMore || incidentsCache.length >= incidentsTotalCount) return;
+  incidentLoadingMore = true;
+  const offset = incidentsCache.length;
+  try {
+    const url = `/api/incidents?driver_id=${lastIncidentsDriver.id}&limit=${INCIDENT_PAGE_SIZE}&offset=${offset}`;
+    const res = await apiFetch(url);
+    if (!res.ok) return;
+    const page = await res.json();
+    incidentsCache.push(...page);
+    const html = page.map((item) => renderIncidentCard(item)).join('');
+    if (incidentList && html) incidentList.insertAdjacentHTML('beforeend', html);
+    incidentDisplayLimit = incidentsCache.length;
+  } finally {
+    incidentLoadingMore = false;
+  }
+}
+
+function setupIncidentScrollLoad() {
+  if (!incidentScrollEl || !incidentList) return;
+  incidentScrollEl.addEventListener('scroll', () => {
+    const { scrollTop, clientHeight, scrollHeight } = incidentScrollEl;
+    if (scrollHeight <= clientHeight) return;
+    if (scrollTop + clientHeight < scrollHeight - 30) return;
+    if (incidentsCache.length >= incidentsTotalCount) return;
+    fetchIncidentsNextPage();
+  });
+}
+setupIncidentScrollLoad();
+
+window.addEventListener('cabinet-tab-change', (e) => {
+  if (e.detail?.tab === 'risk-flags') resetIncidentsToFirstPage();
+});
+
 function setupIncidentDetailListeners() {
   if (incidentList) {
     incidentList.addEventListener('click', (e) => {
@@ -75,36 +148,26 @@ export const loadIncidents = async (driver) => {
   incidentList.innerHTML = '<div role="listitem" class="incident-cards__loading">Loading...</div>';
   setIncidentsTotal(0);
   incidentsCache = [];
+  incidentsTotalCount = 0;
+  lastIncidentsDriver = driver || null;
   try {
-    const url = driver ? `/api/incidents?driver_id=${driver.id}&limit=200` : '/api/incidents?limit=200';
     const countUrl = driver ? `/api/incidents/count?driver_id=${driver.id}` : '/api/incidents/count';
-    const [listRes, countRes] = await Promise.all([apiFetch(url), apiFetch(countUrl)]);
+    const listUrl = driver ? `/api/incidents?driver_id=${driver.id}&limit=${INCIDENT_PAGE_SIZE}&offset=0` : `/api/incidents?limit=${INCIDENT_PAGE_SIZE}&offset=0`;
+    const [countRes, listRes] = await Promise.all([apiFetch(countUrl), apiFetch(listUrl)]);
     if (!listRes.ok) throw new Error('failed');
     const incidents = await listRes.json();
     incidentsCache = incidents;
+    incidentDisplayLimit = incidents.length;
     if (countRes.ok) {
       const { total } = await countRes.json();
-      setIncidentsTotal(total ?? 0);
+      incidentsTotalCount = total ?? 0;
+      setIncidentsTotal(incidentsTotalCount);
     }
     if (!incidents.length) {
       incidentList.innerHTML = '<div role="listitem">No incidents yet.</div>';
       return;
     }
-    incidentList.innerHTML = incidents
-      .map((item) => {
-        const typeLabel = item.incident_type || '—';
-        const severity = item.severity ? `S${item.severity}` : 'S1';
-        const race = item.event_title || '—';
-        const lapHtml = item.lap != null && item.lap !== undefined
-          ? `<span class="incident-card__lap">Lap ${item.lap}</span>`
-          : '';
-        return `<button type="button" class="incident-card" data-incident-id="${item.id}" role="listitem">
-          <span class="incident-card__type">${typeLabel} · ${severity}</span>
-          <span class="incident-card__race">${race}</span>
-          ${lapHtml}
-        </button>`;
-      })
-      .join('');
+    incidentList.innerHTML = incidents.map((item) => renderIncidentCard(item)).join('');
   } catch (err) {
     incidentList.innerHTML = '<div role="listitem">Unable to load incidents.</div>';
   }

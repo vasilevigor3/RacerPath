@@ -149,6 +149,7 @@ def list_upcoming_events(
     user_id: str,
     user_role: str,
     limit: int = 3,
+    offset: int = 0,
 ) -> list[EventRead]:
     """Upcoming events for driver: start_time_utc > now, tier match, sim_games, rig filter."""
     driver_repo = DriverRepository(session)
@@ -166,6 +167,7 @@ def list_upcoming_events(
         driver_tier=driver_tier,
         driver_games=driver_games if driver_games else None,
         limit=limit,
+        offset=offset,
     )
     if not event_ids:
         return []
@@ -181,6 +183,100 @@ def list_upcoming_events(
             continue
         out.append(EventRead.model_validate(e).model_copy(update={"event_tier": tier}))
     return out
+
+
+def list_upcoming_count(
+    session: Session,
+    driver_id: str,
+    user_id: str,
+    user_role: str,
+) -> int:
+    """Count upcoming events for driver (tier + sim_games match; rig not applied to count)."""
+    driver_repo = DriverRepository(session)
+    event_repo = EventRepository(session)
+
+    driver = driver_repo.get_by_id(driver_id)
+    if not driver or (user_role != "admin" and driver.user_id != user_id):
+        return 0
+
+    driver_tier = getattr(driver, "tier", "E0") or "E0"
+    driver_games = expand_driver_games_for_event_match(driver.sim_games or [])
+    return event_repo.count_upcoming_ids(
+        driver_tier=driver_tier,
+        driver_games=driver_games if driver_games else None,
+    )
+
+
+def list_past_events(
+    session: Session,
+    driver_id: str,
+    user_id: str,
+    user_role: str,
+    limit: int = 3,
+    offset: int = 0,
+    recent_days: int = 30,
+) -> list[EventRead]:
+    """Past events for driver: start_time_utc < now, within recent_days, tier match, rig filter."""
+    driver_repo = DriverRepository(session)
+    event_repo = EventRepository(session)
+    classification_repo = ClassificationRepository(session)
+
+    driver = driver_repo.get_by_id(driver_id)
+    if not driver or (user_role != "admin" and driver.user_id != user_id):
+        return []
+
+    driver_tier = getattr(driver, "tier", "E0") or "E0"
+    driver_games = expand_driver_games_for_event_match(driver.sim_games or [])
+
+    event_ids = event_repo.list_past_ids(
+        driver_tier=driver_tier,
+        driver_games=driver_games if driver_games else None,
+        limit=limit,
+        offset=offset,
+        recent_days=recent_days,
+    )
+    if not event_ids:
+        return []
+
+    events = event_repo.list_by_ids(event_ids, order_by_start=False)
+    by_id = {e.id: e for e in events}
+    tier_by_event = classification_repo.tier_by_event(event_ids)
+    out = []
+    for eid in event_ids:
+        e = by_id.get(eid)
+        if not e:
+            continue
+        tier = tier_by_event.get(e.id)
+        if tier != driver_tier:
+            continue
+        if not driver_rig_satisfies_event(driver.rig_options, e.rig_options):
+            continue
+        out.append(EventRead.model_validate(e).model_copy(update={"event_tier": tier}))
+    return out
+
+
+def list_past_count(
+    session: Session,
+    driver_id: str,
+    user_id: str,
+    user_role: str,
+    recent_days: int = 30,
+) -> int:
+    """Count past events for driver within recent_days."""
+    driver_repo = DriverRepository(session)
+    event_repo = EventRepository(session)
+
+    driver = driver_repo.get_by_id(driver_id)
+    if not driver or (user_role != "admin" and driver.user_id != user_id):
+        return 0
+
+    driver_tier = getattr(driver, "tier", "E0") or "E0"
+    driver_games = expand_driver_games_for_event_match(driver.sim_games or [])
+    return event_repo.count_past_ids(
+        driver_tier=driver_tier,
+        driver_games=driver_games if driver_games else None,
+        recent_days=recent_days,
+    )
 
 
 def events_breakdown(session: Session) -> dict[str, Any]:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from sqlalchemy import func
@@ -102,8 +102,9 @@ class EventRepository:
         driver_tier: str,
         driver_games: List[str] | None = None,
         limit: int = 3,
+        offset: int = 0,
     ) -> List[str]:
-        """Event ids with start_time_utc > now, tier match, optional game filter; order by start, limit."""
+        """Event ids with start_time_utc > now, tier match, optional game filter; order by start, limit/offset."""
         now = datetime.now(timezone.utc)
         query = (
             self._session.query(Event.id)
@@ -120,10 +121,87 @@ class EventRepository:
             query.with_entities(Event.id, Event.start_time_utc)
             .group_by(Event.id, Event.start_time_utc)
             .order_by(Event.start_time_utc.asc())
+            .offset(offset)
             .limit(limit)
         )
         rows = subq.all()
         return [row[0] for row in rows]
+
+    def count_upcoming_ids(
+        self,
+        driver_tier: str,
+        driver_games: List[str] | None = None,
+    ) -> int:
+        """Count events with start_time_utc > now, tier match, optional game filter."""
+        now = datetime.now(timezone.utc)
+        query = (
+            self._session.query(Event.id)
+            .outerjoin(Classification, Event.id == Classification.event_id)
+            .filter(
+                Event.start_time_utc.isnot(None),
+                Event.start_time_utc > now,
+                func.coalesce(Classification.event_tier, "E2") == driver_tier,
+            )
+        )
+        if driver_games:
+            query = query.filter(Event.game.in_(driver_games))
+        return query.distinct().count()
+
+    def list_past_ids(
+        self,
+        driver_tier: str,
+        driver_games: List[str] | None = None,
+        limit: int = 3,
+        offset: int = 0,
+        recent_days: int = 30,
+    ) -> List[str]:
+        """Event ids with start_time_utc < now and within recent_days, tier match; order by start desc."""
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=recent_days)
+        query = (
+            self._session.query(Event.id)
+            .outerjoin(Classification, Event.id == Classification.event_id)
+            .filter(
+                Event.start_time_utc.isnot(None),
+                Event.start_time_utc < now,
+                Event.start_time_utc >= since,
+                func.coalesce(Classification.event_tier, "E2") == driver_tier,
+            )
+        )
+        if driver_games:
+            query = query.filter(Event.game.in_(driver_games))
+        subq = (
+            query.with_entities(Event.id, Event.start_time_utc)
+            .group_by(Event.id, Event.start_time_utc)
+            .order_by(Event.start_time_utc.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = subq.all()
+        return [row[0] for row in rows]
+
+    def count_past_ids(
+        self,
+        driver_tier: str,
+        driver_games: List[str] | None = None,
+        recent_days: int = 30,
+    ) -> int:
+        """Count past events within recent_days, tier match."""
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=recent_days)
+        query = (
+            self._session.query(Event.id)
+            .outerjoin(Classification, Event.id == Classification.event_id)
+            .filter(
+                Event.start_time_utc.isnot(None),
+                Event.start_time_utc < now,
+                Event.start_time_utc >= since,
+                func.coalesce(Classification.event_tier, "E2") == driver_tier,
+            )
+        )
+        if driver_games:
+            query = query.filter(Event.game.in_(driver_games))
+        return query.distinct().count()
 
 
 def _parse_iso_datetime(value: str) -> datetime:

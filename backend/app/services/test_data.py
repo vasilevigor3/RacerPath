@@ -12,6 +12,7 @@ from app.models.event import Event
 from app.models.incident import Incident
 from app.models.license_level import LicenseLevel
 from app.models.participation import Participation
+from app.models.penalty import Penalty
 from app.models.raw_event import RawEvent
 from app.models.recommendation import Recommendation
 from app.models.task_completion import TaskCompletion
@@ -48,6 +49,9 @@ def reset_all_tasks_licenses_events(session: Session) -> dict:
         )
         session.query(Incident).filter(
             Incident.participation_id.in_(participation_ids)
+        ).delete(synchronize_session=False)
+        session.query(Penalty).filter(
+            Penalty.participation_id.in_(participation_ids)
         ).delete(synchronize_session=False)
 
     task_completions_deleted = session.query(TaskCompletion).delete(synchronize_session=False)

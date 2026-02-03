@@ -14,6 +14,7 @@ const statLicenses = document.querySelector('[data-stat-licenses]');
 const statIncidents = document.querySelector('[data-stat-incidents]');
 const statRiskFlags = document.querySelector('[data-stat-risk-flags]');
 const dashboardParticipationsList = document.querySelector('[data-dashboard-participations]');
+const participationScrollEl = document.querySelector('[data-participation-scroll]');
 const dashboardParticipationsListView = document.querySelector('[data-dashboard-participations-list-view]');
 const participationDetailPanel = document.querySelector('[data-participation-detail]');
 const participationDetailEvent = document.querySelector('[data-participation-detail-event]');
@@ -37,6 +38,8 @@ const recReadinessDesc = document.querySelector('[data-rec-readiness-desc]');
 const upcomingEventsList = document.querySelector('[data-upcoming-events]');
 const dashboardEventsList = document.querySelector('[data-dashboard-events]');
 const dashboardPastEventsList = document.querySelector('[data-dashboard-past-events]');
+const upcomingEventsScrollEl = document.querySelector('[data-upcoming-events-scroll]');
+const pastEventsScrollEl = document.querySelector('[data-past-events-scroll]');
 const licenseCurrent = document.querySelector('[data-license-current]');
 const licenseNext = document.querySelector('[data-license-next]');
 const licenseReqs = document.querySelector('[data-license-reqs]');
@@ -62,6 +65,17 @@ const getParticipationMinutes = (participation) => {
   const minutes = Math.abs(Math.round((end - start) / 60000));
   return minutes;
 };
+
+function renderParticipationCard(item) {
+  const state = item.participation_state ?? item.status ?? '—';
+  const title = item.event_title || (item.event_id ? `${String(item.event_id).slice(0, 8)}…` : '—');
+  const sub = item.position_overall != null ? `P${item.position_overall}` : state;
+  const safe = (s) => (s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
+  return `<button type="button" class="participation-card" data-participation-id="${safe(item.id)}" role="listitem">
+    <span class="participation-card__title">${safe(title)}</span>
+    <span class="participation-card__meta">${safe(item.discipline?.toUpperCase() ?? '—')} · ${safe(sub)}</span>
+  </button>`;
+}
 
 function showParticipationDetail(item) {
   if (!participationDetailPanel || !participationDetailEvent || !participationDetailMeta || !participationDetailStats) return;
@@ -171,21 +185,13 @@ export const loadDashboardStats = async (driver) => {
   if (statIncidents) statIncidents.textContent = incidentTotal.toString();
 
   if (dashboardParticipationsList) {
-    const limit = 50;
-    const slice = participations.slice(0, limit);
-    if (!slice.length) {
+    participationDisplayLimit = PARTICIPATION_PAGE_SIZE;
+    if (!participations.length) {
       dashboardParticipationsList.innerHTML = '<div role="listitem">No participations loaded.</div>';
     } else {
-      dashboardParticipationsList.innerHTML = slice
-        .map((item) => {
-          const state = item.participation_state ?? item.status ?? '—';
-          const title = item.event_title || (item.event_id ? `${String(item.event_id).slice(0, 8)}…` : '—');
-          const sub = item.position_overall != null ? `P${item.position_overall}` : state;
-          return `<button type="button" class="participation-card" data-participation-id="${item.id}" role="listitem">
-            <span class="participation-card__title">${title}</span>
-            <span class="participation-card__meta">${item.discipline?.toUpperCase() ?? '—'} · ${sub}</span>
-          </button>`;
-        })
+      const initial = participations.slice(0, participationDisplayLimit);
+      dashboardParticipationsList.innerHTML = initial
+        .map((item) => renderParticipationCard(item))
         .join('');
     }
   }
@@ -688,6 +694,17 @@ let lastDriverForActiveRace = null;
 let lastDashboardEventsData = [];
 let lastDashboardPastEventsData = [];
 let lastUpcomingEventsData = [];
+const EVENT_PAGE_SIZE = 3;
+let upcomingEventsCache = [];
+let upcomingEventsTotalCount = 0;
+let upcomingEventsLoadingMore = false;
+let lastUpcomingEventsDriver = null;
+let pastEventsCache = [];
+let pastEventsTotalCount = 0;
+let pastEventsLoadingMore = false;
+let lastPastEventsDriver = null;
+const PARTICIPATION_PAGE_SIZE = 3;
+let participationDisplayLimit = PARTICIPATION_PAGE_SIZE;
 let lastShownEventId = null;
 let lastShownEvent = null;
 let lastDriverParticipations = [];
@@ -980,6 +997,7 @@ function initDashboardEventsRegisterDelegation() {
     if (riskDetailBack) {
       e.preventDefault();
       hideRiskFlagDetail();
+      document.querySelector('[data-tab-button="overview"]')?.click();
       return;
     }
     const licenseCodeBtn = e.target.closest('[data-license-code]');
@@ -1076,10 +1094,13 @@ function initDashboardEventsRegisterDelegation() {
     const upcomingList = e.target.closest('[data-upcoming-events]');
     const pastList = e.target.closest('[data-dashboard-past-events]');
     const textBtn = (list || upcomingList || pastList) ? e.target.closest('.event-list-item__text') : null;
-    if (textBtn && (list || upcomingList || pastList)) {
+    const cardBtn = (list || pastList) ? e.target.closest('.event-card') : null;
+    const eventBtn = textBtn || cardBtn;
+    if (eventBtn && (list || upcomingList || pastList)) {
       e.preventDefault();
-      const eventId = textBtn.getAttribute('data-event-id');
-      const driver = lastDriverForEvents;
+      const eventId = eventBtn.getAttribute('data-event-id');
+      const driverId = eventBtn.getAttribute('data-driver-id');
+      const driver = lastDriverForEvents || (driverId && { id: driverId }) || null;
       if (!eventId || !driver) return;
       if (upcomingList) {
         const eventsTab = document.querySelector('[data-tab-button="events"]');
@@ -1089,7 +1110,7 @@ function initDashboardEventsRegisterDelegation() {
         const res = await apiFetch(`/api/events/${encodeURIComponent(eventId)}`);
         if (!res.ok) return;
         const event = await res.json();
-        showEventDetail(event, driver);
+        showEventDetail(event, lastDriverForEvents || driver);
       } catch (_) {}
       return;
     }
@@ -1168,6 +1189,136 @@ export const loadActiveRace = async (driver) => {
   }
 };
 
+function renderEventCard(event, driver) {
+  const sessionLabel = event.session_type === 'training' ? 'Training' : 'Race';
+  const timeLabel = event.start_time_utc ? formatDateTime(event.start_time_utc) : '';
+  const title = escapeHtml(event.title || '—');
+  const meta = [sessionLabel, event.format_type || ''].filter(Boolean).join(' · ') + (timeLabel ? ` · ${escapeHtml(timeLabel)}` : '');
+  const driverId = driver ? escapeHtml(driver.id) : '';
+  return `<button type="button" class="event-card" data-event-id="${escapeHtml(event.id)}" data-driver-id="${driverId}" role="listitem">
+    <span class="event-card__title">${title}</span>
+    <span class="event-card__meta">${meta}</span>
+  </button>`;
+}
+
+async function fetchUpcomingNextPage() {
+  if (!lastUpcomingEventsDriver || upcomingEventsLoadingMore || upcomingEventsCache.length >= upcomingEventsTotalCount) return;
+  upcomingEventsLoadingMore = true;
+  const offset = upcomingEventsCache.length;
+  try {
+    const url = `/api/events/upcoming?driver_id=${lastUpcomingEventsDriver.id}&discipline=${lastUpcomingEventsDriver.primary_discipline || 'gt'}&limit=${EVENT_PAGE_SIZE}&offset=${offset}`;
+    const res = await apiFetch(url);
+    if (!res.ok) return;
+    const page = await res.json();
+    upcomingEventsCache.push(...page);
+    const html = page.map((ev) => renderEventCard(ev, lastUpcomingEventsDriver)).join('');
+    if (dashboardEventsList && html) dashboardEventsList.insertAdjacentHTML('beforeend', html);
+  } finally {
+    upcomingEventsLoadingMore = false;
+  }
+}
+
+async function fetchPastNextPage() {
+  if (!lastPastEventsDriver || pastEventsLoadingMore || pastEventsCache.length >= pastEventsTotalCount) return;
+  pastEventsLoadingMore = true;
+  const offset = pastEventsCache.length;
+  try {
+    const url = `/api/events/past?driver_id=${lastPastEventsDriver.id}&limit=${EVENT_PAGE_SIZE}&offset=${offset}`;
+    const res = await apiFetch(url);
+    if (!res.ok) return;
+    const page = await res.json();
+    pastEventsCache.push(...page);
+    const html = page.map((ev) => renderEventCard(ev, lastPastEventsDriver)).join('');
+    if (dashboardPastEventsList && html) dashboardPastEventsList.insertAdjacentHTML('beforeend', html);
+  } finally {
+    pastEventsLoadingMore = false;
+  }
+}
+
+async function resetUpcomingEventsToFirstPage() {
+  if (!dashboardEventsList || !lastUpcomingEventsDriver) return;
+  try {
+    const url = `/api/events/upcoming?driver_id=${lastUpcomingEventsDriver.id}&discipline=${lastUpcomingEventsDriver.primary_discipline || 'gt'}&limit=${EVENT_PAGE_SIZE}&offset=0`;
+    const res = await apiFetch(url);
+    if (!res.ok) return;
+    const page = await res.json();
+    upcomingEventsCache = page;
+    dashboardEventsList.innerHTML = page.length
+      ? page.map((ev) => renderEventCard(ev, lastUpcomingEventsDriver)).join('')
+      : '<div role="listitem">No upcoming events.</div>';
+    if (upcomingEventsScrollEl) upcomingEventsScrollEl.scrollTop = 0;
+  } catch (_) {}
+}
+
+async function resetPastEventsToFirstPage() {
+  if (!dashboardPastEventsList || !lastPastEventsDriver) return;
+  try {
+    const url = `/api/events/past?driver_id=${lastPastEventsDriver.id}&limit=${EVENT_PAGE_SIZE}&offset=0`;
+    const res = await apiFetch(url);
+    if (!res.ok) return;
+    const page = await res.json();
+    pastEventsCache = page;
+    dashboardPastEventsList.innerHTML = page.length
+      ? page.map((ev) => renderEventCard(ev, lastPastEventsDriver)).join('')
+      : '<div role="listitem">No past events.</div>';
+    if (pastEventsScrollEl) pastEventsScrollEl.scrollTop = 0;
+  } catch (_) {}
+}
+
+function setupEventsScrollLoad() {
+  if (upcomingEventsScrollEl) {
+    upcomingEventsScrollEl.addEventListener('scroll', () => {
+      const { scrollTop, clientHeight, scrollHeight } = upcomingEventsScrollEl;
+      if (scrollHeight <= clientHeight) return;
+      if (scrollTop + clientHeight < scrollHeight - 30) return;
+      fetchUpcomingNextPage();
+    });
+  }
+  if (pastEventsScrollEl) {
+    pastEventsScrollEl.addEventListener('scroll', () => {
+      const { scrollTop, clientHeight, scrollHeight } = pastEventsScrollEl;
+      if (scrollHeight <= clientHeight) return;
+      if (scrollTop + clientHeight < scrollHeight - 30) return;
+      fetchPastNextPage();
+    });
+  }
+}
+setupEventsScrollLoad();
+
+function resetParticipationsToFirstPage() {
+  participationDisplayLimit = PARTICIPATION_PAGE_SIZE;
+  if (!dashboardParticipationsList || !lastDriverParticipations.length) return;
+  const initial = lastDriverParticipations.slice(0, participationDisplayLimit);
+  dashboardParticipationsList.innerHTML = initial.map((item) => renderParticipationCard(item)).join('');
+  if (participationScrollEl) participationScrollEl.scrollTop = 0;
+}
+
+function setupParticipationScrollLoad() {
+  if (!participationScrollEl || !dashboardParticipationsList) return;
+  participationScrollEl.addEventListener('scroll', () => {
+    const { scrollTop, clientHeight, scrollHeight } = participationScrollEl;
+    if (scrollHeight <= clientHeight) return;
+    if (scrollTop + clientHeight < scrollHeight - 30) return;
+    if (participationDisplayLimit >= lastDriverParticipations.length) return;
+    const nextLimit = Math.min(participationDisplayLimit + PARTICIPATION_PAGE_SIZE, lastDriverParticipations.length);
+    const slice = lastDriverParticipations.slice(participationDisplayLimit, nextLimit);
+    const html = slice.map((item) => renderParticipationCard(item)).join('');
+    if (html) dashboardParticipationsList.insertAdjacentHTML('beforeend', html);
+    participationDisplayLimit = nextLimit;
+  });
+}
+setupParticipationScrollLoad();
+
+window.addEventListener('cabinet-tab-change', (e) => {
+  if (e.detail?.tab === 'events') {
+    resetUpcomingEventsToFirstPage();
+    resetPastEventsToFirstPage();
+  }
+  if (e.detail?.tab === 'overview') {
+    resetParticipationsToFirstPage();
+  }
+});
+
 export const loadDashboardEvents = async (driver) => {
   if (!dashboardEventsList && !upcomingEventsList) return;
   if (!driver) {
@@ -1175,11 +1326,19 @@ export const loadDashboardEvents = async (driver) => {
     lastDashboardEventsData = [];
     lastDashboardPastEventsData = [];
     lastUpcomingEventsData = [];
+    upcomingEventsCache = [];
+    pastEventsCache = [];
+    lastUpcomingEventsDriver = null;
+    lastPastEventsDriver = null;
     hideEventDetail();
     loadActiveRace(null);
-    if (dashboardEventsList) setList(dashboardEventsList, [], 'Log in to load events.');
+    if (dashboardEventsList) {
+      dashboardEventsList.innerHTML = '<div role="listitem">Log in to load events.</div>';
+    }
     if (upcomingEventsList) setList(upcomingEventsList, [], 'Log in to load events.');
-    if (dashboardPastEventsList) setList(dashboardPastEventsList, [], 'No past events.');
+    if (dashboardPastEventsList) {
+      dashboardPastEventsList.innerHTML = '<div role="listitem">No past events.</div>';
+    }
     return;
   }
   lastDriverForEvents = driver;
@@ -1212,10 +1371,13 @@ export const loadDashboardEvents = async (driver) => {
     return `${event.title} · ${sessionLabel} · ${event.format_type}${gameLabel}${timeLabel}${statusSuffix}`;
   };
   try {
-    const eventsUrl = `/api/events?driver_id=${driver.id}&same_tier=${sameTier}&rig_filter=${sameTier}`;
-    const [eventsRes, upcomingRes] = await Promise.all([
-      apiFetch(eventsUrl),
-      apiFetch(`/api/events/upcoming?driver_id=${driver.id}&discipline=${driver.primary_discipline || 'gt'}`),
+    const discipline = driver.primary_discipline || 'gt';
+    const [eventsRes, upcomingCountRes, pastCountRes, upcomingPageRes, pastPageRes] = await Promise.all([
+      apiFetch(`/api/events?driver_id=${driver.id}&same_tier=${sameTier}&rig_filter=${sameTier}`),
+      apiFetch(`/api/events/upcoming/count?driver_id=${driver.id}`),
+      apiFetch(`/api/events/past/count?driver_id=${driver.id}`),
+      apiFetch(`/api/events/upcoming?driver_id=${driver.id}&discipline=${discipline}&limit=${EVENT_PAGE_SIZE}&offset=0`),
+      apiFetch(`/api/events/past?driver_id=${driver.id}&limit=${EVENT_PAGE_SIZE}&offset=0`),
     ]);
     if (!eventsRes.ok) throw new Error('failed');
     const events = await eventsRes.json();
@@ -1225,59 +1387,72 @@ export const loadDashboardEvents = async (driver) => {
       const startMs = new Date(e.start_time_utc).getTime();
       return !Number.isNaN(startMs) && startMs > now;
     });
-    const dashboardEventsData = [...waitingOrUpcoming]
-      .sort((a, b) => new Date(a.start_time_utc).getTime() - new Date(b.start_time_utc).getTime())
-      .slice(0, 5);
-    lastDashboardEventsData = dashboardEventsData;
+    lastDashboardEventsData = [...waitingOrUpcoming].sort(
+      (a, b) => new Date(a.start_time_utc).getTime() - new Date(b.start_time_utc).getTime()
+    );
 
     const RECENT_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
     const cutoffMs = now - RECENT_DAYS_MS;
-    const pastEventsData = events
+    lastDashboardPastEventsData = events
       .filter((e) => {
         if (!e.start_time_utc) return false;
         const startMs = new Date(e.start_time_utc).getTime();
         return !Number.isNaN(startMs) && startMs < now && startMs >= cutoffMs;
       })
-      .sort((a, b) => new Date(b.start_time_utc).getTime() - new Date(a.start_time_utc).getTime())
-      .slice(0, 10);
-    lastDashboardPastEventsData = pastEventsData;
+      .sort((a, b) => new Date(b.start_time_utc).getTime() - new Date(a.start_time_utc).getTime());
 
-    let upcomingEventsData = [];
-    if (upcomingRes.ok) {
-      const upcomingEvents = await upcomingRes.json();
-      upcomingEventsData = Array.isArray(upcomingEvents) ? upcomingEvents : [];
+
+    lastUpcomingEventsDriver = driver;
+    lastPastEventsDriver = driver;
+    if (upcomingCountRes.ok) {
+      const { total } = await upcomingCountRes.json();
+      upcomingEventsTotalCount = total ?? 0;
     }
-    lastUpcomingEventsData = upcomingEventsData;
+    if (pastCountRes.ok) {
+      const { total } = await pastCountRes.json();
+      pastEventsTotalCount = total ?? 0;
+    }
+
+    let upcomingPage = [];
+    if (upcomingPageRes.ok) upcomingPage = await upcomingPageRes.json();
+    upcomingEventsCache = Array.isArray(upcomingPage) ? upcomingPage : [];
+    if (dashboardEventsList) {
+      if (!upcomingEventsCache.length) {
+        dashboardEventsList.innerHTML = '<div role="listitem">No upcoming events.</div>';
+      } else {
+        dashboardEventsList.innerHTML = upcomingEventsCache.map((ev) => renderEventCard(ev, driver)).join('');
+      }
+    }
+
+    let pastPage = [];
+    if (pastPageRes.ok) pastPage = await pastPageRes.json();
+    pastEventsCache = Array.isArray(pastPage) ? pastPage : [];
+    if (dashboardPastEventsList) {
+      if (!pastEventsCache.length) {
+        dashboardPastEventsList.innerHTML = '<div role="listitem">No past events.</div>';
+      } else {
+        dashboardPastEventsList.innerHTML = pastEventsCache.map((ev) => renderEventCard(ev, driver)).join('');
+      }
+    }
 
     const noEventsFromApi = !events || events.length === 0;
     const hintNoEvents = noEventsFromApi && driver.sim_games && driver.sim_games.length
       ? 'No events for your selected games. Add ACC (or your sim) in Profile → Sim games to see test events.'
       : null;
-    if (dashboardEventsList) {
-      const emptyText = hintNoEvents || (driver.sim_games && driver.sim_games.length
-        ? 'No upcoming events.'
-        : 'Add sim games to see events.');
-      setEventListWithRegister(dashboardEventsList, dashboardEventsData, driver, emptyText, formatEventItem);
-    }
-    if (dashboardPastEventsList) {
-      const emptyText = hintNoEvents || (driver.sim_games && driver.sim_games.length
-        ? 'No past events in the last 30 days.'
-        : 'Add sim games to see events.');
-      setEventListWithRegister(dashboardPastEventsList, pastEventsData, driver, emptyText, formatEventItem);
-    }
+    lastUpcomingEventsData = upcomingEventsCache;
     if (upcomingEventsList) {
       const emptyText = hintNoEvents || (driver.sim_games && driver.sim_games.length
         ? 'No upcoming events for your games.'
         : 'No upcoming events. Add sim games to see events.');
-      setEventListWithRegister(upcomingEventsList, upcomingEventsData, driver, emptyText, formatEventItem);
+      setEventListWithRegister(upcomingEventsList, lastUpcomingEventsData, driver, emptyText, formatEventItem);
     }
     loadActiveRace(driver);
   } catch (err) {
     if (dashboardEventsList) {
-      setList(dashboardEventsList, [], 'Unable to load events.');
+      dashboardEventsList.innerHTML = '<div role="listitem">Unable to load events.</div>';
     }
     if (dashboardPastEventsList) {
-      setList(dashboardPastEventsList, [], 'Unable to load events.');
+      dashboardPastEventsList.innerHTML = '<div role="listitem">Unable to load events.</div>';
     }
     if (upcomingEventsList) {
       setList(upcomingEventsList, [], 'Unable to load events.');

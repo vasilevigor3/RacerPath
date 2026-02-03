@@ -220,8 +220,10 @@ const Cabinet = () => (
             <div className="card compact" data-focus-id="incidents-card">
               <p className="card-title">My incidents (<span className="tab-count" data-incidents-total-card aria-label="Total incidents">0</span>)</p>
               <div data-incidents-list-view>
-                <div className="incident-cards" data-incident-list role="list">
-                  <div role="listitem">Log in to see incidents.</div>
+                <div className="incident-cards-scroll" data-incident-scroll>
+                  <div className="incident-cards" data-incident-list role="list">
+                    <div role="listitem">Log in to see incidents.</div>
+                  </div>
                 </div>
               </div>
               <div className="incident-detail-panel is-hidden" data-incident-detail>
@@ -235,8 +237,10 @@ const Cabinet = () => (
             <div className="card compact" data-focus-id="penalties-card">
               <p className="card-title">My penalties (<span className="tab-count" data-penalties-total-card aria-label="Total penalties">0</span>)</p>
               <div data-penalties-list-view>
-                <div className="penalty-cards" data-penalty-list role="list">
-                  <div role="listitem">Log in to see penalties.</div>
+                <div className="penalty-cards-scroll" data-penalty-scroll>
+                  <div className="penalty-cards" data-penalty-list role="list">
+                    <div role="listitem">Log in to see penalties.</div>
+                  </div>
                 </div>
               </div>
               <div className="penalty-detail-panel is-hidden" data-penalty-detail>
@@ -302,9 +306,11 @@ const Cabinet = () => (
                   <input type="checkbox" data-events-same-tier />
                   <span>Show only my lvl events</span>
                 </label>
-                <ul className="list" data-dashboard-events>
-                  <li>No events loaded.</li>
-                </ul>
+                <div className="upcoming-events-scroll" data-upcoming-events-scroll>
+                  <div className="event-cards" data-dashboard-events role="list">
+                    <div role="listitem">No events loaded.</div>
+                  </div>
+                </div>
               </div>
               <div className="event-detail-panel is-hidden" data-event-detail-panel>
                 <div className="event-detail-content" data-event-detail-content />
@@ -319,15 +325,19 @@ const Cabinet = () => (
             </div>
             <div className="card">
               <p className="card-title">Past events</p>
-              <ul className="list" data-dashboard-past-events>
-                <li>No past events.</li>
-              </ul>
+              <div className="past-events-scroll" data-past-events-scroll>
+                <div className="event-cards" data-dashboard-past-events role="list">
+                  <div role="listitem">No past events.</div>
+                </div>
+              </div>
             </div>
             <div className="card">
               <p className="card-title">Recent participations</p>
               <div data-dashboard-participations-list-view>
-                <div className="participation-cards" data-dashboard-participations role="list">
-                  <div role="listitem">No participations loaded.</div>
+                <div className="participation-cards-scroll" data-participation-scroll>
+                  <div className="participation-cards" data-dashboard-participations role="list">
+                    <div role="listitem">No participations loaded.</div>
+                  </div>
                 </div>
               </div>
               <div className="participation-detail-panel is-hidden" data-participation-detail>

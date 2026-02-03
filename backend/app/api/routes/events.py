@@ -19,6 +19,9 @@ from app.services.event_service import (
     get_event_with_tier,
     infer_discipline,
     list_events as service_list_events,
+    list_past_count as service_list_past_count,
+    list_past_events as service_list_past_events,
+    list_upcoming_count as service_list_upcoming_count,
     list_upcoming_events as service_list_upcoming_events,
 )
 from app.utils.special_events import special_slot_tier_conflict
@@ -118,16 +121,68 @@ def list_events(
 def list_upcoming_events(
     driver_id: str,
     discipline: str,
+    limit: int = 3,
+    offset: int = 0,
     session: Session = Depends(get_session),
     user: User = Depends(require_user()),
 ):
-    """Upcoming events for driver: start_time_utc > now, event tier matches driver.tier, filtered by sim_games. Max 3."""
-    out = service_list_upcoming_events(session, driver_id, user.id, user.role or "", limit=3)
+    """Upcoming events for driver: start_time_utc > now, tier match, sim_games. Paginated."""
+    limit = max(1, min(limit, 50))
+    out = service_list_upcoming_events(
+        session, driver_id, user.id, user.role or "", limit=limit, offset=offset
+    )
     if not out and driver_id:
         from app.repositories.driver import DriverRepository
         if not DriverRepository(session).get_by_id(driver_id):
             raise HTTPException(status_code=404, detail="Driver not found")
     return out
+
+
+@router.get("/upcoming/count")
+def get_upcoming_count(
+    driver_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Total count of upcoming events for driver."""
+    total = service_list_upcoming_count(session, driver_id, user.id, user.role or "")
+    return {"total": total}
+
+
+@router.get("/past", response_model=List[EventRead])
+def list_past_events(
+    driver_id: str,
+    limit: int = 3,
+    offset: int = 0,
+    recent_days: int = 30,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Past events for driver: start_time_utc < now, within recent_days. Paginated."""
+    if driver_id and user.role not in {"admin"}:
+        from app.repositories.driver import DriverRepository
+        driver = DriverRepository(session).get_by_id(driver_id)
+        if not driver or driver.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+    limit = max(1, min(limit, 50))
+    return service_list_past_events(
+        session, driver_id, user.id, user.role or "",
+        limit=limit, offset=offset, recent_days=recent_days,
+    )
+
+
+@router.get("/past/count")
+def get_past_count(
+    driver_id: str,
+    recent_days: int = 30,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Total count of past events for driver within recent_days."""
+    total = service_list_past_count(
+        session, driver_id, user.id, user.role or "", recent_days=recent_days
+    )
+    return {"total": total}
 
 
 @router.get("/breakdown")

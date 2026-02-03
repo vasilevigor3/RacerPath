@@ -14,6 +14,7 @@ export const setupTabs = () => {
       button.classList.add('active');
       const panel = document.querySelector(`[data-tab-panel="${target}"]`);
       if (panel) panel.classList.add('active');
+      window.dispatchEvent(new CustomEvent('cabinet-tab-change', { detail: { tab: target } }));
     });
   });
   tabJumpButtons.forEach((button) => {

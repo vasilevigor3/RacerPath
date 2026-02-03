@@ -95,6 +95,16 @@ function renderCareerSwitcher() {
       document.querySelector('#onboarding')?.scrollIntoView({ behavior: 'smooth' });
     });
   }
+  const deleteCareerWrap = document.querySelector('[data-delete-career-wrap]');
+  const deleteCareerBtn = document.querySelector('[data-delete-career]');
+  if (deleteCareerWrap && deleteCareerBtn) {
+    if (drivers.length <= 1) {
+      deleteCareerWrap.classList.add('is-hidden');
+    } else {
+      deleteCareerWrap.classList.remove('is-hidden');
+      deleteCareerBtn.setAttribute('data-delete-career-driver-id', getCurrentDriverId() || '');
+    }
+  }
 }
 
 const setProfileIdLabel = (value, label = 'Driver ID') => {
@@ -443,6 +453,37 @@ function onVisibilityChange() {
     .catch(() => {});
 }
 
+function initDeleteCareerButton() {
+  const btn = document.querySelector('[data-delete-career]');
+  if (!btn || btn.dataset.deleteCareerInitialized === '1') return;
+  btn.dataset.deleteCareerInitialized = '1';
+  btn.addEventListener('click', async () => {
+    const driverId = getCurrentDriverId();
+    if (!driverId) return;
+    const drivers = getMyDrivers();
+    if (drivers.length <= 1) {
+      if (profileStatus) profileStatus.textContent = 'You need at least one career.';
+      return;
+    }
+    const disciplineLabel = (drivers.find((d) => d.id === driverId)?.primary_discipline || 'this').toUpperCase();
+    if (!window.confirm(`Delete ${disciplineLabel} career? All progress (licenses, CRS, participations) for this career will be permanently removed.`)) {
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api/drivers/${encodeURIComponent(driverId)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (profileStatus) profileStatus.textContent = err.detail || 'Delete failed.';
+        return;
+      }
+      setCurrentDriverId('');
+      await loadProfile();
+    } catch (err) {
+      if (profileStatus) profileStatus.textContent = 'Delete failed.';
+    }
+  });
+}
+
 export const initProfileForm = () => {
   const form = document.querySelector('[data-profile-form]');
   const statusEl = document.querySelector('[data-profile-save-status]');
@@ -452,6 +493,7 @@ export const initProfileForm = () => {
   }
   if (form.dataset.profileFormInitialized === '1') return;
   form.dataset.profileFormInitialized = '1';
+  initDeleteCareerButton();
   document.addEventListener('visibilitychange', onVisibilityChange);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();

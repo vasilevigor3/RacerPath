@@ -3,8 +3,19 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from sqlalchemy import select
+
 from app.db.session import get_session
+from app.models.anti_gaming import AntiGamingReport
 from app.models.driver import Driver
+from app.models.driver_license import DriverLicense
+from app.models.incident import Incident
+from app.models.participation import Participation
+from app.models.penalty import Penalty
+from app.models.real_world_readiness import RealWorldReadiness
+from app.models.recommendation import Recommendation
+from app.models.task_completion import TaskCompletion
+from app.models.crs_history import CRSHistory
 from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.repositories.crs_history import CRSHistoryRepository
@@ -187,3 +198,35 @@ def get_driver(
     if user.role not in {"admin"} and driver.user_id != user.id:
         raise HTTPException(status_code=403, detail="Insufficient role")
     return driver
+
+
+def _delete_driver_cascade(session: Session, driver_id: str) -> None:
+    """Delete driver and all related records (participations, incidents, penalties, etc.)."""
+    part_ids = [r[0] for r in session.execute(select(Participation.id).where(Participation.driver_id == driver_id))]
+    if part_ids:
+        session.execute(Incident.__table__.delete().where(Incident.participation_id.in_(part_ids)))
+        session.execute(Penalty.__table__.delete().where(Penalty.participation_id.in_(part_ids)))
+    session.execute(Participation.__table__.delete().where(Participation.driver_id == driver_id))
+    session.execute(TaskCompletion.__table__.delete().where(TaskCompletion.driver_id == driver_id))
+    session.execute(Recommendation.__table__.delete().where(Recommendation.driver_id == driver_id))
+    session.execute(CRSHistory.__table__.delete().where(CRSHistory.driver_id == driver_id))
+    session.execute(DriverLicense.__table__.delete().where(DriverLicense.driver_id == driver_id))
+    session.execute(AntiGamingReport.__table__.delete().where(AntiGamingReport.driver_id == driver_id))
+    session.execute(RealWorldReadiness.__table__.delete().where(RealWorldReadiness.driver_id == driver_id))
+    session.execute(Driver.__table__.delete().where(Driver.id == driver_id))
+
+
+@router.delete("/{driver_id}", status_code=204)
+def delete_driver(
+    driver_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Permanently delete a driver (career) and all related data. Only own driver or admin."""
+    driver = DriverRepository(session).get_by_id(driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    if user.role not in {"admin"} and driver.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Insufficient role")
+    _delete_driver_cascade(session, driver_id)
+    session.commit()

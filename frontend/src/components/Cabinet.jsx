@@ -67,6 +67,17 @@ const Cabinet = () => (
             <Button variant="outline" className="w-full" type="button" data-tab-jump="profile" data-profile-cta-button>
               Complete profile
             </Button>
+            <div data-delete-career-wrap className="is-hidden">
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                type="button"
+                data-delete-career
+                data-delete-career-driver-id=""
+              >
+                Delete this career
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </aside>

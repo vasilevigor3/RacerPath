@@ -13,7 +13,7 @@ from app.repositories.incident import IncidentRepository
 from app.repositories.participation import ParticipationRepository
 from app.repositories.penalty import PenaltyRepository
 from app.schemas.incident import IncidentRead, IncidentWithEventRead
-from app.schemas.penalty import PenaltyCreateByIncident, PenaltyRead, PenaltyTypeEnum
+from app.schemas.penalty import PenaltyCreateByIncident, PenaltyRead, PenaltyTypeEnum, PenaltyWithEventRead
 from app.services.auth import require_user
 from app.models.penalty import Penalty
 
@@ -151,6 +151,49 @@ def create_penalty_for_incident(
     session.refresh(penalty)
     session.refresh(penalty, attribute_names=["incident"])
     return penalty
+
+
+@router.get("/{incident_id}/penalties", response_model=List[PenaltyWithEventRead])
+def list_penalties_by_incident(
+    incident_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user()),
+):
+    """Return penalties for this incident (for incident card penalty section)."""
+    incident = IncidentRepository(session).get_by_id(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    if user.role not in {"admin"}:
+        participation = ParticipationRepository(session).get_by_id(incident.participation_id)
+        driver = DriverRepository(session).get_by_id(participation.driver_id) if participation else None
+        if not driver or driver.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Insufficient role")
+    penalties = PenaltyRepository(session).list_by_incident_id(incident_id)
+    if not penalties:
+        return []
+    part_repo = ParticipationRepository(session)
+    event_repo = EventRepository(session)
+    result = []
+    for p in penalties:
+        inc = IncidentRepository(session).get_by_id(p.incident_id)
+        part = part_repo.get_by_id(inc.participation_id) if inc else None
+        event = event_repo.get_by_id(part.event_id) if part else None
+        result.append(
+            PenaltyWithEventRead(
+                id=p.id,
+                incident_id=p.incident_id,
+                penalty_type=p.penalty_type,
+                score=p.score,
+                time_seconds=p.time_seconds,
+                lap=p.lap,
+                description=p.description,
+                created_at=p.created_at,
+                event_id=part.event_id if part else None,
+                event_title=event.title if event else "",
+                event_start_time_utc=event.start_time_utc if event else None,
+            )
+        )
+    return result
 
 
 @router.get("/{incident_id}", response_model=IncidentRead)

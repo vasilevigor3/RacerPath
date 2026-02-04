@@ -22,6 +22,14 @@ class PenaltyRepository:
             q = q.options(selectinload(Penalty.incident))
         return q.first()
 
+    def list_by_incident_id(self, incident_id: str) -> List[Penalty]:
+        return (
+            self._session.query(Penalty)
+            .filter(Penalty.incident_id == incident_id)
+            .order_by(Penalty.created_at.desc())
+            .all()
+        )
+
     def list_by_participation_id(self, participation_id: str) -> List[Penalty]:
         return (
             self._session.query(Penalty)

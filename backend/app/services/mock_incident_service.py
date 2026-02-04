@@ -1,9 +1,8 @@
 """
 Mock incident service: for participations with state "started", creates realistic mock incidents.
 
-Runs on the same schedule as mock race (each tick). Picks a subset of "started" participations
-and with a configurable probability adds one incident per tick with realistic type, score, lap,
-and timestamp (between participation.started_at and now).
+Runs on the same schedule as mock race (each tick). Uses platform incident config (ACC, iRacing)
+when event.game is set; otherwise fallback to built-in choices with random score range.
 """
 
 from __future__ import annotations
@@ -15,6 +14,8 @@ from typing import List, Tuple
 
 from sqlalchemy.orm import Session
 
+from app.core.incident_config import get_platform_codes, normalize_game_to_platform
+from app.models.event import Event
 from app.models.incident import Incident
 from app.models.participation import Participation, ParticipationState
 from app.repositories.incident import IncidentRepository
@@ -22,7 +23,7 @@ from app.schemas.incident import IncidentType
 
 logger = logging.getLogger("racerpath.mock_incident")
 
-# Types and CRS score ranges (realistic)
+# Fallback when event has no platform config (unknown game)
 INCIDENT_CHOICES: List[Tuple[str, str, float, float]] = [
     ("contact", IncidentType.contact.value, 2.0, 5.0),
     ("off_track", IncidentType.off_track.value, 1.0, 4.0),
@@ -71,43 +72,52 @@ def tick_mock_incidents(
     for part in candidates[:max_per_tick]:
         if random.random() > probability:
             continue
-        code, incident_type_str, score_lo, score_hi = random.choice(INCIDENT_CHOICES)
-        score = round(random.uniform(score_lo, score_hi), 1)
+        event = session.query(Event).filter(Event.id == part.event_id).first() if part.event_id else None
+        platform = normalize_game_to_platform(event.game if event else None)
+        codes = get_platform_codes(platform)
         severity = random.randint(1, 4)
         lap = (part.laps_completed or 1) if part.laps_completed else 1
-        # Timestamp between started_at and now
         started = part.started_at
         if getattr(started, "tzinfo", None) is None and started is not None:
             started = started.replace(tzinfo=timezone.utc)
-        if started and now > started:
-            ts = started
-        else:
-            ts = now
+        ts = started if (started and now > started) else now
 
-        incident = Incident(
-            participation_id=part.id,
-            code=code,
-            score=score,
-            incident_type=incident_type_str,
-            severity=severity,
-            lap=lap,
-            timestamp_utc=ts,
-            description=None,
-        )
-        repo.add(incident)
-        session.flush()
-        try:
-            from app.services.timeline_validation import validate_incident_timeline
-            event = None
-            if part.event_id:
-                from app.models.event import Event
-                event = session.query(Event).filter(Event.id == part.event_id).first()
-            validate_incident_timeline(incident, part, event)
-        except ValueError as e:
-            logger.warning("mock_incident: timeline validation failed, skipping: %s", e)
-            session.delete(incident)
+        if codes:
+            code = random.choice(codes)
+            try:
+                from app.services.incident_from_code import create_incident_from_code
+                incident = create_incident_from_code(
+                    session, part.id, code,
+                    severity=severity, lap=lap, timestamp_utc=ts, description=None,
+                )
+            except ValueError as e:
+                logger.warning("mock_incident: create_incident_from_code failed, skipping: %s", e)
+                continue
+            incident_type_str = incident.incident_type
+            score = incident.score
+        else:
+            code, incident_type_str, score_lo, score_hi = random.choice(INCIDENT_CHOICES)
+            score = round(random.uniform(score_lo, score_hi), 1)
+            incident = Incident(
+                participation_id=part.id,
+                code=code,
+                score=score,
+                incident_type=incident_type_str,
+                severity=severity,
+                lap=lap,
+                timestamp_utc=ts,
+                description=None,
+            )
+            repo.add(incident)
             session.flush()
-            continue
+            try:
+                from app.services.timeline_validation import validate_incident_timeline
+                validate_incident_timeline(incident, part, event)
+            except ValueError as e:
+                logger.warning("mock_incident: timeline validation failed, skipping: %s", e)
+                session.delete(incident)
+                session.flush()
+                continue
         created += 1
         disc = part.discipline.value if hasattr(part.discipline, "value") else str(part.discipline or "gt")
         if (part.driver_id, disc) not in driver_discipline_pairs:

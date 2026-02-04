@@ -266,20 +266,16 @@ const Cabinet = () => (
                 <p className="incident-detail-race muted" data-incident-detail-race>—</p>
                 <p className="incident-detail-meta" data-incident-detail-meta>—</p>
                 <p className="incident-detail-desc muted" data-incident-detail-desc></p>
+                <div className="incident-detail-penalties is-hidden" data-incident-detail-penalties>
+                  <p className="card-title" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>Penalty</p>
+                  <div className="incident-penalty-minicards" data-incident-penalty-minicards role="list"></div>
+                </div>
                 <button type="button" className="btn ghost" data-incident-detail-back>Back</button>
               </div>
             </div>
-            <div className="card compact" data-focus-id="penalties-card">
-              <p className="card-title flex items-center gap-2">
-                My penalties <Badge variant="secondary" className="font-mono text-xs" aria-label="Total penalties"><span data-penalties-total-card>0</span></Badge>
-              </p>
-              <div data-penalties-list-view>
-                <div className="penalty-cards-scroll" data-penalty-scroll>
-                  <div className="penalty-cards" data-penalty-list role="list">
-                    <div role="listitem">Log in to see penalties.</div>
-                  </div>
-                </div>
-              </div>
+            <div className="card compact penalty-detail-card" data-focus-id="penalty-detail-card">
+              <p className="card-title">Penalty detail</p>
+              <div className="penalty-detail-placeholder muted" data-penalty-detail-placeholder>Open an incident with a penalty to see details.</div>
               <div className="penalty-detail-panel is-hidden" data-penalty-detail>
                 <h3 className="penalty-detail-title" data-penalty-detail-type>—</h3>
                 <p className="penalty-detail-race muted" data-penalty-detail-race>—</p>

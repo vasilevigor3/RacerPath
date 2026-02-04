@@ -1,6 +1,6 @@
 from datetime import datetime
-
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -32,11 +32,19 @@ def _normalize_incident_type(value: str) -> str:
     return "".join(char for char in value.lower() if char.isalnum())
 
 
+def incident_type_from_string(value: str) -> IncidentType:
+    """Parse incident type from config string (e.g. 'Off-track', 'Contact')."""
+    if not value:
+        return IncidentType.other
+    key = _normalize_incident_type(value)
+    return _INCIDENT_TYPE_MAP.get(key, IncidentType.other)
+
+
 class IncidentCreate(BaseModel):
     participation_id: str
-    code: str = Field(..., min_length=1, max_length=40)  # required; e.g. off_track, contact
-    score: float = Field(default=0.0, ge=0)  # CRS deduction input
-    incident_type: IncidentType
+    code: str = Field(..., min_length=1, max_length=40)  # required; score/incident_type derived from platform config if omitted
+    score: Optional[float] = Field(default=None, ge=0)  # optional; if None, from platform config by code
+    incident_type: Optional[IncidentType] = None  # optional; if None, from platform config by code
     severity: int = Field(default=1, ge=1, le=5)
     lap: int | None = Field(default=None, ge=0)
     timestamp_utc: datetime | None = None
@@ -45,6 +53,8 @@ class IncidentCreate(BaseModel):
     @field_validator("incident_type", mode="before")
     @classmethod
     def normalize_incident_type(cls, value):
+        if value is None:
+            return None
         if isinstance(value, IncidentType):
             return value
         if not isinstance(value, str):

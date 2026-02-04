@@ -716,6 +716,19 @@ footer {
   color: var(--muted-foreground);
 }
 
+.penalty-detail-placeholder {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.penalty-detail-placeholder.is-hidden {
+  display: none;
+}
+
+.penalty-detail-card .penalty-detail-panel {
+  margin-top: 0.5rem;
+}
+
 .penalty-detail-panel {
   margin-top: 1rem;
 }
@@ -840,6 +853,50 @@ footer {
 
 .incident-detail-panel [data-incident-detail-back] {
   margin-top: 0.5rem;
+}
+
+.incident-detail-penalties.is-hidden {
+  display: none;
+}
+
+.incident-detail-penalties .card-title {
+  font-size: 0.9rem;
+}
+
+.incident-penalty-minicards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.incident-penalty-minicard {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.incident-penalty-minicard:hover {
+  background: var(--card-bg-hover);
+  border-color: var(--border-hover);
+}
+
+.incident-penalty-minicard__type {
+  font-weight: 600;
+}
+
+.incident-penalty-minicard__lap {
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
 }
 
 [data-incidents-list-view].is-hidden {

@@ -23,10 +23,10 @@ from app.schemas.participation import (
     ParticipationWithEventRead,
     ParticipationWithdrawUpdate,
 )
-from app.penalties.scores import get_score_for_penalty_type
 from app.schemas.penalty import PenaltyCreate, PenaltyRead, PenaltyTypeEnum
 from app.services.tasks import assign_tasks_on_registration, evaluate_tasks
 from app.services.crs import recompute_crs
+from app.services.incident_from_code import create_incident_from_code
 from app.services.timeline_validation import validate_participation_timeline
 from app.services.auth import require_user
 from app.utils.rig_compat import driver_rig_satisfies_event
@@ -239,25 +239,25 @@ def create_incident(
         if not driver or driver.user_id != user.id:
             raise HTTPException(status_code=403, detail="Insufficient role")
 
-    incident = Incident(
-        participation_id=payload.participation_id,
-        code=payload.code,
-        score=payload.score,
-        incident_type=payload.incident_type.value,
-        severity=payload.severity,
-        lap=payload.lap,
-        timestamp_utc=payload.timestamp_utc,
-        description=payload.description,
-    )
-    IncidentRepository(session).add(incident)
-    session.flush()
-    event = EventRepository(session).get_by_id(participation.event_id)
     try:
-        from app.services.timeline_validation import validate_incident_timeline
-        validate_incident_timeline(incident, participation, event)
+        incident = create_incident_from_code(
+            session,
+            participation_id,
+            payload.code,
+            severity=payload.severity,
+            lap=payload.lap,
+            timestamp_utc=payload.timestamp_utc,
+            description=payload.description,
+        )
     except ValueError as e:
         session.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
+    if payload.score is not None:
+        incident.score = payload.score
+        session.flush()
+    if payload.incident_type is not None:
+        incident.incident_type = payload.incident_type.value
+        session.flush()
     session.commit()
     session.refresh(incident)
     discipline_str = (

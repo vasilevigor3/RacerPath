@@ -1,0 +1,20 @@
+{
+  "codes": {
+    "acc_off_track_time_penalty": { "score": 2.0, "incident_type": "Off-track", "penalty": "time_penalty", "time_seconds": 5 },
+    "acc_off_track_no_penalty": { "score": 1.0, "incident_type": "Off-track", "penalty": "no_penalty" },
+    "acc_track_limits_drive_through": { "score": 1.0, "incident_type": "Track limits", "penalty": "drive_through" },
+    "acc_track_limits_no_penalty": { "score": 0.5, "incident_type": "Track limits", "penalty": "no_penalty" },
+    "acc_contact_time_penalty": { "score": 3.0, "incident_type": "Contact", "penalty": "time_penalty", "time_seconds": 5 },
+    "acc_contact_drive_through": { "score": 4.0, "incident_type": "Contact", "penalty": "drive_through" },
+    "acc_contact_no_penalty": { "score": 2.0, "incident_type": "Contact", "penalty": "no_penalty" },
+    "acc_avoidable_contact_time_penalty": { "score": 5.0, "incident_type": "Avoidable contact", "penalty": "time_penalty", "time_seconds": 10 },
+    "acc_avoidable_contact_drive_through": { "score": 6.0, "incident_type": "Avoidable contact", "penalty": "drive_through" },
+    "acc_avoidable_contact_no_penalty": { "score": 3.0, "incident_type": "Avoidable contact", "penalty": "no_penalty" },
+    "acc_unsafe_rejoin_stop_and_go": { "score": 6.0, "incident_type": "Unsafe rejoin", "penalty": "stop_and_go" },
+    "acc_unsafe_rejoin_drive_through": { "score": 5.0, "incident_type": "Unsafe rejoin", "penalty": "drive_through" },
+    "acc_blocking_time_penalty": { "score": 4.0, "incident_type": "Blocking", "penalty": "time_penalty", "time_seconds": 5 },
+    "acc_blocking_no_penalty": { "score": 3.0, "incident_type": "Blocking", "penalty": "no_penalty" },
+    "acc_mechanical_no_penalty": { "score": 0.0, "incident_type": "Mechanical", "penalty": "no_penalty" },
+    "acc_other_no_penalty": { "score": 1.0, "incident_type": "Other", "penalty": "no_penalty" }
+  }
+}

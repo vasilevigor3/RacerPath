@@ -5,6 +5,7 @@ const penaltyScrollEl = document.querySelector('[data-penalty-scroll]');
 const penaltiesTotalEls = document.querySelectorAll('[data-penalties-total], [data-penalties-total-card]');
 const penaltiesListView = document.querySelector('[data-penalties-list-view]');
 const penaltyDetailPanel = document.querySelector('[data-penalty-detail]');
+const penaltyDetailPlaceholder = document.querySelector('[data-penalty-detail-placeholder]');
 const penaltyDetailType = document.querySelector('[data-penalty-detail-type]');
 const penaltyDetailRace = document.querySelector('[data-penalty-detail-race]');
 const penaltyDetailMeta = document.querySelector('[data-penalty-detail-meta]');
@@ -64,11 +65,13 @@ function showPenaltyDetail(item) {
   penaltyDetailDesc.textContent = item.description || '';
   penaltyDetailDesc.style.display = item.description ? '' : 'none';
   if (penaltiesListView) penaltiesListView.classList.add('is-hidden');
+  if (penaltyDetailPlaceholder) penaltyDetailPlaceholder.classList.add('is-hidden');
   penaltyDetailPanel.classList.remove('is-hidden');
 }
 
 function hidePenaltyDetail() {
   if (penaltyDetailPanel) penaltyDetailPanel.classList.add('is-hidden');
+  if (penaltyDetailPlaceholder) penaltyDetailPlaceholder.classList.remove('is-hidden');
   if (penaltiesListView) penaltiesListView.classList.remove('is-hidden');
 }
 
@@ -154,6 +157,8 @@ function setupPenaltyDetailListeners() {
 }
 
 setupPenaltyDetailListeners();
+
+export { showPenaltyDetail, hidePenaltyDetail, formatPenaltyLabel };
 
 export const loadPenalties = async (driver) => {
   if (!penaltyList) return;

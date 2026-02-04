@@ -1,6 +1,7 @@
 import { apiFetch } from '../api/client.js';
 import { getFormValue } from '../utils/dom.js';
 import { parseOptionalInt, parseDateTime } from '../utils/parse.js';
+import { showPenaltyDetail, hidePenaltyDetail } from './penalties.js';
 
 const incidentForm = document.querySelector('[data-incident-form]');
 const incidentStatus = document.querySelector('[data-incident-status]');
@@ -13,7 +14,11 @@ const incidentDetailType = document.querySelector('[data-incident-detail-type]')
 const incidentDetailRace = document.querySelector('[data-incident-detail-race]');
 const incidentDetailMeta = document.querySelector('[data-incident-detail-meta]');
 const incidentDetailDesc = document.querySelector('[data-incident-detail-desc]');
+const incidentDetailPenaltiesWrap = document.querySelector('[data-incident-detail-penalties]');
+const incidentPenaltyMinicards = document.querySelector('[data-incident-penalty-minicards]');
 const incidentDetailBack = document.querySelector('[data-incident-detail-back]');
+
+let lastIncidentPenalties = [];
 
 let incidentsCache = [];
 let incidentsTotalCount = 0;
@@ -37,7 +42,23 @@ function formatDate(iso) {
   }
 }
 
-function showIncidentDetail(item) {
+function renderPenaltyMinicard(penalty) {
+  const typeLabel = penalty.penalty_type === 'time_penalty' && penalty.time_seconds != null
+    ? `Time penalty +${penalty.time_seconds}s`
+    : penalty.penalty_type === 'drive_through'
+      ? 'Drive through'
+      : penalty.penalty_type === 'stop_and_go'
+        ? 'Stop and go'
+        : penalty.penalty_type === 'dsq'
+          ? 'DSQ'
+          : penalty.penalty_type || '—';
+  return `<button type="button" class="incident-penalty-minicard" data-penalty-id="${penalty.id}" role="listitem">
+    <span class="incident-penalty-minicard__type">${typeLabel}</span>
+    ${penalty.lap != null ? `<span class="incident-penalty-minicard__lap">Lap ${penalty.lap}</span>` : ''}
+  </button>`;
+}
+
+async function showIncidentDetail(item) {
   if (!incidentDetailPanel || !incidentDetailType || !incidentDetailRace || !incidentDetailMeta) return;
   const typeLabel = item.incident_type || '—';
   const severity = item.severity ? `S${item.severity}` : 'S1';
@@ -50,6 +71,22 @@ function showIncidentDetail(item) {
   incidentDetailMeta.textContent = metaParts.length ? metaParts.join(' · ') : '—';
   incidentDetailDesc.textContent = item.description || '';
   incidentDetailDesc.style.display = item.description ? '' : 'none';
+  lastIncidentPenalties = [];
+  if (incidentDetailPenaltiesWrap && incidentPenaltyMinicards) {
+    incidentDetailPenaltiesWrap.classList.add('is-hidden');
+    incidentPenaltyMinicards.innerHTML = '';
+    try {
+      const res = await apiFetch(`/api/incidents/${item.id}/penalties`);
+      if (res.ok) {
+        const penalties = await res.json();
+        lastIncidentPenalties = penalties;
+        if (penalties.length > 0) {
+          incidentDetailPenaltiesWrap.classList.remove('is-hidden');
+          incidentPenaltyMinicards.innerHTML = penalties.map((p) => renderPenaltyMinicard(p)).join('');
+        }
+      }
+    } catch (_) {}
+  }
   if (incidentsListView) incidentsListView.classList.add('is-hidden');
   incidentDetailPanel.classList.remove('is-hidden');
 }
@@ -57,6 +94,7 @@ function showIncidentDetail(item) {
 function hideIncidentDetail() {
   if (incidentDetailPanel) incidentDetailPanel.classList.add('is-hidden');
   if (incidentsListView) incidentsListView.classList.remove('is-hidden');
+  hidePenaltyDetail();
 }
 
 function renderIncidentCard(item) {
@@ -135,6 +173,15 @@ function setupIncidentDetailListeners() {
       const id = card.getAttribute('data-incident-id');
       const item = incidentsCache.find((i) => i.id === id);
       if (item) showIncidentDetail(item);
+    });
+  }
+  if (incidentPenaltyMinicards) {
+    incidentPenaltyMinicards.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-penalty-id]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-penalty-id');
+      const penalty = lastIncidentPenalties.find((p) => p.id === id);
+      if (penalty) showPenaltyDetail(penalty);
     });
   }
   if (incidentDetailBack) {

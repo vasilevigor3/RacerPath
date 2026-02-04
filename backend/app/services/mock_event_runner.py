@@ -8,7 +8,7 @@ import time
 
 from app.core.settings import settings
 from app.db.session import SessionLocal
-from app.services.mock_event_service import tick_mock_events
+from app.services.mock_event_service import cleanup_old_mock_events, tick_mock_events
 
 logger = logging.getLogger("racerpath")
 
@@ -16,6 +16,11 @@ logger = logging.getLogger("racerpath")
 def _run_tick() -> None:
     session = SessionLocal()
     try:
+        # First clean old mock events and their dependencies (only if start was > N min ago, min 30)
+        older_than = max(30, getattr(settings, "mock_event_cleanup_older_than_minutes", 60))
+        cleanup_result = cleanup_old_mock_events(session, older_than_minutes=older_than)
+        if cleanup_result.get("events_deleted", 0) > 0:
+            session.commit()
         interval_min = max(1, getattr(settings, "mock_event_interval_minutes", 5))
         minutes_until_start = max(0, getattr(settings, "mock_event_minutes_until_start", 5))
         result = tick_mock_events(

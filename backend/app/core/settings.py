@@ -36,6 +36,8 @@ class Settings:
     mock_event_enabled: bool = os.getenv("MOCK_EVENT_ENABLED", "true").lower() == "true"
     mock_event_interval_minutes: int = int(os.getenv("MOCK_EVENT_INTERVAL_MINUTES", "5"))
     mock_event_minutes_until_start: int = int(os.getenv("MOCK_EVENT_MINUTES_UNTIL_START", "5"))
+    # Clean old mock events each tick; delete if start_time_utc was more than this many minutes ago (min 30 in runner)
+    mock_event_cleanup_older_than_minutes: int = int(os.getenv("MOCK_EVENT_CLEANUP_OLDER_THAN_MINUTES", "60"))
 
 
 settings = Settings()

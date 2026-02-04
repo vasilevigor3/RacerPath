@@ -3,6 +3,9 @@ Mock event service: creates random E2 ACC events every N minutes, with start in 
 
 Configurable: interval (e.g. 5 min), minutes_until_start (e.g. 5), tier (E2), game (ACC).
 Each tick creates one event with random title/track/duration, start_time_utc = now + minutes_until_start.
+
+Also cleans old mock events and their dependencies (participations, incidents, penalties, etc.)
+so the DB does not grow indefinitely.
 """
 
 from __future__ import annotations
@@ -12,10 +15,16 @@ import random
 from datetime import datetime, timedelta, timezone
 from typing import List
 
+from sqlalchemy import delete, select, func
 from sqlalchemy.orm import Session
 
 from app.models.classification import Classification
 from app.models.event import Event
+from app.models.incident import Incident
+from app.models.participation import Participation
+from app.models.penalty import Penalty
+from app.models.raw_event import RawEvent
+from app.models.task_completion import TaskCompletion
 from app.services.classifier import build_event_payload, classify_event
 from app.services.timeline_validation import validate_event_timeline
 from app.core.constants import TIER_LABELS
@@ -128,3 +137,55 @@ def tick_mock_events(
             event.duration_minutes,
         )
     return {"events_created": created}
+
+
+def cleanup_old_mock_events(
+    session: Session,
+    *,
+    older_than_minutes: int = 60,
+) -> dict:
+    """
+    Delete events (any source) whose start_time_utc was more than older_than_minutes ago,
+    and all their dependencies: participations, incidents, penalties, task_completions,
+    classifications, raw_events.
+    Returns dict with events_deleted count.
+    """
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=older_than_minutes)
+    # Events that started more than older_than_minutes ago (compare in UTC)
+    subq = select(Event.id).where(
+        Event.start_time_utc.isnot(None),
+        Event.start_time_utc < cutoff,
+    )
+    event_ids = list(session.scalars(subq).all())
+    if not event_ids:
+        # Diagnose: total events and earliest start (any source)
+        diag = session.execute(
+            select(func.count(Event.id), func.min(Event.start_time_utc)).where(Event.start_time_utc.isnot(None))
+        ).one_or_none()
+        if diag and diag[0]:
+            logger.info(
+                "mock_event: cleanup 0 to delete (cutoff=%s, older_than=%s min); events_total=%s, min_start_utc=%s",
+                cutoff.isoformat(), older_than_minutes, diag[0], diag[1].isoformat() if diag[1] else None,
+            )
+        return {"events_deleted": 0}
+
+    # Participation ids for these events
+    part_ids_subq = select(Participation.id).where(Participation.event_id.in_(event_ids))
+    part_ids = list(session.scalars(part_ids_subq).all())
+    if part_ids:
+        # Incidents for these participations
+        incident_ids_subq = select(Incident.id).where(Incident.participation_id.in_(part_ids))
+        incident_ids = list(session.scalars(incident_ids_subq).all())
+        if incident_ids:
+            session.execute(delete(Penalty).where(Penalty.incident_id.in_(incident_ids)))
+        session.execute(delete(Incident).where(Incident.participation_id.in_(part_ids)))
+        session.execute(delete(TaskCompletion).where(TaskCompletion.participation_id.in_(part_ids)))
+    session.execute(delete(Participation).where(Participation.event_id.in_(event_ids)))
+    session.execute(delete(Classification).where(Classification.event_id.in_(event_ids)))
+    session.execute(delete(RawEvent).where(RawEvent.event_id.in_(event_ids)))
+    session.execute(delete(Event).where(Event.id.in_(event_ids)))
+    session.flush()
+    deleted = len(event_ids)
+    logger.info("mock_event: cleaned %s old mock event(s) (start before %s)", deleted, cutoff.isoformat())
+    return {"events_deleted": deleted}

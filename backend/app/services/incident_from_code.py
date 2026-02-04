@@ -42,7 +42,7 @@ def create_incident_from_code(
     event = event_repo.get_by_id(participation.event_id) if participation.event_id else None
     platform = normalize_game_to_platform(event.game if event else None)
     if not platform:
-        raise ValueError("Event game is not set or not supported. Set event game to ACC or iRacing for incident codes.")
+        raise ValueError("Event game is not set or not supported. Set event game to AC (or ACC) or iRacing for incident codes.")
     ok, err_msg = validate_code_for_platform(platform, code)
     if not ok:
         raise ValueError(err_msg)

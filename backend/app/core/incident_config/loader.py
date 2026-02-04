@@ -73,7 +73,7 @@ def validate_code_for_platform(platform: str | None, code: str) -> tuple[bool, s
     Returns (True, "") if valid, (False, "error message") otherwise.
     """
     if not platform or platform not in _SUPPORTED_PLATFORMS:
-        return False, "Event game is not set or not supported (use ACC or iRacing)"
+        return False, "Event game is not set or not supported (use AC/ACC or iRacing)"
     prefix = code_platform_prefix(code)
     if not prefix:
         return False, f"Code must start with a platform prefix (acc_ or iracing_), e.g. acc_off_track_time_penalty"

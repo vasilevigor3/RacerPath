@@ -1,7 +1,7 @@
 """
 Mock incident service: for participations with state "started", creates realistic mock incidents.
 
-Runs on the same schedule as mock race (each tick). Uses platform incident config (ACC, iRacing)
+Runs on the same schedule as mock race (each tick). Uses platform incident config (AC/ACC, iRacing)
 when event.game is set; otherwise fallback to built-in choices with random score range.
 """
 

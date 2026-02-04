@@ -103,10 +103,17 @@ def _build_recommendation_content(
     else:
         readiness = "not_ready"
 
+    # Only started/completed participations (actual races) for recommendation content
     participations = (
         session.query(Participation)
         .options(selectinload(Participation.incidents))
-        .filter(Participation.driver_id == driver_id, Participation.discipline == discipline)
+        .filter(
+            Participation.driver_id == driver_id,
+            Participation.discipline == discipline,
+            Participation.participation_state.in_(
+                (ParticipationState.started, ParticipationState.completed),
+            ),
+        )
         .order_by(Participation.created_at.desc())
         .limit(20)
         .all()

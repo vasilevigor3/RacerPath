@@ -293,3 +293,13 @@ class AdminTaskDefinitionRead(BaseModel):
     required_by_license_levels: list[AdminLicenseLevelRef] = []
 
     model_config = {"from_attributes": True}
+
+
+class AdminClearUserRequest(BaseModel):
+    email: str
+
+
+class AdminClearUserResponse(BaseModel):
+    licenses: int = 0
+    task_completions: int = 0
+    participations: int = 0

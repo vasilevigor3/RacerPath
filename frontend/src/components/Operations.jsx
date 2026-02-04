@@ -2891,6 +2891,70 @@ const ResetSeedTestDataButton = () => {
   );
 };
 
+const ClearUserDataButton = () => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const handleClick = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError('Enter email');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await apiFetch('/api/admin/clear-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = typeof err.detail === 'string' ? err.detail : (err.detail?.message ?? res.statusText ?? 'Failed');
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      setResult(data);
+    } catch (e) {
+      setError(e?.message || 'Error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-clear-user-block">
+      <input
+        type="email"
+        className="input admin-clear-user-email"
+        placeholder="user@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        disabled={loading}
+        aria-label="User email to clear"
+      />
+      <button
+        type="button"
+        className="btn btn--secondary"
+        onClick={handleClick}
+        disabled={loading}
+      >
+        {loading ? 'Clearing…' : 'Clear user data'}
+      </button>
+      {error && <p className="admin-reset-seed-error">{error}</p>}
+      {result && !error && (
+        <p className="admin-reset-seed-result">
+          Cleared: {result.licenses ?? 0} licenses, {result.task_completions ?? 0} task completions, {result.participations ?? 0} participations.
+        </p>
+      )}
+    </div>
+  );
+};
+
 const Operations = () => {
   return (
     <section id="operations" className="section reveal is-hidden" data-admin-only>
@@ -2901,7 +2965,10 @@ const Operations = () => {
         <div className="section-header-row__heading-wrap">
           <div className="section-heading">
             <h2>Admin console</h2>
-            <ResetSeedTestDataButton />
+            <div className="admin-actions-row">
+              <ResetSeedTestDataButton />
+              <ClearUserDataButton />
+            </div>
           </div>
         </div>
       </div>

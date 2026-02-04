@@ -33,7 +33,10 @@ from app.repositories.tier_progression_rule import TierProgressionRuleRepository
 from app.repositories.user import UserRepository
 from app.repositories.user_profile import UserProfileRepository
 from app.services.timeline_validation import validate_participation_timeline
+from app.services.user_clear import clear_user_data
 from app.schemas.admin import (
+    AdminClearUserRequest,
+    AdminClearUserResponse,
     AdminLookupRead,
     AdminDriverCrsDiagnostic,
     AdminLookupUser,
@@ -403,6 +406,21 @@ def inspect_driver(
         sim_games=driver.sim_games or [],
         participations=summary,
     )
+
+
+@router.post("/clear-user", response_model=AdminClearUserResponse)
+def post_clear_user(
+    payload: AdminClearUserRequest,
+    session: Session = Depends(get_session),
+    _: User | None = Depends(require_roles("admin")),
+):
+    """Clear all data for a user by email: licenses, task completions, participations, incidents. User and driver remain."""
+    try:
+        counts = clear_user_data(session, payload.email.strip())
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    session.commit()
+    return AdminClearUserResponse(**counts)
 
 
 @router.post("/race-of-day/restart")

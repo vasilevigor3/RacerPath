@@ -10,7 +10,7 @@ from app.models.classification import Classification
 from app.models.driver import Driver
 from app.models.driver_license import DriverLicense
 from app.models.event import Event
-from app.models.participation import Participation, ParticipationStatus
+from app.models.participation import Participation, ParticipationState, ParticipationStatus
 from app.models.tier_progression_rule import TierProgressionRule
 
 from app.core.constants import TIER_ORDER, TIER_TOP
@@ -62,13 +62,14 @@ def compute_next_tier_progress(
             "missing_license_codes": list(rule.required_license_codes or []) if rule else [],
         }
 
-    # Count finished events (participations) where classification.difficulty_score > threshold
+    # Count finished events (only completed races; registered/withdrawn do not count)
     count = (
         session.query(Participation.id)
         .join(Event, Participation.event_id == Event.id)
         .join(Classification, Classification.event_id == Event.id)
         .filter(
             Participation.driver_id == driver.id,
+            Participation.participation_state == ParticipationState.completed,
             Participation.status == ParticipationStatus.finished,
             Classification.difficulty_score > rule.difficulty_threshold,
         )

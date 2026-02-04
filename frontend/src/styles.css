@@ -1374,6 +1374,28 @@ footer {
   margin-top: 6px;
 }
 
+.admin-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 12px;
+}
+.admin-clear-user-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.admin-clear-user-block .admin-clear-user-email {
+  min-width: 200px;
+}
+.admin-clear-user-block .admin-reset-seed-error,
+.admin-clear-user-block .admin-reset-seed-result {
+  width: 100%;
+  margin-top: 6px;
+}
+
 .admin-tabs {
   display: flex;
   flex-wrap: wrap;

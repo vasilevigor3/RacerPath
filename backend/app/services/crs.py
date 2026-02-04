@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.classification import Classification
 from app.models.anti_gaming import AntiGamingReport
 from app.models.crs_history import CRSHistory
-from app.models.participation import Participation
+from app.models.participation import Participation, ParticipationState, ParticipationStatus
 from app.models.task_completion import TaskCompletion
 from app.repositories.incident import IncidentRepository
 from app.core.settings import settings
@@ -55,11 +55,11 @@ def _participation_score(
     base = 100.0
     incident_deduction = incident_score_sum * INCIDENT_K
     status_deduction = 0.0
-    if participation.status == "dnf":
+    if participation.status == ParticipationStatus.dnf:
         status_deduction = 25.0
-    elif participation.status == "dsq":
+    elif participation.status == ParticipationStatus.dsq:
         status_deduction = 35.0
-    elif participation.status == "dns":
+    elif participation.status == ParticipationStatus.dns:
         status_deduction = 40.0
 
     consistency_bonus = 0.0
@@ -76,11 +76,20 @@ def _participation_score(
     return clamp_score(score)
 
 
+# Only participations where the driver actually started or completed the event count for CRS.
+# "registered" (just signed up) and "withdrawn" are excluded so CRS stays 0 until a race is run.
+CRS_PARTICIPATION_STATES = (ParticipationState.started, ParticipationState.completed)
+
+
 def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
     participations = (
         session.query(Participation)
         .options(selectinload(Participation.incidents))
-        .filter(Participation.driver_id == driver_id, Participation.discipline == discipline)
+        .filter(
+            Participation.driver_id == driver_id,
+            Participation.discipline == discipline,
+            Participation.participation_state.in_(CRS_PARTICIPATION_STATES),
+        )
         .order_by(Participation.created_at.desc())
         .limit(30)
         .all()
@@ -133,10 +142,14 @@ def compute_crs(session: Session, driver_id: str, discipline: str) -> CRSResult:
 
 
 def compute_inputs(session: Session, driver_id: str, discipline: str) -> dict:
-    """Minimal input snapshot for CRS: participation ids, counts, aggregates."""
+    """Minimal input snapshot for CRS: participation ids, counts, aggregates (same filter as compute_crs)."""
     participations = (
         session.query(Participation)
-        .filter(Participation.driver_id == driver_id, Participation.discipline == discipline)
+        .filter(
+            Participation.driver_id == driver_id,
+            Participation.discipline == discipline,
+            Participation.participation_state.in_(CRS_PARTICIPATION_STATES),
+        )
         .order_by(Participation.created_at.desc())
         .limit(PARTICIPATIONS_INPUT_LIMIT)
         .all()
